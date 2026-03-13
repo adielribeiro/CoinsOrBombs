@@ -237,29 +237,44 @@ export default function App() {
     );
   };
 
-  const restartRun = () => {
-    const restarted = {
-      ...gameState,
-      screen: 'cave',
-      cave: 1,
-      bombs: 0,
-      hp: gameState.maxHp,
-      coins: 0,
-      utilities: createUtilityInventory(),
-      inLobby: false,
-      lobbyReason: null,
-      nextCaveAvailable: null,
-      outcomeCave: null,
-      lastMessage: 'Run reiniciada.'
+      const restartRun = () => {
+      const restarted = {
+        ...gameState,
+        screen: 'cave',
+        cave: 1,
+        bombs: 0,
+        hp: 2,
+        maxHp: 2,
+        pickaxeLevel: 1,
+        pickaxePower: 1,
+        doubleBreakChance: 0,
+        bagBonus: 0,
+        coinLuck: 0,
+        coins: gameState.coins,
+        utilities: createUtilityInventory(),
+        inLobby: false,
+        lobbyReason: null,
+        nextCaveAvailable: null,
+        outcomeCave: null,
+        lastMessage: 'Run reiniciada.'
+      };
+
+      setPurchased([]);
+      setSelectedUtility(null);
+      setShowUpgradeShop(false);
+      setShowUtilityShop(false);
+      setGameState(restarted);
+
+      window.dispatchEvent(
+        new CustomEvent('cob-restart-run', {
+          detail: {
+            ...restarted,
+            purchased: []
+          }
+        })
+      );
     };
-
-    setSelectedUtility(null);
-    setShowUpgradeShop(false);
-    setShowUtilityShop(false);
-    setGameState(restarted);
-    window.dispatchEvent(new CustomEvent('cob-restart-run', { detail: restarted }));
-  };
-
+    
   const goToLobby = () => {
     const lobbyState = {
       ...gameState,
