@@ -339,53 +339,64 @@ export default function App() {
 
                 <h1>
                   {isDeathLobby
-                    ? `Você morreu na Cave ${resolvedOutcomeCave}`
-                    : `Você concluiu a Cave ${resolvedOutcomeCave}`}
+                    ? `Você caiu na cave ${resolvedOutcomeCave}`
+                    : `Você venceu a cave ${resolvedOutcomeCave}`}
                 </h1>
 
-                <p>
-                  {isDeathLobby
-                    ? 'A run foi interrompida. Seus utilitários da mochila foram perdidos no caos subterrâneo.'
-                    : 'Você abriu o caminho até a saída. Agora pode melhorar seu equipamento, abastecer a mochila e seguir para a próxima cave.'}
-                </p>
-              </section>
+                <p>{gameState.lastMessage}</p>
 
-              <section className="lobby-stats-row">
-                <div className="mini-stat">
-                  <span>Moedas</span>
-                  <strong>{gameState.coins}</strong>
-                </div>
-
-                <div className="mini-stat">
-                  <span>Vida atual</span>
-                  <strong>{gameState.hp}/{gameState.maxHp}</strong>
-                </div>
-
-                <div className="mini-stat">
-                  <span>Picareta</span>
-                  <strong>Nv. {gameState.pickaxeLevel}</strong>
-                </div>
-
-                <div className="mini-stat">
-                  <span>Próxima entrada</span>
-                  <strong>
-                    {isDeathLobby
-                      ? 'Cave 1'
-                      : `Cave ${gameState.nextCaveAvailable ?? gameState.cave + 1}`}
-                  </strong>
+                <div className="action-row">
+                  {isExitLobby ? (
+                    <button className="primary-btn" type="button" onClick={goToNextCave}>
+                      Próxima Cave
+                    </button>
+                  ) : (
+                    <button className="primary-btn" type="button" onClick={restartRun}>
+                      Reiniciar Run
+                    </button>
+                  )}
                 </div>
               </section>
 
               <section className="lobby-card">
                 <div className="section-head">
-                  <h2>Melhorias permanentes</h2>
-                  <p>As melhorias ficam com você entre runs. Picareta nível 3 ganha chance de quebrar duas rochas.</p>
+                  <h2>Resumo da Base</h2>
+                  <p>Use as moedas da run para comprar melhorias permanentes e utilitários.</p>
+                </div>
+
+                <section className="lobby-stats-row">
+                  <div className="mini-stat">
+                    <span>Moedas</span>
+                    <strong>{gameState.coins}</strong>
+                  </div>
+
+                  <div className="mini-stat">
+                    <span>Vida Máx.</span>
+                    <strong>{gameState.maxHp}</strong>
+                  </div>
+
+                  <div className="mini-stat">
+                    <span>Picareta</span>
+                    <strong>Nv. {gameState.pickaxeLevel}</strong>
+                  </div>
+
+                  <div className="mini-stat">
+                    <span>Próxima Cave</span>
+                    <strong>{gameState.nextCaveAvailable ?? gameState.cave}</strong>
+                  </div>
+                </section>
+              </section>
+
+              <section className="lobby-card">
+                <div className="section-head">
+                  <h2>Melhorias Permanentes</h2>
+                  <p>Valem para todas as caves futuras.</p>
                 </div>
 
                 <div className="upgrade-list clean-upgrade-list">
                   {availableUpgrades.length === 0 && (
                     <div className="empty-state">
-                      <p>Todas as melhorias do alpha já foram compradas.</p>
+                      <p>Todas as melhorias disponíveis nesta versão já foram compradas.</p>
                     </div>
                   )}
 
@@ -401,12 +412,11 @@ export default function App() {
 
                         <button
                           className="upgrade-buy-btn"
+                          type="button"
                           onClick={() => buyUpgrade(upgrade)}
                           disabled={!canBuy}
                         >
-                          {canBuy
-                            ? `Comprar · ${upgrade.cost}`
-                            : `Faltam ${upgrade.cost - gameState.coins}`}
+                          {canBuy ? `Comprar · ${upgrade.cost}` : `Faltam ${upgrade.cost - gameState.coins}`}
                         </button>
                       </div>
                     );
@@ -416,18 +426,18 @@ export default function App() {
 
               <section className="lobby-card">
                 <div className="section-head">
-                  <h2>Loja de utilitários da run</h2>
-                  <p>Você pode comprar quantos quiser, mas se morrer perde tudo. Eles aparecem acima do mapa durante a exploração.</p>
+                  <h2>Loja de Utilitários</h2>
+                  <p>Itens consumíveis para usar dentro da run.</p>
                 </div>
 
-                <div className="upgrade-list clean-upgrade-list">
+                <div className="upgrade-list">
                   {utilityCatalog.map((utility) => {
                     const canBuy = gameState.coins >= utility.cost;
                     const owned = gameState.utilities?.[utility.id] ?? 0;
 
                     return (
                       <div key={utility.id} className="upgrade-row utility-shop-row">
-                        <div className="upgrade-copy utility-copy">
+                        <div className="upgrade-copy">
                           <div className="utility-shop-head">
                             <span className="utility-shop-icon">{utility.icon}</span>
                             <strong>{utility.name}</strong>
@@ -438,37 +448,15 @@ export default function App() {
 
                         <button
                           className="upgrade-buy-btn"
+                          type="button"
                           onClick={() => buyUtility(utility)}
                           disabled={!canBuy}
                         >
-                          {canBuy
-                            ? `Comprar · ${utility.cost}`
-                            : `Faltam ${utility.cost - gameState.coins}`}
+                          {canBuy ? `Comprar · ${utility.cost}` : `Faltam ${utility.cost - gameState.coins}`}
                         </button>
                       </div>
                     );
                   })}
-                </div>
-              </section>
-
-              <section className="lobby-card">
-                <div className="section-head">
-                  <h2>{isDeathLobby ? 'Tentar novamente' : 'Avançar'}</h2>
-                  <p>{gameState.lastMessage}</p>
-                </div>
-
-                <div className="action-row">
-                  {isExitLobby && (
-                    <button className="primary-btn" onClick={goToNextCave}>
-                      Ir para a próxima cave
-                    </button>
-                  )}
-
-                  {isDeathLobby && (
-                    <button className="ghost-btn" onClick={restartRun}>
-                      Reiniciar run
-                    </button>
-                  )}
                 </div>
               </section>
             </div>
@@ -476,10 +464,7 @@ export default function App() {
         )}
 
         <div ref={containerRef} className="game-container" />
-
-        <div className="rotate-device-hint">
-          Gire o celular para a horizontal para jogar com a interface inteira na tela.
-        </div>
+        <div className="rotate-device-hint">Gire o celular para jogar melhor em modo paisagem.</div>
       </main>
     </div>
   );
