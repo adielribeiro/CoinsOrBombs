@@ -101,7 +101,7 @@ body {
   display: flex;
   flex-wrap: nowrap;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 5px;
   padding: 6px 8px;
   border-radius: 14px;
   background: rgba(10, 16, 24, 0.72);

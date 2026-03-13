@@ -433,7 +433,7 @@ export default function App() {
 
                       <div className="result-modal-actions">
                         <button className="ghost-btn" type="button" onClick={goToLobby}>
-                          Voltar para o Lobby
+                          Comprar Melhorias
                         </button>
 
                         <button className="primary-btn" type="button" onClick={restartRun}>
@@ -457,7 +457,7 @@ export default function App() {
 
                       <div className="result-modal-actions">
                         <button className="ghost-btn" type="button" onClick={goToLobby}>
-                          Ir para o Lobby
+                          Comprar Melhorias
                         </button>
 
                         <button className="primary-btn" type="button" onClick={goToNextCave}>
