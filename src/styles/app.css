@@ -54,7 +54,7 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  width: min(620px, calc(100% - 16px));
+  width: min(460px, calc(100% - 180px));
   pointer-events: none;
 }
 
@@ -82,23 +82,25 @@ body {
   line-height: 1.05;
 }
 
-/* Barra de utilitários */
+/* Barra de utilitários sempre à direita */
 
 .utility-bar-wrap {
   position: absolute;
-  top: 88px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 14px;
+  right: 12px;
+  left: auto;
+  transform: none;
   z-index: 31;
-  width: min(360px, calc(100% - 16px));
+  width: auto;
+  max-width: calc(100vw - 24px);
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .utility-bar {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 6px;
   padding: 6px 8px;
   border-radius: 14px;
@@ -110,17 +112,19 @@ body {
 
 .utility-slot {
   position: relative;
-  min-width: 58px;
+  min-width: 52px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .utility-icon-btn {
-  min-width: 52px;
-  min-height: 40px;
-  padding: 4px 6px;
+  min-width: 46px;
+  width: 46px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
@@ -144,21 +148,21 @@ body {
 }
 
 .utility-icon {
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
 }
 
 .utility-count {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: #d9ecff;
 }
 
 .utility-label {
-  max-width: 58px;
+  max-width: 52px;
   text-align: center;
   font-size: 8px;
-  line-height: 1.1;
+  line-height: 1.05;
   color: #c6d2e0;
 }
 
@@ -167,7 +171,7 @@ body {
   background: linear-gradient(180deg, #2f9d63, #25784b);
   color: #fff;
   border-radius: 10px;
-  padding: 5px 8px;
+  padding: 4px 8px;
   font-weight: 700;
   font-size: 10px;
   cursor: pointer;
@@ -535,7 +539,7 @@ body {
   .top-hud {
     top: 10px;
     gap: 8px;
-    width: calc(100% - 12px);
+    width: min(360px, calc(100% - 150px));
   }
 
   .hud-pill {
@@ -552,22 +556,41 @@ body {
   }
 
   .utility-bar-wrap {
-    top: 102px;
-    width: min(340px, calc(100% - 12px));
+    top: 12px;
+    right: 10px;
+    left: auto;
+    transform: none;
+    width: auto;
+    max-width: calc(42vw - 8px);
   }
 
   .utility-bar {
-    gap: 6px;
-    padding: 6px 8px;
+    gap: 5px;
+    padding: 5px 6px;
   }
 
   .utility-slot {
-    min-width: 56px;
+    min-width: 46px;
   }
 
   .utility-icon-btn {
-    min-width: 50px;
-    min-height: 40px;
+    min-width: 40px;
+    width: 40px;
+    min-height: 34px;
+    height: 34px;
+  }
+
+  .utility-icon {
+    font-size: 14px;
+  }
+
+  .utility-count {
+    font-size: 8px;
+  }
+
+  .utility-label {
+    font-size: 7px;
+    max-width: 46px;
   }
 }
 
@@ -589,6 +612,7 @@ body {
   .top-hud {
     top: 8px;
     gap: 6px;
+    width: min(300px, calc(100% - 150px));
   }
 
   .hud-pill {
@@ -606,36 +630,49 @@ body {
   }
 
   .utility-bar-wrap {
-    top: 96px;
-    width: min(320px, calc(100% - 12px));
+    top: 10px;
+    right: 8px;
+    left: auto;
+    transform: none;
+    width: auto;
+    max-width: calc(38vw - 8px);
   }
 
   .utility-bar {
-    gap: 5px;
-    padding: 6px;
+    gap: 4px;
+    padding: 4px 5px;
+    border-radius: 12px;
   }
 
   .utility-slot {
-    min-width: 52px;
+    min-width: 40px;
+    gap: 2px;
   }
 
   .utility-icon-btn {
-    min-width: 46px;
-    min-height: 38px;
-    padding: 4px;
+    min-width: 34px;
+    width: 34px;
+    min-height: 30px;
+    height: 30px;
+    border-radius: 8px;
   }
 
   .utility-icon {
-    font-size: 15px;
+    font-size: 12px;
   }
 
   .utility-count {
-    font-size: 9px;
+    font-size: 7px;
   }
 
   .utility-label {
-    font-size: 8px;
-    max-width: 52px;
+    font-size: 6px;
+    max-width: 40px;
+  }
+
+  .utility-use-btn {
+    font-size: 9px;
+    padding: 4px 6px;
   }
 
   .lobby-overlay {
@@ -701,7 +738,7 @@ body {
   .top-hud {
     top: 8px;
     gap: 6px;
-    width: min(560px, calc(100% - 12px));
+    width: min(360px, calc(100% - 150px));
   }
 
   .hud-pill {
@@ -720,51 +757,51 @@ body {
   }
 
   .utility-bar-wrap {
-    top: 66px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(340px, calc(100% - 12px));
-    max-width: none;
-    justify-content: center;
+    top: 8px;
+    right: 8px;
+    left: auto;
+    transform: none;
+    width: auto;
+    max-width: calc(42vw - 8px);
+    justify-content: flex-end;
   }
 
   .utility-bar {
-    gap: 6px;
-    padding: 6px 8px;
-    border-radius: 14px;
+    gap: 4px;
+    padding: 4px 6px;
+    border-radius: 12px;
     flex-wrap: nowrap;
   }
 
   .utility-slot {
-    min-width: 52px;
-    gap: 2px;
+    min-width: 40px;
+    gap: 1px;
   }
 
   .utility-icon-btn {
-    min-width: 46px;
-    width: 46px;
-    min-height: 38px;
-    height: 38px;
+    min-width: 34px;
+    width: 34px;
+    min-height: 30px;
+    height: 30px;
     padding: 0;
-    border-radius: 10px;
+    border-radius: 8px;
   }
 
   .utility-icon {
-    font-size: 15px;
+    font-size: 12px;
   }
 
   .utility-count {
-    font-size: 9px;
+    font-size: 7px;
   }
 
   .utility-label {
-    font-size: 8px;
-    max-width: 52px;
+    display: none;
   }
 
   .utility-use-btn {
-    padding: 5px 8px;
-    font-size: 10px;
+    padding: 4px 6px;
+    font-size: 9px;
   }
 
   .lobby-overlay {
