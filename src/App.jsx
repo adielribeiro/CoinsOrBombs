@@ -274,7 +274,7 @@ export default function App() {
         })
       );
     };
-    
+
   const goToLobby = () => {
     const lobbyState = {
       ...gameState,
@@ -358,6 +358,11 @@ export default function App() {
             {!showLobby && (
               <>
                 <div className="top-hud">
+                  <div className="hud-pill">
+                    <span>Cave Atual</span>
+                    <strong>{gameState.cave}</strong>
+                  </div>
+
                   <div className="hud-pill">
                     <span>Moedas</span>
                     <strong>{gameState.coins}</strong>
