@@ -647,3 +647,102 @@ body {
     line-height: 1.4;
   }
 }
+
+.result-modal {
+  width: min(520px, 100%);
+  background: rgba(10, 16, 24, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.result-modal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.result-modal-header h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+  color: #f4fbff;
+}
+
+.result-modal-header.death h1 {
+  color: #ffb0b0;
+}
+
+.result-modal-header.win h1 {
+  color: #a9f2be;
+}
+
+.result-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.result-line {
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: #c9d7e6;
+  font-size: 16px;
+}
+
+.result-line strong {
+  color: #ffffff;
+  font-size: 22px;
+}
+
+.result-modal-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.result-modal-actions .primary-btn,
+.result-modal-actions .ghost-btn {
+  flex: 1;
+  min-width: 180px;
+}
+
+@media (max-width: 640px) {
+  .result-modal {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .result-modal-header h1 {
+    font-size: 22px;
+  }
+
+  .result-line {
+    font-size: 14px;
+  }
+
+  .result-line strong {
+    font-size: 18px;
+  }
+
+  .result-modal-actions {
+    flex-direction: column;
+  }
+
+  .result-modal-actions .primary-btn,
+  .result-modal-actions .ghost-btn {
+    width: 100%;
+    min-width: 100%;
+  }
+}

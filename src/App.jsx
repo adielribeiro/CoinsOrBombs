@@ -230,17 +230,32 @@ export default function App() {
       cave: 1,
       bombs: 0,
       hp: gameState.maxHp,
+      coins: 0,
       utilities: createUtilityInventory(),
       inLobby: false,
       lobbyReason: null,
       nextCaveAvailable: null,
       outcomeCave: null,
-      lastMessage: 'Run reiniciada manualmente.'
+      lastMessage: 'Run reiniciada.'
     };
 
     setSelectedUtility(null);
     setGameState(restarted);
     window.dispatchEvent(new CustomEvent('cob-restart-run', { detail: restarted }));
+  };
+
+  const goToLobby = () => {
+    const lobbyState = {
+      ...gameState,
+      inLobby: false,
+      lobbyReason: null,
+      nextCaveAvailable: null,
+      outcomeCave: null,
+      lastMessage: 'Você voltou para o loby.'
+    };
+
+    setGameState(lobbyState);
+    window.dispatchEvent(new CustomEvent('cob-enter-cave', { detail: lobbyState }));
   };
 
   const goToNextCave = () => {
@@ -331,138 +346,59 @@ export default function App() {
 
         {showLobby && (
           <div className="lobby-overlay">
-            <div className="lobby-modal">
-              <section className={`result-card ${isDeathLobby ? 'death' : 'win'}`}>
-                <div className={`result-badge ${isDeathLobby ? 'death' : 'win'}`}>
-                  {isDeathLobby ? 'DERROTA' : 'CAVE CONCLUÍDA'}
-                </div>
+            <div className="result-modal">
+              {isDeathLobby ? (
+                <>
+                  <div className="result-modal-header death">
+                    <span className="result-badge death">DERROTA</span>
+                    <h1>Você Morreu!</h1>
+                  </div>
 
-                <h1>
-                  {isDeathLobby
-                    ? `Você caiu na cave ${resolvedOutcomeCave}`
-                    : `Você venceu a cave ${resolvedOutcomeCave}`}
-                </h1>
+                  <div className="result-modal-body">
+                    <p className="result-line">
+                      <span>Moedas coletadas</span>
+                      <strong>{gameState.coins}</strong>
+                    </p>
+                  </div>
 
-                <p>{gameState.lastMessage}</p>
+                  <div className="result-modal-actions">
+                  <button className="ghost-btn" type="button" onClick={goToLobby}>
+                    Voltar para o Loby
+                  </button>
 
-                <div className="action-row">
-                  {isExitLobby ? (
-                    <button className="primary-btn" type="button" onClick={goToNextCave}>
-                      Próxima Cave
-                    </button>
-                  ) : (
                     <button className="primary-btn" type="button" onClick={restartRun}>
                       Reiniciar Run
                     </button>
-                  )}
-                </div>
-              </section>
-
-              <section className="lobby-card">
-                <div className="section-head">
-                  <h2>Resumo da Base</h2>
-                  <p>Use as moedas da run para comprar melhorias permanentes e utilitários.</p>
-                </div>
-
-                <section className="lobby-stats-row">
-                  <div className="mini-stat">
-                    <span>Moedas</span>
-                    <strong>{gameState.coins}</strong>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="result-modal-header win">
+                    <span className="result-badge win">VITÓRIA</span>
+                    <h1>Você chegou ao fim da CAVE Nº {resolvedOutcomeCave}</h1>
                   </div>
 
-                  <div className="mini-stat">
-                    <span>Vida Máx.</span>
-                    <strong>{gameState.maxHp}</strong>
+                  <div className="result-modal-body">
+                    <p className="result-line">
+                      <span>Moedas coletadas</span>
+                      <strong>{gameState.coins}</strong>
+                    </p>
                   </div>
 
-                  <div className="mini-stat">
-                    <span>Picareta</span>
-                    <strong>Nv. {gameState.pickaxeLevel}</strong>
+                  <div className="result-modal-actions">
+                 <button className="ghost-btn" type="button" onClick={goToLobby}>
+                  Ir para o Loby
+                </button>
+
+                    <button className="primary-btn" type="button" onClick={goToNextCave}>
+                      Ir para Cave {gameState.nextCaveAvailable ?? resolvedOutcomeCave + 1}
+                    </button>
                   </div>
-
-                  <div className="mini-stat">
-                    <span>Próxima Cave</span>
-                    <strong>{gameState.nextCaveAvailable ?? gameState.cave}</strong>
-                  </div>
-                </section>
-              </section>
-
-              <section className="lobby-card">
-                <div className="section-head">
-                  <h2>Melhorias Permanentes</h2>
-                  <p>Valem para todas as caves futuras.</p>
-                </div>
-
-                <div className="upgrade-list clean-upgrade-list">
-                  {availableUpgrades.length === 0 && (
-                    <div className="empty-state">
-                      <p>Todas as melhorias disponíveis nesta versão já foram compradas.</p>
-                    </div>
-                  )}
-
-                  {availableUpgrades.map((upgrade) => {
-                    const canBuy = gameState.coins >= upgrade.cost;
-
-                    return (
-                      <div key={upgrade.id} className="upgrade-row">
-                        <div className="upgrade-copy">
-                          <strong>{upgrade.name}</strong>
-                          <p>{upgrade.description}</p>
-                        </div>
-
-                        <button
-                          className="upgrade-buy-btn"
-                          type="button"
-                          onClick={() => buyUpgrade(upgrade)}
-                          disabled={!canBuy}
-                        >
-                          {canBuy ? `Comprar · ${upgrade.cost}` : `Faltam ${upgrade.cost - gameState.coins}`}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className="lobby-card">
-                <div className="section-head">
-                  <h2>Loja de Utilitários</h2>
-                  <p>Itens consumíveis para usar dentro da run.</p>
-                </div>
-
-                <div className="upgrade-list">
-                  {utilityCatalog.map((utility) => {
-                    const canBuy = gameState.coins >= utility.cost;
-                    const owned = gameState.utilities?.[utility.id] ?? 0;
-
-                    return (
-                      <div key={utility.id} className="upgrade-row utility-shop-row">
-                        <div className="upgrade-copy">
-                          <div className="utility-shop-head">
-                            <span className="utility-shop-icon">{utility.icon}</span>
-                            <strong>{utility.name}</strong>
-                          </div>
-                          <p>{utility.description}</p>
-                          <small>Na mochila: {owned}</small>
-                        </div>
-
-                        <button
-                          className="upgrade-buy-btn"
-                          type="button"
-                          onClick={() => buyUtility(utility)}
-                          disabled={!canBuy}
-                        >
-                          {canBuy ? `Comprar · ${utility.cost}` : `Faltam ${utility.cost - gameState.coins}`}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
+                </>
+              )}
             </div>
           </div>
         )}
-
         <div ref={containerRef} className="game-container" />
         <div className="rotate-device-hint">Gire o celular para jogar melhor em modo paisagem.</div>
       </main>
