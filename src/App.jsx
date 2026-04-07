@@ -279,6 +279,7 @@ export default function App() {
   const [selectedRewardId, setSelectedRewardId] = useState(null);
   const [showRotateLock, setShowRotateLock] = useState(isMobilePortrait());
   const [showUtilityShopModal, setShowUtilityShopModal] = useState(false);
+  const [showExitDecision, setShowExitDecision] = useState(false);
   const [rewardRefreshCost, setRewardRefreshCost] = useState(10);
   const [entryPhase, setEntryPhase] = useState(ENTRY_PHASE.MENU);
   const [showSettings, setShowSettings] = useState(false);
@@ -329,6 +330,7 @@ export default function App() {
       setSelectedUtility(null);
       setSelectedRewardId(null);
       setShowUtilityShopModal(false);
+      setShowExitDecision(false);
       setRewardRefreshCost(10);
       setRewardOptions(pickRewardOptions(mergedState, 3));
     };
@@ -340,14 +342,25 @@ export default function App() {
       setSelectedUtility(null);
       setSelectedRewardId(null);
       setShowUtilityShopModal(false);
+      setShowExitDecision(false);
       setRewardRefreshCost(10);
       setRewardOptions([]);
+    };
+
+    const handleExitDecision = (event) => {
+      if (!event.detail?.state) return;
+
+      setGameState(normalizeProgressState(event.detail.state));
+      setSelectedUtility(null);
+      setShowUtilityShopModal(false);
+      setShowExitDecision(true);
     };
 
     window.addEventListener('cob-state', handleState);
     window.addEventListener('cob-sync-ui', handleSync);
     window.addEventListener('cob-cave-cleared', handleCaveCleared);
     window.addEventListener('cob-player-dead', handlePlayerDead);
+    window.addEventListener('cob-exit-decision', handleExitDecision);
 
     if (!gameRef.current && containerRef.current) {
       gameRef.current = createGame(containerRef.current, {
@@ -363,6 +376,7 @@ export default function App() {
       window.removeEventListener('cob-sync-ui', handleSync);
       window.removeEventListener('cob-cave-cleared', handleCaveCleared);
       window.removeEventListener('cob-player-dead', handlePlayerDead);
+      window.removeEventListener('cob-exit-decision', handleExitDecision);
 
       entryTimeoutRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
       entryTimeoutRef.current = [];
@@ -377,6 +391,7 @@ export default function App() {
   useEffect(() => {
     if (gameState.inLobby) {
       setSelectedUtility(null);
+      setShowExitDecision(false);
       return;
     }
 
@@ -544,6 +559,25 @@ export default function App() {
     setSelectedUtility(null);
   };
 
+  const continueExploringCurrentCave = () => {
+    setShowExitDecision(false);
+  };
+
+  const chooseNextCaveFromExit = () => {
+    const baseState = stateRef.current;
+
+    setShowExitDecision(false);
+
+    window.dispatchEvent(
+      new CustomEvent('cob-open-exit-lobby', {
+        detail: {
+          nextCave: baseState.nextCaveAvailable ?? baseState.cave + 1,
+          message: `Você decidiu seguir para a próxima cave.`
+        }
+      })
+    );
+  };
+
   const continueToNextCave = () => {
     const baseState = stateRef.current;
     const reward = rewardOptions.find((item) => item.id === selectedRewardId);
@@ -571,6 +605,7 @@ export default function App() {
     syncLocalState(nextState);
     setSelectedRewardId(null);
     setShowUtilityShopModal(false);
+    setShowExitDecision(false);
     setRewardRefreshCost(10);
     setRewardOptions([]);
 
@@ -612,6 +647,7 @@ export default function App() {
     setSelectedUtility(null);
     setSelectedRewardId(null);
     setShowUtilityShopModal(false);
+    setShowExitDecision(false);
     setRewardRefreshCost(10);
     setRewardOptions([]);
     setEntryPhase(ENTRY_PHASE.PLAYING);
@@ -633,6 +669,7 @@ export default function App() {
     setSelectedUtility(null);
     setSelectedRewardId(null);
     setShowUtilityShopModal(false);
+    setShowExitDecision(false);
     setRewardRefreshCost(10);
     setRewardOptions([]);
     setEntryPhase(ENTRY_PHASE.MENU);
@@ -735,6 +772,27 @@ export default function App() {
               </div>
             </div>
           </>
+        )}
+
+        {showExitDecision && showGameHud && !showLobby && (
+          <div className="exit-decision-overlay">
+            <div className="exit-decision-modal">
+              <div className="result-badge win">SAÍDA ENCONTRADA</div>
+
+              <h2>O que deseja fazer?</h2>
+              <p>{gameState.lastMessage}</p>
+
+              <div className="exit-decision-actions">
+                <button className="primary-btn next-cave-btn" type="button" onClick={chooseNextCaveFromExit}>
+                  Próxima cave
+                </button>
+
+                <button className="ghost-btn utility-lobby-btn" type="button" onClick={continueExploringCurrentCave}>
+                  Continuar na cave atual
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {showLobby && (

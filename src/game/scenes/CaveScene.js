@@ -187,6 +187,16 @@ export class CaveScene extends Phaser.Scene {
       this.scheduleResponsiveRefresh();
     };
 
+    this.onOpenExitLobby = (event) => {
+      if (this.metaState.inLobby) return;
+
+      const nextCave = event.detail?.nextCave ?? this.metaState.nextCaveAvailable ?? this.metaState.cave + 1;
+      const message =
+        event.detail?.message ??
+        `Você decidiu seguir para a Cave ${nextCave}.`;
+
+      this.openLobby('exit', message, nextCave);
+    };
 
     window.addEventListener('cob-buy-upgrade', this.onExternalSync);
     window.addEventListener('cob-buy-utility', this.onExternalSync);
@@ -194,6 +204,7 @@ export class CaveScene extends Phaser.Scene {
     window.addEventListener('cob-restart-run', this.onManualRestart);
     window.addEventListener('cob-enter-cave', this.onEnterCave);
     window.addEventListener('cob-next-cave', this.onNextCave);
+    window.addEventListener('cob-open-exit-lobby', this.onOpenExitLobby);
     window.addEventListener('cob-force-resize', this.onForcedResize);
     this.scale.on('resize', this.onResize);
 
@@ -204,6 +215,7 @@ export class CaveScene extends Phaser.Scene {
       window.removeEventListener('cob-restart-run', this.onManualRestart);
       window.removeEventListener('cob-enter-cave', this.onEnterCave);
       window.removeEventListener('cob-next-cave', this.onNextCave);
+      window.removeEventListener('cob-open-exit-lobby', this.onOpenExitLobby);
       window.removeEventListener('cob-force-resize', this.onForcedResize);
       this.scale.off('resize', this.onResize);
       this.clearResponsiveRefreshQueue();
@@ -843,6 +855,13 @@ export class CaveScene extends Phaser.Scene {
   }
 
   handleTileClick(tile) {
+    if (tile.type === 'exit') {
+      this.requestExitDecision(
+        `Você encontrou a saída da Cave ${this.metaState.cave}. Deseja seguir para a próxima cave ou continuar explorando?`
+      );
+      return;
+    }
+
     if (tile.type !== 'rock') {
       this.setMessage('Agora a interação é focada nas rochas expostas da borda.');
       return;
@@ -881,6 +900,8 @@ export class CaveScene extends Phaser.Scene {
   }
 
   resolveBrokenRock(tile, isBonus = false) {
+    const exitWasUnlockedBefore = isExitUnlocked(this.mapData, this.mapData.exit);
+
     this.metaState.stats = {
       ...createStatsState(),
       ...this.metaState.stats,
@@ -1055,16 +1076,27 @@ export class CaveScene extends Phaser.Scene {
       }
     }
 
-    if (isExitUnlocked(this.mapData, this.mapData.exit)) {
-      const exitMessage = revealedHiddenExit
-        ? `Você encontrou a saída escondida da Cave ${this.metaState.cave}.`
-        : `Você liberou um dos lados da saída da Cave ${this.metaState.cave}.`;
+    const exitUnlockedNow = isExitUnlocked(this.mapData, this.mapData.exit);
+    const shouldOfferExitDecision = revealedHiddenExit || (!exitWasUnlockedBefore && exitUnlockedNow);
 
-      this.openLobby(
-        'exit',
-        exitMessage,
-        this.metaState.cave + 1
-      );
+    if (shouldOfferExitDecision) {
+      const exitMessage = revealedHiddenExit
+        ? [
+            message,
+            ...extraMessages,
+            'Deseja seguir para a próxima cave ou continuar explorando?'
+          ]
+            .filter(Boolean)
+            .join(' ')
+        : [
+            `A saída da Cave ${this.metaState.cave} está acessível.`,
+            ...extraMessages,
+            'Deseja seguir para a próxima cave ou continuar explorando?'
+          ]
+            .filter(Boolean)
+            .join(' ');
+
+      this.requestExitDecision(exitMessage);
       return;
     }
 
@@ -1441,6 +1473,27 @@ export class CaveScene extends Phaser.Scene {
     }
 
     return true;
+  }
+
+  requestExitDecision(message = null) {
+    const nextCave = this.metaState.nextCaveAvailable ?? this.metaState.cave + 1;
+
+    this.metaState.nextCaveAvailable = nextCave;
+    this.metaState.outcomeCave = this.metaState.cave;
+
+    if (message) {
+      this.metaState.lastMessage = message;
+    }
+
+    this.syncUI();
+
+    window.dispatchEvent(
+      new CustomEvent('cob-exit-decision', {
+        detail: {
+          state: { ...this.metaState }
+        }
+      })
+    );
   }
 
   renderStatusBanner() {

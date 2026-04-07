@@ -189,16 +189,54 @@ button {
 
 /* Lobby */
 
+.exit-decision-overlay,
 .lobby-overlay {
   position: absolute;
   inset: 0;
-  z-index: 80;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   background: rgba(6, 10, 16, 0.58);
   backdrop-filter: blur(4px);
+}
+
+.exit-decision-overlay {
+  z-index: 78;
+}
+
+.lobby-overlay {
+  z-index: 80;
+}
+
+.exit-decision-modal {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  background: rgba(10, 16, 24, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+}
+
+.exit-decision-modal h2 {
+  margin: 0;
+}
+
+.exit-decision-modal p {
+  margin: 0;
+  color: #c8d2df;
+  line-height: 1.45;
+}
+
+.exit-decision-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .lobby-modal-modern {
@@ -913,29 +951,36 @@ button {
     border-radius: 8px;
   }
 
+  .exit-decision-overlay,
   .lobby-overlay {
     padding: 8px;
     align-items: stretch;
   }
 
+  .exit-decision-modal,
   .lobby-modal-modern {
     width: 100%;
-    height: calc(100svh - 16px);
     max-height: calc(100svh - 16px);
     gap: 10px;
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
 
+  .lobby-modal-modern {
+    height: calc(100svh - 16px);
+  }
+
   .result-hero,
   .lobby-section-card,
-  .utility-shop-modal {
+  .utility-shop-modal,
+  .exit-decision-modal {
     padding: 14px;
     border-radius: 16px;
   }
 
   .result-hero h1,
   .lobby-section-card h2,
-  .utility-shop-modal-header h2 {
+  .utility-shop-modal-header h2,
+  .exit-decision-modal h2 {
     font-size: 18px;
   }
 
@@ -943,7 +988,8 @@ button {
   .lobby-section-card p,
   .reward-line-card p,
   .utility-shop-pill p,
-  .utility-shop-modal-header p {
+  .utility-shop-modal-header p,
+  .exit-decision-modal p {
     font-size: 12px;
     line-height: 1.35;
   }
@@ -1103,6 +1149,10 @@ button {
   .shop-action-row {
     grid-template-columns: 1fr;
   }
+
+  .exit-decision-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-height: 500px) and (orientation: landscape) {
@@ -1119,7 +1169,8 @@ button {
 
   .result-hero,
   .lobby-section-card,
-  .utility-shop-modal {
+  .utility-shop-modal,
+  .exit-decision-modal {
     padding: 12px;
     border-radius: 14px;
   }
@@ -1130,7 +1181,8 @@ button {
 
   .result-hero h1,
   .lobby-section-card h2,
-  .utility-shop-modal-header h2 {
+  .utility-shop-modal-header h2,
+  .exit-decision-modal h2 {
     font-size: 16px;
     line-height: 1.15;
   }
@@ -1139,7 +1191,8 @@ button {
   .lobby-section-card p,
   .reward-line-card p,
   .utility-shop-pill p,
-  .utility-shop-modal-header p {
+  .utility-shop-modal-header p,
+  .exit-decision-modal p {
     font-size: 11px;
     line-height: 1.28;
   }
