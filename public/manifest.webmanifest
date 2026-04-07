@@ -1,0 +1,10 @@
+{
+    "name": "Coins or Bombs",
+    "short_name": "CoinsOrBombs",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "landscape",
+    "background_color": "#0c1016",
+    "theme_color": "#0c1016",
+    "lang": "pt-BR"
+  }
