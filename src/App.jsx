@@ -572,7 +572,7 @@ export default function App() {
       new CustomEvent('cob-open-exit-lobby', {
         detail: {
           nextCave: baseState.nextCaveAvailable ?? baseState.cave + 1,
-          message: `Você decidiu seguir para a próxima cave.`
+          message: `Você escolheu descer para a próxima cave.`
         }
       })
     );
