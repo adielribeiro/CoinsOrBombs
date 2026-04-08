@@ -426,45 +426,6 @@ export class CaveScene extends Phaser.Scene {
     });
   }
 
-  renderExitTile(tile, point) {
-    const { tileWidth, tileHeight, mapScale } = this.renderMetrics;
-
-    this.renderExitHighlight(point);
-
-    const glow = this.add.image(point.x, point.y - tileHeight * 0.38, 'exit_glow');
-    glow.setScale(0.48 * mapScale);
-    glow.setDepth(point.y + 11);
-    this.objectLayer.add(glow);
-
-    const hole = this.add.graphics();
-    hole.fillStyle(0x060708, 0.94);
-    hole.lineStyle(3, 0x463726, 0.95);
-    hole.fillEllipse(point.x, point.y + tileHeight * 0.04, tileWidth * 0.54, tileHeight * 0.26);
-    hole.strokeEllipse(point.x, point.y + tileHeight * 0.04, tileWidth * 0.54, tileHeight * 0.26);
-    hole.fillStyle(0x11161b, 0.72);
-    hole.fillEllipse(point.x, point.y + tileHeight * 0.02, tileWidth * 0.38, tileHeight * 0.16);
-    hole.lineStyle(2, 0xe7d3a4, 0.88);
-    hole.lineBetween(point.x - tileWidth * 0.12, point.y + tileHeight * 0.02, point.x - tileWidth * 0.06, point.y - tileHeight * 0.24);
-    hole.lineBetween(point.x + tileWidth * 0.08, point.y + tileHeight * 0.03, point.x + tileWidth * 0.14, point.y - tileHeight * 0.23);
-    hole.lineBetween(point.x - tileWidth * 0.07, point.y - tileHeight * 0.06, point.x + tileWidth * 0.09, point.y - tileHeight * 0.05);
-    hole.lineBetween(point.x - tileWidth * 0.05, point.y - tileHeight * 0.15, point.x + tileWidth * 0.11, point.y - tileHeight * 0.14);
-    hole.setDepth(point.y + 12);
-    this.objectLayer.add(hole);
-
-    const marker = this.add.text(point.x, point.y - tileHeight * 1.02, 'SAÍDA', {
-      fontSize: this.getMarkerFontSize(16),
-      color: '#f6fff9',
-      fontStyle: 'bold',
-      stroke: '#0d2a1c',
-      strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
-    }).setOrigin(0.5);
-
-    marker.setDepth(point.y + 14);
-    this.objectLayer.add(marker);
-
-    tile.exitVisual = { glow, hole, marker };
-  }
-
   getMapScreenBounds(originX, originY) {
     const { tileWidth, tileHeight } = this.renderMetrics;
     return this.getMapBoundsForMetrics(originX, originY, tileWidth, tileHeight);
@@ -670,7 +631,6 @@ export class CaveScene extends Phaser.Scene {
           floor.setTint(biome.palette.exit);
           floor.setScale(1.05);
           floor.setInteractive({ cursor: 'pointer' });
-          floor.setData('tile', tile);
         }
 
         if (tile.type === 'entrance') {
@@ -719,7 +679,23 @@ export class CaveScene extends Phaser.Scene {
         }
 
         if (tile.type === 'exit') {
-          this.renderExitTile(tile, point);
+          this.renderExitHighlight(point);
+
+          const glow = this.add.image(point.x, point.y - tileHeight * 0.42, 'exit_glow');
+          glow.setScale(0.56 * mapScale);
+          glow.setDepth(point.y + 11);
+          this.objectLayer.add(glow);
+
+          const marker = this.add.text(point.x - tileWidth * 0.24, point.y - tileHeight * 1.18, 'EXIT', {
+            fontSize: this.getMarkerFontSize(18),
+            color: '#f6fff9',
+            fontStyle: 'bold',
+            stroke: '#0d2a1c',
+            strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
+          });
+
+          marker.setDepth(point.y + 14);
+          this.objectLayer.add(marker);
         }
 
         if (tile.type === 'entrance') {
@@ -868,13 +844,8 @@ export class CaveScene extends Phaser.Scene {
   }
 
   handleTileClick(tile) {
-    if (tile.type === 'exit') {
-      this.promptExitDecision();
-      return;
-    }
-
     if (tile.type !== 'rock') {
-      this.setMessage('Esse espaço já está aberto. Continue quebrando rochas ou clique na saída para decidir.');
+      this.setMessage('Agora a interação é focada nas rochas expostas da borda.');
       return;
     }
 
@@ -887,20 +858,6 @@ export class CaveScene extends Phaser.Scene {
 
     this.animatePickaxe(tile);
     this.damageRock(tile);
-  }
-
-  promptExitDecision() {
-    this.metaState.nextCaveAvailable = this.metaState.nextCaveAvailable ?? this.metaState.cave + 1;
-    this.metaState.lastMessage = `Você encontrou a saída da Cave ${this.metaState.cave}. Deseja seguir para a próxima ou continuar explorando?`;
-    this.syncUI();
-
-    window.dispatchEvent(
-      new CustomEvent('cob-exit-decision', {
-        detail: {
-          state: { ...this.metaState }
-        }
-      })
-    );
   }
 
   damageRock(tile, isBonus = false) {
@@ -959,6 +916,11 @@ export class CaveScene extends Phaser.Scene {
 
     if (floor) {
       floor.setData('tile', tile);
+
+      if (revealedHiddenExit) {
+        floor.setInteractive({ cursor: 'pointer' });
+      }
+
       tile.sprite = floor;
     } else {
       const fallbackFloorKey = tile.floorVariant || 'floor_01';
@@ -966,13 +928,22 @@ export class CaveScene extends Phaser.Scene {
 
       fallbackFloor.setDepth(rewardPos.y);
       fallbackFloor.setData('tile', tile);
+
+      if (revealedHiddenExit) {
+        fallbackFloor.setInteractive({ cursor: 'pointer' });
+      }
+
       this.floorLayer.add(fallbackFloor);
 
       tile.floorSprite = fallbackFloor;
       tile.sprite = fallbackFloor;
     }
 
-    this.renderDecoration(tile, rewardPos);
+    if (revealedHiddenExit) {
+      this.renderMap();
+    } else {
+      this.renderDecoration(tile, rewardPos);
+    }
 
     let message = '';
     const extraMessages = [];
@@ -1075,10 +1046,9 @@ export class CaveScene extends Phaser.Scene {
         message = isBonus ? 'Quebra bônus! A rocha extra estava vazia.' : 'Só pedra e poeira... siga cavando.';
       }
     } else if (revealedHiddenExit) {
-      this.renderExitTile(tile, rewardPos);
       message = isBonus
-        ? 'Quebra bônus! Você encontrou a saída escondida. Clique no buraco quando quiser decidir se vai embora.'
-        : 'Você encontrou a saída escondida desta cave. Clique no buraco quando quiser decidir se vai embora.';
+        ? 'Quebra bônus! Você encontrou a saída escondida.'
+        : 'Você encontrou a saída escondida desta cave.';
     } else {
       message = isBonus ? 'Quebra bônus! A rocha extra estava vazia.' : 'Só pedra e poeira... siga cavando.';
     }
@@ -1098,6 +1068,19 @@ export class CaveScene extends Phaser.Scene {
       if (this.metaState.inLobby) {
         return;
       }
+    }
+
+    if (isExitUnlocked(this.mapData, this.mapData.exit)) {
+      const exitMessage = revealedHiddenExit
+        ? `Você encontrou a saída escondida da Cave ${this.metaState.cave}.`
+        : `Você liberou um dos lados da saída da Cave ${this.metaState.cave}.`;
+
+      this.openLobby(
+        'exit',
+        exitMessage,
+        this.metaState.cave + 1
+      );
+      return;
     }
 
     this.setMessage([message, ...extraMessages].filter(Boolean).join(' '));
