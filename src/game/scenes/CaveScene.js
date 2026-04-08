@@ -1224,15 +1224,6 @@ export class CaveScene extends Phaser.Scene {
       }
     }
 
-    if (isExitUnlocked(this.mapData, this.mapData.exit)) {
-      const exitMessage = revealedHiddenExit
-        ? `Você encontrou a saída escondida da Cave ${this.metaState.cave}. Clique na saída para decidir se vai para a próxima cave ou se continua explorando.`
-        : `A saída da Cave ${this.metaState.cave} foi liberada. Clique nela para decidir se quer seguir ou continuar explorando.`;
-
-      this.openExitDecision(exitMessage);
-      return;
-    }
-
     this.setMessage([message, ...extraMessages].filter(Boolean).join(' '));
     this.syncUI();
   }
