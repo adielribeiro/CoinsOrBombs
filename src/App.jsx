@@ -572,7 +572,7 @@ export default function App() {
       new CustomEvent('cob-open-exit-lobby', {
         detail: {
           nextCave: baseState.nextCaveAvailable ?? baseState.cave + 1,
-          message: `Você escolheu descer para a próxima cave.`
+          message: `Você decidiu seguir para a próxima cave.`
         }
       })
     );
@@ -805,28 +805,28 @@ export default function App() {
 
                 <h1>{isDeathLobby ? 'Você foi derrotado' : `Cave ${getBiomeProgress(resolvedOutcomeCave).label} concluída`}</h1>
 
-                <p>{gameState.lastMessage}</p>
+                <p className="result-hero-message">{gameState.lastMessage}</p>
 
-                <div className="hero-stats-row">
-                  <div className="hero-stat">
-                    <span>Moedas</span>
+                <div className="hero-stats-row hero-stats-row-compact">
+                  <div className="hero-stat hero-stat-compact">
+                    <span>🪙 Moedas</span>
                     <strong>{gameState.coins}</strong>
                   </div>
 
-                  <div className="hero-stat">
-                    <span>Vida</span>
+                  <div className="hero-stat hero-stat-compact">
+                    <span>❤️ Vida</span>
                     <strong>
                       {gameState.hp}/{gameState.maxHp}
                     </strong>
                   </div>
 
-                  <div className="hero-stat">
-                    <span>Picareta</span>
+                  <div className="hero-stat hero-stat-compact">
+                    <span>⛏️ Picareta</span>
                     <strong>Nv. {gameState.pickaxeLevel}</strong>
                   </div>
 
-                  <div className="hero-stat">
-                    <span>Próxima</span>
+                  <div className="hero-stat hero-stat-compact">
+                    <span>⬇️ Próxima</span>
                     <strong>{isDeathLobby ? '1/25' : nextProgress.label}</strong>
                   </div>
                 </div>
@@ -838,7 +838,7 @@ export default function App() {
                     <div className="section-title-wrap section-title-wrap-inline">
                       <div>
                         <h2>Escolha sua melhoria</h2>
-                        <p>As 3 opções ficam alinhadas em linha.</p>
+                        <p>Escolha 1 melhoria para a próxima cave.</p>
                       </div>
 
                       <button

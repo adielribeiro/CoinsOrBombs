@@ -240,12 +240,12 @@ button {
 }
 
 .lobby-modal-modern {
-  width: min(1120px, 100%);
+  width: min(980px, 100%);
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   padding-bottom: 8px;
   scrollbar-width: thin;
 }
@@ -263,25 +263,31 @@ button {
 
 .result-hero,
 .lobby-section-card {
-  padding: 20px;
+  padding: 16px;
 }
 
 .result-hero {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .result-hero h1,
 .lobby-section-card h2 {
   margin: 0;
+  line-height: 1.05;
 }
 
 .result-hero p,
 .lobby-section-card p {
   margin: 0;
   color: #c8d2df;
-  line-height: 1.45;
+  line-height: 1.4;
+}
+
+.result-hero-message {
+  max-width: 560px;
+  color: #aebdd0;
 }
 
 .result-hero.death {
@@ -295,9 +301,9 @@ button {
 .result-badge {
   display: inline-flex;
   align-self: flex-start;
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -317,32 +323,41 @@ button {
 .hero-stats-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
+}
+
+.hero-stats-row-compact {
+  margin-top: 2px;
 }
 
 .hero-stat {
-  padding: 14px;
+  padding: 11px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
 }
 
 .hero-stat span {
-  font-size: 12px;
-  color: #9fb1c8;
+  font-size: 11px;
+  color: #8fa4be;
+  letter-spacing: 0.02em;
 }
 
 .hero-stat strong {
-  font-size: 20px;
+  font-size: 17px;
   color: #f4fbff;
 }
 
 .section-title-wrap {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .section-title-wrap h2 {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .section-title-wrap-inline {
@@ -353,12 +368,12 @@ button {
 }
 
 .reward-reroll-btn {
-  border: 1px solid rgba(255, 214, 102, 0.38);
-  background: linear-gradient(180deg, rgba(255, 214, 102, 0.18), rgba(255, 214, 102, 0.08));
+  border: 1px solid rgba(255, 214, 102, 0.28);
+  background: linear-gradient(180deg, rgba(255, 214, 102, 0.12), rgba(255, 214, 102, 0.04));
   color: #fff1b8;
-  border-radius: 14px;
-  padding: 10px 14px;
-  min-width: 140px;
+  border-radius: 12px;
+  padding: 8px 12px;
+  min-width: 124px;
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
@@ -378,16 +393,16 @@ button {
 .reward-line-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .reward-line-card {
-  min-height: 160px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  min-height: 138px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
   color: #fff;
-  padding: 18px 16px;
+  padding: 14px 12px;
   text-align: center;
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
@@ -395,7 +410,7 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .reward-line-card:hover {
@@ -408,17 +423,17 @@ button {
 
 .reward-line-card strong {
   display: block;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .reward-line-card p {
-  font-size: 13px;
+  font-size: 12px;
   color: #dbe7f3;
 }
 
 .reward-icon-badge {
-  width: 54px;
-  height: 54px;
+  width: 46px;
+  height: 46px;
   border-radius: 16px;
   display: flex;
   align-items: center;
@@ -586,8 +601,8 @@ button {
 
 .lobby-bottom-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
   align-items: stretch;
 }
 
@@ -597,11 +612,11 @@ button {
 
 .primary-btn,
 .ghost-btn {
-  border-radius: 16px;
-  padding: 16px 18px;
+  border-radius: 14px;
+  padding: 14px 16px;
   font-weight: 800;
   cursor: pointer;
-  min-height: 60px;
+  min-height: 52px;
 }
 
 .primary-btn {
@@ -623,7 +638,7 @@ button {
 
 .next-cave-btn,
 .utility-lobby-btn {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 /* Rotação */
@@ -973,8 +988,8 @@ button {
   .lobby-section-card,
   .utility-shop-modal,
   .exit-decision-modal {
-    padding: 14px;
-    border-radius: 16px;
+    padding: 12px;
+    border-radius: 15px;
   }
 
   .result-hero h1,
@@ -1000,7 +1015,7 @@ button {
   }
 
   .hero-stat {
-    padding: 10px;
+    padding: 9px 10px;
   }
 
   .hero-stat span {
@@ -1008,7 +1023,7 @@ button {
   }
 
   .hero-stat strong {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .reward-line-grid,
@@ -1018,10 +1033,10 @@ button {
 }
 
 .reward-line-card {
-  min-height: 96px;
-  padding: 10px 8px;
+  min-height: 92px;
+  padding: 9px 8px;
   border-radius: 12px;
-  gap: 6px;
+  gap: 5px;
 }
 
 .reward-line-card strong {
@@ -1686,3 +1701,4 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
