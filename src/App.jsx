@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createGame } from './game/createGame.js';
 import {
+  BIOMES,
   RELIC_CATALOG,
   createCollectionState,
   createStatsState,
@@ -86,6 +87,13 @@ const utilityCatalog = [
     shortName: 'Seguro'
   }
 ];
+
+const BIOME_ACCENT_COLORS = {
+  sunstone: '#ffc26b',
+  frost: '#8fd8ff',
+  ember: '#ff926b',
+  ruins: '#b99cff'
+};
 
 const ENTRY_PHASE = {
   MENU: 'menu',
@@ -267,6 +275,19 @@ function normalizeProgressState(state) {
   };
 }
 
+function getBiomeAccentColor(biomeId) {
+  return BIOME_ACCENT_COLORS[biomeId] ?? '#8df0b0';
+}
+
+function isBiomeCompleted(biome, bestCave = 1) {
+  return bestCave >= biome.endCave;
+}
+
+function isBiomeStartCave(cave = 1) {
+  const biome = getBiomeForCave(cave);
+  return cave === biome.startCave;
+}
+
 export default function App() {
   const gameRef = useRef(null);
   const containerRef = useRef(null);
@@ -284,6 +305,10 @@ export default function App() {
   const [entryPhase, setEntryPhase] = useState(ENTRY_PHASE.MENU);
   const [showSettings, setShowSettings] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showBiomeSelect, setShowBiomeSelect] = useState(false);
+  const [biomeSelectContext, setBiomeSelectContext] = useState('menu');
+  const [selectedBiomeId, setSelectedBiomeId] = useState(firstBiome.id);
+  const [pendingBiomeState, setPendingBiomeState] = useState(null);
 
   useEffect(() => {
     stateRef.current = gameState;
@@ -451,6 +476,100 @@ export default function App() {
     setGameState(nextState);
   };
 
+  const buildBiomeStartState = (targetCave, customMessage = null) => {
+    const baseState = stateRef.current;
+    const biome = getBiomeForCave(targetCave);
+    const progress = getBiomeProgress(targetCave);
+
+    return normalizeProgressState({
+      ...initialState,
+      cave: targetCave,
+      biomeId: biome.id,
+      biomeName: biome.name,
+      coins: baseState.coins ?? 0,
+      utilities: {
+        ...createUtilityInventory(),
+        ...(baseState.utilities ?? {})
+      },
+      collection: baseState.collection ?? createCollectionState(),
+      stats: baseState.stats ?? createStatsState(),
+      bestCave: Math.max(baseState.bestCave ?? 1, baseState.cave ?? 1),
+      lastRelicFound: baseState.lastRelicFound ?? null,
+      lastMessage: customMessage ?? `Você entrou na Cave ${progress.label} de ${biome.name}.`
+    });
+  };
+
+  const finalizeCaveEntry = (nextState, { playIntro = false } = {}) => {
+    syncLocalState(nextState);
+    window.dispatchEvent(
+      new CustomEvent('cob-enter-cave', {
+        detail: nextState
+      })
+    );
+
+    if (playIntro) {
+      startEntrySequence();
+      return;
+    }
+
+    setEntryPhase(ENTRY_PHASE.PLAYING);
+  };
+
+  const openBiomeSelection = ({ context = 'menu', biomeId = null, pendingState = null } = {}) => {
+    const fallbackCave = pendingState?.cave ?? stateRef.current.cave ?? 1;
+    const resolvedBiome = BIOMES.find((biome) => biome.id === biomeId) ?? getBiomeForCave(fallbackCave);
+
+    setSelectedBiomeId(resolvedBiome.id);
+    setPendingBiomeState(pendingState);
+    setBiomeSelectContext(context);
+    setShowBiomeSelect(true);
+    setShowSettings(false);
+    setShowInfoModal(false);
+    setShowUtilityShopModal(false);
+  };
+
+  const closeBiomeSelection = () => {
+    setShowBiomeSelect(false);
+    setPendingBiomeState(null);
+  };
+
+  const maybeOpenBiomeSelection = (nextState, context = 'transition') => {
+    if (!isBiomeStartCave(nextState.cave)) return false;
+
+    openBiomeSelection({
+      context,
+      biomeId: getBiomeForCave(nextState.cave).id,
+      pendingState: nextState
+    });
+
+    return true;
+  };
+
+  const confirmBiomeSelection = () => {
+    const selectedBiome = BIOMES.find((biome) => biome.id === selectedBiomeId) ?? firstBiome;
+
+    if (biomeSelectContext === 'menu') {
+      const nextState = buildBiomeStartState(
+        selectedBiome.startCave,
+        `Você entrou na Cave ${getBiomeProgress(selectedBiome.startCave).label} de ${selectedBiome.name}.`
+      );
+
+      closeBiomeSelection();
+      finalizeCaveEntry(nextState, { playIntro: true });
+      return;
+    }
+
+    const nextState = pendingBiomeState ?? buildBiomeStartState(selectedBiome.startCave);
+
+    closeBiomeSelection();
+    setSelectedRewardId(null);
+    setShowUtilityShopModal(false);
+    setShowExitDecision(false);
+    setRewardRefreshCost(10);
+    setRewardOptions([]);
+    finalizeCaveEntry(nextState);
+  };
+
   const rerollRewards = () => {
     const baseState = stateRef.current;
 
@@ -602,23 +721,21 @@ export default function App() {
         : `Você entrou na Cave ${getBiomeProgress(targetCave).label} de ${nextBiome.name}. Vida restaurada.`
     });
 
-    syncLocalState(nextState);
+    if (maybeOpenBiomeSelection(nextState, 'transition')) {
+      return;
+    }
+
     setSelectedRewardId(null);
     setShowUtilityShopModal(false);
     setShowExitDecision(false);
     setRewardRefreshCost(10);
     setRewardOptions([]);
-
-    window.dispatchEvent(
-      new CustomEvent('cob-next-cave', {
-        detail: nextState
-      })
-    );
+    finalizeCaveEntry(nextState);
   };
 
-  const buildResetState = () => {
+  const buildResetState = (targetCave = null, customMessage = null) => {
     const baseState = stateRef.current;
-    const biomeStartCave = getBiomeStartCave(baseState.cave ?? 1);
+    const biomeStartCave = targetCave ?? getBiomeStartCave(baseState.cave ?? 1);
     const biome = getBiomeForCave(biomeStartCave);
 
     return normalizeProgressState({
@@ -636,6 +753,7 @@ export default function App() {
       bestCave: Math.max(baseState.bestCave ?? 1, baseState.cave ?? 1),
       lastRelicFound: baseState.lastRelicFound ?? null,
       lastMessage:
+        customMessage ??
         'Você foi derrotado. As melhorias voltaram ao início do bioma atual, mas suas moedas, objetivos e relíquias foram mantidos.'
     });
   };
@@ -643,23 +761,18 @@ export default function App() {
   const retryRun = () => {
     const nextState = buildResetState();
 
-    syncLocalState(nextState);
     setSelectedUtility(null);
     setSelectedRewardId(null);
     setShowUtilityShopModal(false);
     setShowExitDecision(false);
     setRewardRefreshCost(10);
     setRewardOptions([]);
-    setEntryPhase(ENTRY_PHASE.PLAYING);
 
-    window.dispatchEvent(
-      new CustomEvent('cob-restart-run', {
-        detail: {
-          ...nextState,
-          purchased: []
-        }
-      })
-    );
+    if (maybeOpenBiomeSelection(nextState, 'transition')) {
+      return;
+    }
+
+    finalizeCaveEntry(nextState);
   };
 
   const backToMainMenu = () => {
@@ -697,12 +810,15 @@ export default function App() {
 
   const currentObjectives = getObjectiveProgressList(gameState);
   const unlockedBiomes = getUnlockedBiomes(gameState.bestCave ?? 1);
+  const unlockedBiomeIds = new Set(unlockedBiomes.map((biome) => biome.id));
   const relicEntries = Object.values(RELIC_CATALOG);
   const totalRelics = getTotalRelics(gameState.collection);
   const activeProgress = getBiomeProgress(gameState.cave);
   const activeBiome = activeProgress.biome;
   const currentLocalCave = activeProgress.localCave;
+  const currentBiomeTotal = activeProgress.totalCaves;
   const nextProgress = getBiomeProgress(nextCaveNumber);
+  const pendingBiome = pendingBiomeState ? getBiomeForCave(pendingBiomeState.cave) : null;
 
   return (
     <div className="app-shell">
@@ -714,7 +830,7 @@ export default function App() {
             <div className="top-hud">
               <div className="hud-pill">
                 <span>Cave Atual</span>
-                <strong>{`${currentLocalCave}/25`}</strong>
+                <strong>{activeProgress.label}</strong>
               </div>
 
               <div className="hud-pill">
@@ -807,27 +923,47 @@ export default function App() {
 
                 <p className="result-hero-message">{gameState.lastMessage}</p>
 
-                <div className="hero-stats-row hero-stats-row-compact">
-                  <div className="hero-stat hero-stat-compact">
-                    <span>🪙 Moedas</span>
-                    <strong>{gameState.coins}</strong>
+                <div className="hero-inline-summary">
+                  <div className="hero-inline-item">
+                    <span>🪙</span>
+                    <div className="hero-inline-copy">
+                      <strong>{gameState.coins}</strong>
+                      <small>Moedas</small>
+                    </div>
                   </div>
 
-                  <div className="hero-stat hero-stat-compact">
-                    <span>❤️ Vida</span>
-                    <strong>
-                      {gameState.hp}/{gameState.maxHp}
-                    </strong>
+                  <div className="hero-inline-item">
+                    <span>❤️</span>
+                    <div className="hero-inline-copy">
+                      <strong>
+                        {gameState.hp}/{gameState.maxHp}
+                      </strong>
+                      <small>Vida</small>
+                    </div>
                   </div>
 
-                  <div className="hero-stat hero-stat-compact">
-                    <span>⛏️ Picareta</span>
-                    <strong>Nv. {gameState.pickaxeLevel}</strong>
+                  <div className="hero-inline-item">
+                    <span>⛏️</span>
+                    <div className="hero-inline-copy">
+                      <strong>Nv. {gameState.pickaxeLevel}</strong>
+                      <small>Picareta</small>
+                    </div>
                   </div>
 
-                  <div className="hero-stat hero-stat-compact">
-                    <span>⬇️ Próxima</span>
-                    <strong>{isDeathLobby ? '1/25' : nextProgress.label}</strong>
+                  <div className="hero-inline-item">
+                    <span>🗺️</span>
+                    <div className="hero-inline-copy">
+                      <strong>{getBiomeProgress(resolvedOutcomeCave).label}</strong>
+                      <small>Cave</small>
+                    </div>
+                  </div>
+
+                  <div className="hero-inline-item">
+                    <span>⬇️</span>
+                    <div className="hero-inline-copy">
+                      <strong>{isDeathLobby ? `1/${currentBiomeTotal}` : nextProgress.label}</strong>
+                      <small>Próxima</small>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -990,11 +1126,15 @@ export default function App() {
               <div className="menu-brand-wrap">
                 <span className="menu-kicker">ArchangelSoft apresenta</span>
                 <h1>Coins or Bombs</h1>
-                <p>Sobreviva 25 caves por bioma, avance para o próximo ambiente e acompanhe sua coleção pelo botão Informações.</p>
+                <p>Explore 20 caves por bioma, desbloqueie novos ambientes e acompanhe sua coleção pelo botão Informações.</p>
               </div>
 
               <div className="menu-actions">
-                <button className="menu-primary-btn" type="button" onClick={startEntrySequence}>
+                <button
+                  className="menu-primary-btn"
+                  type="button"
+                  onClick={() => openBiomeSelection({ context: 'menu', biomeId: activeBiome.id })}
+                >
                   Entrar
                 </button>
                 <button className="menu-secondary-btn" type="button" onClick={() => setShowSettings(true)}>
@@ -1017,6 +1157,64 @@ export default function App() {
               alt="ArchangelSoft"
               className="archangelsoft-splash"
             />
+          </div>
+        )}
+
+        {showBiomeSelect && (
+          <div className="menu-settings-backdrop biome-select-backdrop" onClick={closeBiomeSelection}>
+            <div className="menu-settings-modal biome-select-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="menu-info-head biome-select-head">
+                <div>
+                  <h2>{biomeSelectContext === 'menu' ? 'Selecione um bioma' : 'Próximo bioma'}</h2>
+                  <p>
+                    {biomeSelectContext === 'menu'
+                      ? 'Escolha em qual bioma deseja iniciar sua exploração.'
+                      : `Confirme o ambiente para entrar na Cave ${pendingBiome ? getBiomeProgress(pendingBiome.startCave).label : '1/20'}.`}
+                  </p>
+                </div>
+
+                <span className="biome-select-subtle">Melhor cave {gameState.bestCave}</span>
+              </div>
+
+              <div className="biome-select-grid">
+                {BIOMES.map((biome) => {
+                  const unlocked = unlockedBiomeIds.has(biome.id);
+                  const completed = isBiomeCompleted(biome, gameState.bestCave ?? 1);
+                  const selected = selectedBiomeId === biome.id;
+                  const selectable = biomeSelectContext === 'menu' ? unlocked : pendingBiome?.id === biome.id;
+                  const statusLabel = !unlocked ? 'Bloqueado' : completed ? 'Concluído' : selectable ? 'Disponível' : 'Visitado';
+
+                  return (
+                    <button
+                      key={biome.id}
+                      type="button"
+                      className={`biome-card ${completed ? 'completed' : ''} ${!unlocked ? 'locked' : ''} ${selected ? 'selected' : ''}`}
+                      style={{ '--biome-accent': getBiomeAccentColor(biome.id) }}
+                      onClick={() => selectable && setSelectedBiomeId(biome.id)}
+                      disabled={!selectable}
+                    >
+                      <div className="biome-card-top">
+                        <strong>{biome.name}</strong>
+                        <span className="biome-status-badge">{statusLabel}</span>
+                      </div>
+
+                      <span className="biome-card-range">{biome.rangeLabel}</span>
+                      <p>{biome.id === activeBiome.id ? 'Bioma atual da sua run.' : 'Ambiente disponível para exploração.'}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="biome-select-actions">
+                <button className="menu-primary-btn compact" type="button" onClick={confirmBiomeSelection}>
+                  {biomeSelectContext === 'menu' ? 'Começar neste bioma' : 'Entrar no bioma'}
+                </button>
+
+                <button className="menu-secondary-btn compact" type="button" onClick={closeBiomeSelection}>
+                  {biomeSelectContext === 'menu' ? 'Fechar' : 'Voltar'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1074,7 +1272,7 @@ export default function App() {
                   </div>
                   <div>
                     <span>Cave atual</span>
-                    <strong>{currentLocalCave}/25</strong>
+                    <strong>{activeProgress.label}</strong>
                   </div>
                 </div>
               </section>
