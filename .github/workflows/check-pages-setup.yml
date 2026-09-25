@@ -1,0 +1,48 @@
+name: Verificar se o GitHub Pages esta habilitado
+
+# O Pages precisa ser ligado UMA vez nas configuracoes do repositorio
+# (Settings > Pages > Build and deployment > Source: GitHub Actions).
+# Nem o GITHUB_TOKEN consegue fazer isso: a API de "Create a GitHub Pages
+# site" exige permissao de administracao do repositorio, e da erro
+# "Resource not accessible by integration". Sem este workflow de prova, o
+# primeiro deploy falha na etapa Setup Pages com um erro que nao diz o que
+# fazer.
+#
+# Depois de habilitado, este workflow pode ser desativado.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 1x por semana
+    - cron: "17 9 * * 1"
+
+permissions:
+  contents: read
+  pages: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar a pagina do repositorio
+        id: pages
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages")
+
+          if [ "$status" = "200" ]; then
+            echo "GitHub Pages habilitado. Nada a fazer."
+            exit 0
+          fi
+
+          if [ "$status" = "404" ]; then
+            echo "::error::GitHub Pages nao esta habilitado neste repositorio."
+            echo "::error::Settings > Pages > Build and deployment > Source = 'GitHub Actions' > Save."
+            echo "::error::Depois de salvar, rode: Actions > Deploy GitHub Pages > Run workflow."
+            exit 1
+          fi
+
+          echo "::error::Consulta ao GitHub Pages retornou HTTP $status (esperado 200 ou 404)."
+          exit 1

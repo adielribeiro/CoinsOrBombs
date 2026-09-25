@@ -38,13 +38,8 @@ jobs:
       - name: Build game and landing page
         run: npm run pages
 
-      - name: Setup Pages
+      - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          # Habilita o Pages no repositório se ainda não estiver ligado.
-          # Sem isso o primeiro deploy falha com "Get Pages site failed",
-          # porque a fonte do Pages precisa ser configurada uma vez.
-          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

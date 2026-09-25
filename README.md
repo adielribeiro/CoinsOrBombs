@@ -135,6 +135,21 @@ O `docs/` é a landing page e o `docs/game/` é o build do jogo — é isso que 
 Pages serve. Para publicar a landing page localmente, sirva `docs/` por HTTP
 (não funciona via `file://`).
 
+### Habilitando o GitHub Pages (uma vez)
+
+O Pages exige uma configuração manual no repositório — a API que cria a
+página pede permissão de administração, então nem o `GITHUB_TOKEN` do
+workflow consegue fazer isso. Em **Settings → Pages → Build and deployment**:
+
+- **Source**: `GitHub Actions`
+- Clique em **Save**
+
+Depois disso, a cada push na `main` o deploy publica sozinho. Para
+republicar sem novo commit: **Actions → Deploy GitHub Pages → Run
+workflow**. O workflow `Verificar se o GitHub Pages esta habilitado` diz
+exatamente o que falta caso ele nunca rode.
+
+
 ## Stack
 
 - **[React 18](https://react.dev)** — HUD, lobby, loja, modais e configurações
