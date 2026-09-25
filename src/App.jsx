@@ -1,5 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createGame } from './game/createGame.js';
+import {
+  describeFullscreenError,
+  enterFullscreen,
+  exitFullscreen,
+  isFullscreenActive,
+  isFullscreenSupported,
+  isIosLike,
+  isStandaloneDisplay,
+  onFullscreenChange,
+  toggleFullscreen
+} from './game/fullscreen.js';
 import {
   BIOMES,
   RELIC_CATALOG,
@@ -115,7 +126,8 @@ const PROFILE_STORAGE_KEY = 'coinsorbombs:profile:v1';
 const DEFAULT_SETTINGS = {
   reducedMotion: false,
   showGrid: false,
-  persistProgress: true
+  persistProgress: true,
+  autoFullscreen: true
 };
 
 function readStorage(key, fallback) {
@@ -351,6 +363,7 @@ function isBiomeStartCave(cave = 1) {
 export default function App() {
   const gameRef = useRef(null);
   const containerRef = useRef(null);
+  const shellRef = useRef(null);
   const stateRef = useRef(initialState);
   const entryTimeoutRef = useRef([]);
   const hudRef = useRef(null);
@@ -373,6 +386,51 @@ export default function App() {
   const [settings, setSettings] = useState(() => readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS));
   const [hudHeight, setHudHeight] = useState(0);
   const [profile, setProfile] = useState(() => readStorage(PROFILE_STORAGE_KEY, { bestCave: 1 }));
+  const [isFullscreen, setIsFullscreen] = useState(() => isFullscreenActive());
+  const [fullscreenNotice, setFullscreenNotice] = useState(null);
+
+  const fullscreenAvailable = isFullscreenSupported() || isStandaloneDisplay();
+  const needsPwaHint = isIosLike() && !isStandaloneDisplay();
+
+  /**
+   * Pede tela cheia. Precisa ser chamado SINCRONAMENTE de dentro de um
+   * handler de clique: a Fullscreen API só aceita um gesto do usuário, e a
+   * intro do jogo roda em setTimeout, então pedir depois é sempre recusado.
+   */
+  const requestGameplayFullscreen = useCallback(() => {
+    if (!settings.autoFullscreen) return;
+    if (isFullscreenActive()) return;
+
+    enterFullscreen(shellRef.current)
+      .then(() => {
+        // No Android, travar a orientação só funciona já em fullscreen.
+        tryLockLandscape();
+      })
+      .catch((failure) => {
+        const described = describeFullscreenError(failure);
+
+        // Sem suporte e já em modo app, não é erro: é o estado desejado.
+        if (described.code === 'unsupported' && isStandaloneDisplay()) return;
+
+        setFullscreenNotice(described);
+      });
+  }, [settings.autoFullscreen]);
+
+  const handleToggleFullscreen = useCallback(() => {
+    toggleFullscreen(shellRef.current)
+      .then(() => setFullscreenNotice(null))
+      .catch((failure) => setFullscreenNotice(describeFullscreenError(failure)));
+  }, []);
+
+  useEffect(() => {
+    return onFullscreenChange(() => {
+      setIsFullscreen(isFullscreenActive());
+
+      // Sair do fullscreen devolve o documento ao tamanho da janela: o
+      // canvas precisa remedir ou fica com o ratio errado.
+      window.dispatchEvent(new CustomEvent('cob-force-resize'));
+    });
+  }, []);
 
   useEffect(() => {
     stateRef.current = gameState;
@@ -552,6 +610,7 @@ export default function App() {
   const startEntrySequence = () => {
     if (showRotateLock) return;
 
+    requestGameplayFullscreen();
     tryLockLandscape();
 
     entryTimeoutRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
@@ -935,7 +994,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <main className="game-area">
+      <main className="game-area" ref={shellRef}>
         <div ref={containerRef} className="game-container" />
 
         {showGameHud && (
@@ -1028,7 +1087,27 @@ export default function App() {
                 ))}
               </ol>
             )}
+
+            {/*
+              Em celular não existe Esc: se o jogo entra em tela cheia, o
+              jogador precisa de um caminho visível para sair.
+            */}
           </>
+        )}
+
+        {/*
+          O aviso fica FORA do gate de gameplay de propósito: a falha de
+          tela cheia acontece no clique que inicia a run, ou seja, durante a
+          intro, quando o HUD ainda não existe. Dentro do gate ele nunca
+          apareceria.
+        */}
+        {fullscreenNotice && (
+          <div className="fullscreen-notice" role="status">
+            <span>{fullscreenNotice.message}</span>
+            <button type="button" onClick={() => setFullscreenNotice(null)} aria-label="Fechar aviso">
+              ✕
+            </button>
+          </div>
         )}
 
         {showExitDecision && showGameHud && !showLobby && (
@@ -1050,6 +1129,19 @@ export default function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {showGameHud && fullscreenAvailable && (
+          <button
+            type="button"
+            className={`fullscreen-toggle ${isFullscreen ? 'active' : ''}`}
+            onClick={handleToggleFullscreen}
+            aria-pressed={isFullscreen}
+            aria-label={isFullscreen ? 'Sair da tela cheia' : 'Entrar em tela cheia'}
+            title={isFullscreen ? 'Sair da tela cheia (Esc)' : 'Tela cheia'}
+          >
+            <span aria-hidden="true">{isFullscreen ? '⤢' : '⤡'}</span>
+          </button>
         )}
 
         {showLobby && (
@@ -1381,6 +1473,26 @@ export default function App() {
           <div className="menu-settings-backdrop" onClick={() => setShowSettings(false)}>
             <div className="menu-settings-modal" onClick={(event) => event.stopPropagation()}>
               <h2>Configurações</h2>
+
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings.autoFullscreen}
+                  onChange={(event) =>
+                    setSettings((current) => ({ ...current, autoFullscreen: event.target.checked }))
+                  }
+                />
+                <span>
+                  <strong>Tela cheia ao começar</strong>
+                  <small>
+                    {needsPwaHint
+                      ? 'No iPhone e no iPad o Safari não tem tela cheia — instale pela Tela de Início.'
+                      : fullscreenAvailable
+                        ? 'Entra em tela cheia ao iniciar a run. Use Esc ou o botão no canto para sair.'
+                        : 'Este navegador não oferece tela cheia; o jogo continua normal.'}
+                  </small>
+                </span>
+              </label>
 
               <label className="settings-toggle">
                 <input

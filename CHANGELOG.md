@@ -5,6 +5,32 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- **Tela cheia ao começar a run**, em desktop e Android. O pedido sai do mesmo
+  clique que entra no jogo: a Fullscreen API só aceita gesto do usuário, e a
+  intro roda em `setTimeout`, então pedir depois seria sempre recusado.
+- Botão de sair da tela cheia no canto da tela durante a partida. Em touch não
+  existe `Esc`, e sem isso quem entrasse em tela cheia ficaria preso.
+- No Android, o travamento de orientação em paisagem é refeito depois que o
+  pedido de tela cheia resolve — `screen.orientation.lock()` só funciona já
+  em fullscreen na maioria dos aparelhos.
+- `src/game/fullscreen.js` isolando a API, com detecção de plataforma e
+  mensagens de erro acionáveis.
+- Configuração "Tela cheia ao começar" (ligada por padrão) e detecção de PWA:
+  quando o jogo já está instalado, a tela cheia é tratada como o estado
+  desejado, e não como um pedido que falhou.
+- 12 testes cobrindo a detecção de suporte, iOS (incluindo o iPadOS 13+ que se
+  apresenta como Mac), normalização do retorno `void` de navegadores antigos,
+  toggle e as quatro causas de falha.
+
+### Corrigido
+
+- O aviso de falha de tela cheia ficava dentro do gate de gameplay, mas a
+  falha acontece na intro — o jogador nunca veria a explicação.
+- `onFullscreenChange` acessava `window` sem guarda e quebrava fora do
+  navegador (achado pelo teste).
+
 ## [0.2.0] — 2026-09-25
 
 ### Corrigido

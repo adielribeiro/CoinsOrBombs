@@ -70,6 +70,18 @@ button {
   height: 100% !important;
 }
 
+/* Elemento em tela cheia: o UA styleheet deixa o elemento com position
+   fixed, mas o fundo do documento vazaria nas bordas. */
+.game-area:fullscreen,
+.game-area:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  background: #0c1016;
+}
+
 /* HUD
    O HUD e a barra de utilitários vivem na MESMA faixa horizontal e antes
    ficavam em dois blocos independentes: a 790px de largura o .top-hud
@@ -157,6 +169,77 @@ button {
    feedback de gameplay (moeda, bomba, relíquia, "só pedra e poeira")
    ficava invisível. */
 
+/* Tela cheia
+   Sem isso, quem entra em fullscreen no celular fica preso: não existe Esc
+   em touch. O botão fica visível durante a partida e some fora dela. */
+
+.fullscreen-toggle {
+  position: absolute;
+  right: clamp(10px, 2vw, 20px);
+  bottom: clamp(10px, 2.5vh, 22px);
+  z-index: 32;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 16, 24, 0.78);
+  color: #dbe7f3;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.fullscreen-toggle:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.fullscreen-toggle.active {
+  color: #8df0b0;
+  border-color: rgba(141, 240, 176, 0.4);
+  background: rgba(47, 157, 99, 0.16);
+}
+
+.fullscreen-notice {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(56px, 9vh, 76px);
+  transform: translateX(-50%);
+  /* Acima da intro (entry-overlay = 120): a falha de tela cheia acontece
+     durante a splash, e um aviso escondido ali seria inútil. */
+  z-index: 140;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(520px, calc(100% - 24px));
+  padding: 9px 10px 9px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #ffe9c4;
+  background: rgba(28, 20, 8, 0.94);
+  border: 1px solid rgba(255, 187, 88, 0.32);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+}
+
+.fullscreen-notice button {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffe9c4;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .message-log {
   position: absolute;
   left: clamp(10px, 2vw, 20px);
@@ -168,7 +251,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: min(460px, calc(100% - 40px));
+  max-width: min(460px, calc(100% - 76px));
   pointer-events: none;
 }
 

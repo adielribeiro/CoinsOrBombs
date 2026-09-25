@@ -97,9 +97,26 @@ Comprados na loja do lobby (e revendidos por metade) ou encontrados como drop.
 
 ## Configurações
 
+- **Tela cheia ao começar** — entra em tela cheia ao iniciar a run. Ligado por
+  padrão; desligue se preferir jogar com a barra do navegador visível.
 - **Reduzir animações** — desliga partículas, tremor da picareta e pulsos.
 - **Grade isométrica** — desenha a malha de tiles para mapear a cave.
 - **Lembrar melhor cave** — salva o recorde em `localStorage`.
+
+### Sobre a tela cheia
+
+O pedido sai do mesmo clique que entra na run, porque a Fullscreen API só
+aceita um gesto do usuário — pedir depois da intro seria recusado. Em celular
+não existe `Esc`, então há um botão no canto inferior para sair durante a
+partida (no desktop, `Esc` também funciona).
+
+No Android, travar a orientação em paisagem só funciona **já** em tela cheia,
+por isso o travamento é refeito depois que o pedido resolve.
+
+**No iPhone e no iPad não é possível**: o Safari não implementa Fullscreen
+API para páginas web. O caminho equivalente é instalar o jogo pela Tela de
+Início, que roda sem a barra do navegador. O jogo avisa isso nas configurações
+em vez de falhar em silêncio.
 
 O jogo também detecta celular e pede o modo paisagem; em desktop não há aviso.
 
