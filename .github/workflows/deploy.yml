@@ -12,6 +12,11 @@ permissions:
 
 # Garante que apenas um deploy por vez rode e cancela execuções antigas
 # quando um novo commit chega.
+#
+# O grupo "pages" é proposital: qualquer workflow que use actions/deploy-pages
+# entra no mesmo grupo. Se sobrar um "Deploy static content to Pages"
+# (o template que o GitHub sugere ao habilitar o Pages), a execução dele é
+# cancelada em vez de publicar a raiz do repositório por cima do site.
 concurrency:
   group: pages
   cancel-in-progress: true
