@@ -21,10 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -40,6 +40,11 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          # Habilita o Pages no repositório se ainda não estiver ligado.
+          # Sem isso o primeiro deploy falha com "Get Pages site failed",
+          # porque a fonte do Pages precisa ser configurada uma vez.
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
