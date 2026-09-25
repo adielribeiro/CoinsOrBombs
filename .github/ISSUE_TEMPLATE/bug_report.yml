@@ -1,0 +1,77 @@
+name: Bug report
+
+description: Algo no CoinsOrBombs não se comporta como deveria
+
+labels: ["bug"]
+
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: O que aconteceu
+      description: O que você fez, o que esperava e o que aconteceu de verdade.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Entrei na Cave 1/20
+        2. Quebrei a rocha da borda
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: cave
+    attributes:
+      label: Cava / tela
+      placeholder: Ex.: Cave 3/20 — lobby de vitória
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Dispositivo
+      options:
+        - Desktop (Windows)
+        - Desktop (macOS)
+        - Desktop (Linux)
+        - Android
+        - iPhone / iPad
+        - Outro
+    validations:
+      required: true
+
+  - type: input
+    id: viewport
+    attributes:
+      label: Resolução / orientação
+      placeholder: Ex.: 1920x1080 paisagem, 844x390 paisagem
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Onde você viu
+      options:
+        - GitHub Pages
+        - Vercel
+        - Rodando localmente
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Erro no console (se houver)
+      description: Abra o DevTools > Console e cole a mensagem vermelha.
+      render: shell
+
+  - type: checkboxes
+    id: extra
+    attributes:
+      label: Extra
+      options:
+        - label: Posso reproduzir de forma consistente
+          required: false

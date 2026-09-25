@@ -37,6 +37,8 @@ const createImprovementState = () => ({
 
 const firstBiome = getBiomeForCave(1);
 
+const INTRO_MESSAGE = 'Quebre uma rocha na beirada da área aberta para começar.';
+
 const initialState = {
   screen: 'cave',
   cave: 1,
@@ -44,6 +46,7 @@ const initialState = {
   maxHp: 2,
   coins: 0,
   bombs: 0,
+  bombsRemaining: 0,
   pickaxeLevel: 1,
   pickaxePower: 1,
   biomeId: firstBiome.id,
@@ -53,11 +56,12 @@ const initialState = {
   stats: createStatsState(),
   lastRelicFound: null,
   utilities: createUtilityInventory(),
+  messageLog: [{ id: 'intro', text: INTRO_MESSAGE, tone: 'info' }],
   inLobby: false,
   lobbyReason: null,
   nextCaveAvailable: null,
   outcomeCave: null,
-  lastMessage: 'Clique em uma rocha na borda da área aberta para começar.',
+  lastMessage: INTRO_MESSAGE,
   ...createImprovementState()
 };
 
@@ -102,8 +106,38 @@ const ENTRY_PHASE = {
   PLAYING: 'playing'
 };
 
-const BLACK_SCREEN_MS = 3000;
-const LOGO_FADE_MS = 3000;
+const BLACK_SCREEN_MS = 900;
+const LOGO_FADE_MS = 2200;
+
+const SETTINGS_STORAGE_KEY = 'coinsorbombs:settings:v1';
+const PROFILE_STORAGE_KEY = 'coinsorbombs:profile:v1';
+
+const DEFAULT_SETTINGS = {
+  reducedMotion: false,
+  showGrid: false,
+  persistProgress: true
+};
+
+function readStorage(key, fallback) {
+  if (typeof window === 'undefined') return fallback;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(key, value) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // modo privado / storage bloqueado: o jogo segue funcionando sem persistir
+  }
+}
 
 function tierLabel(value) {
   return String(value).padStart(2, '0');
@@ -136,15 +170,18 @@ function getRewardVisual(track) {
 function buildRewardCatalog(state) {
   const rewards = [];
 
+  // pickaxePower é limitado a 5 (1 base + 4 upgrades). O catálogo antigo
+  // oferecia até 7 níveis, então "Picareta 05/06/07" eram cartas mortas:
+  // aplicavam +1 em um valor já saturado e não mudavam nada na run.
   const nextPickaxe = (state.pickaxeUpgradeLevel ?? 0) + 1;
-  if (nextPickaxe <= 7) {
+  if (nextPickaxe <= 4) {
     rewards.push({
       id: `pickaxe_${nextPickaxe}`,
       track: 'pickaxe',
       name: `Picareta ${tierLabel(nextPickaxe)}`,
       description:
         nextPickaxe === 1
-          ? '+1 nível de picareta.'
+          ? '+1 nível de picareta: rochas quebram com 1 clique a menos.'
           : `+1 nível de picareta. Requer Picareta ${tierLabel(nextPickaxe - 1)}.`,
       apply: (currentState) => ({
         ...currentState,
@@ -246,9 +283,26 @@ function pickRewardOptions(state, amount = 3) {
   return shuffle(buildRewardCatalog(state)).slice(0, amount);
 }
 
-function isMobilePortrait() {
+function isCoarsePointerDevice() {
   if (typeof window === 'undefined') return false;
-  return window.innerWidth <= 900 && window.innerHeight > window.innerWidth;
+  if (typeof window.matchMedia !== 'function') return false;
+
+  return window.matchMedia('(pointer: coarse)').matches;
+}
+
+/**
+ * A detecção antiga era só `largura <= 900 && altura > largura`, o que
+ * classificava janelas de desktop estreitas como celular em retrato. Pior:
+ * o gate de rotação só ficava visível abaixo de 640px de CSS, então entre
+ * 641px e 900px o menu era escondido E o aviso não aparecia — tela preta
+ * sem nenhum caminho para recuperar.
+ */
+function needsLandscapeGate() {
+  if (typeof window === 'undefined') return false;
+  if (!isCoarsePointerDevice()) return false;
+  if (window.innerWidth <= window.innerHeight) return true;
+
+  return window.innerWidth <= 560;
 }
 
 function tryLockLandscape() {
@@ -264,10 +318,16 @@ function tryLockLandscape() {
 }
 
 function normalizeProgressState(state) {
+  const maxHp = Math.max(1, state?.maxHp ?? 2);
+
   return {
     ...state,
     collection: { ...createCollectionState(), ...(state?.collection ?? {}) },
     stats: { ...createStatsState(), ...(state?.stats ?? {}) },
+    utilities: { ...createUtilityInventory(), ...(state?.utilities ?? {}) },
+    messageLog: Array.isArray(state?.messageLog) ? state.messageLog : [],
+    maxHp,
+    hp: Math.min(maxHp, Math.max(0, state?.hp ?? maxHp)),
     biomeId: state?.biomeId ?? getBiomeForCave(state?.cave ?? 1).id,
     biomeName: state?.biomeName ?? getBiomeForCave(state?.cave ?? 1).name,
     bestCave: state?.bestCave ?? 1,
@@ -293,12 +353,13 @@ export default function App() {
   const containerRef = useRef(null);
   const stateRef = useRef(initialState);
   const entryTimeoutRef = useRef([]);
+  const hudRef = useRef(null);
 
   const [gameState, setGameState] = useState(initialState);
   const [selectedUtility, setSelectedUtility] = useState(null);
   const [rewardOptions, setRewardOptions] = useState([]);
   const [selectedRewardId, setSelectedRewardId] = useState(null);
-  const [showRotateLock, setShowRotateLock] = useState(isMobilePortrait());
+  const [showRotateLock, setShowRotateLock] = useState(needsLandscapeGate());
   const [showUtilityShopModal, setShowUtilityShopModal] = useState(false);
   const [showExitDecision, setShowExitDecision] = useState(false);
   const [rewardRefreshCost, setRewardRefreshCost] = useState(10);
@@ -309,17 +370,40 @@ export default function App() {
   const [biomeSelectContext, setBiomeSelectContext] = useState('menu');
   const [selectedBiomeId, setSelectedBiomeId] = useState(firstBiome.id);
   const [pendingBiomeState, setPendingBiomeState] = useState(null);
+  const [settings, setSettings] = useState(() => readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS));
+  const [hudHeight, setHudHeight] = useState(0);
+  const [profile, setProfile] = useState(() => readStorage(PROFILE_STORAGE_KEY, { bestCave: 1 }));
 
   useEffect(() => {
     stateRef.current = gameState;
   }, [gameState]);
 
   useEffect(() => {
-    const handleViewportChange = () => {
-      const mobilePortrait = isMobilePortrait();
-      setShowRotateLock(mobilePortrait);
+    writeStorage(SETTINGS_STORAGE_KEY, settings);
 
-      if (!mobilePortrait) {
+    window.dispatchEvent(new CustomEvent('cob-settings', { detail: settings }));
+  }, [settings]);
+
+  useEffect(() => {
+    if (!settings.persistProgress) return;
+
+    setProfile((current) =>
+      Math.max(current.bestCave ?? 1, gameState.bestCave ?? 1) === (current.bestCave ?? 1)
+        ? current
+        : { ...current, bestCave: Math.max(current.bestCave ?? 1, gameState.bestCave ?? 1) }
+    );
+  }, [settings.persistProgress, gameState.bestCave]);
+
+  useEffect(() => {
+    writeStorage(PROFILE_STORAGE_KEY, profile);
+  }, [profile]);
+
+  useEffect(() => {
+    const handleViewportChange = () => {
+      const needsGate = needsLandscapeGate();
+      setShowRotateLock(needsGate);
+
+      if (!needsGate) {
         tryLockLandscape();
       }
     };
@@ -334,12 +418,31 @@ export default function App() {
     };
   }, []);
 
+  /**
+   * O Phaser usa um deslocamento fixo de câmera (50/58/74px) para centralizar
+   * o mapa, mas o HUD em React quebra em 2 ou 3 linhas dependendo da
+   * largura — chegando a 116px de altura. O mapa nascia embaixo do HUD.
+   * Medimos o HUD real e devolvemos a altura para o renderer.
+   */
   useEffect(() => {
-    const handleState = (event) => {
-      if (!event.detail) return;
-      setGameState((prev) => normalizeProgressState({ ...prev, ...event.detail }));
-    };
+    const node = hudRef.current;
 
+    if (!node || typeof ResizeObserver === 'undefined') return undefined;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+
+      const next = Math.round(entry.contentRect.height) + 20;
+      setHudHeight((current) => (Math.abs(current - next) > 1 ? next : current));
+    });
+
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     const handleSync = (event) => {
       if (!event.detail?.state) return;
       setGameState(normalizeProgressState(event.detail.state));
@@ -381,7 +484,6 @@ export default function App() {
       setShowExitDecision(true);
     };
 
-    window.addEventListener('cob-state', handleState);
     window.addEventListener('cob-sync-ui', handleSync);
     window.addEventListener('cob-cave-cleared', handleCaveCleared);
     window.addEventListener('cob-player-dead', handlePlayerDead);
@@ -397,7 +499,6 @@ export default function App() {
     }
 
     return () => {
-      window.removeEventListener('cob-state', handleState);
       window.removeEventListener('cob-sync-ui', handleSync);
       window.removeEventListener('cob-cave-cleared', handleCaveCleared);
       window.removeEventListener('cob-player-dead', handlePlayerDead);
@@ -480,6 +581,7 @@ export default function App() {
     const baseState = stateRef.current;
     const biome = getBiomeForCave(targetCave);
     const progress = getBiomeProgress(targetCave);
+    const message = customMessage ?? `Você entrou na Cave ${progress.label} de ${biome.name}.`;
 
     return normalizeProgressState({
       ...initialState,
@@ -493,9 +595,10 @@ export default function App() {
       },
       collection: baseState.collection ?? createCollectionState(),
       stats: baseState.stats ?? createStatsState(),
-      bestCave: Math.max(baseState.bestCave ?? 1, baseState.cave ?? 1),
+      bestCave: baseState.bestCave ?? 1,
       lastRelicFound: baseState.lastRelicFound ?? null,
-      lastMessage: customMessage ?? `Você entrou na Cave ${progress.label} de ${biome.name}.`
+      lastMessage: message,
+      messageLog: [{ id: `enter-${targetCave}`, text: message, tone: 'info' }]
     });
   };
 
@@ -737,6 +840,9 @@ export default function App() {
     const baseState = stateRef.current;
     const biomeStartCave = targetCave ?? getBiomeStartCave(baseState.cave ?? 1);
     const biome = getBiomeForCave(biomeStartCave);
+    const message =
+      customMessage ??
+      'Você foi derrotado. As melhorias voltaram ao início do bioma atual, mas suas moedas, objetivos e relíquias foram mantidos.';
 
     return normalizeProgressState({
       ...initialState,
@@ -750,11 +856,13 @@ export default function App() {
       },
       collection: baseState.collection ?? createCollectionState(),
       stats: baseState.stats ?? createStatsState(),
-      bestCave: Math.max(baseState.bestCave ?? 1, baseState.cave ?? 1),
+      // bestCave só avança quando a cave é concluída. A versão anterior
+      // fazia Math.max(bestCave, cave) também ao morrer, o que destravava
+      // o próximo bioma sem nunca ter concluído nenhuma cave dele.
+      bestCave: baseState.bestCave ?? 1,
       lastRelicFound: baseState.lastRelicFound ?? null,
-      lastMessage:
-        customMessage ??
-        'Você foi derrotado. As melhorias voltaram ao início do bioma atual, mas suas moedas, objetivos e relíquias foram mantidos.'
+      lastMessage: message,
+      messageLog: [{ id: `reset-${biomeStartCave}`, text: message, tone: 'warn' }]
     });
   };
 
@@ -805,8 +913,8 @@ export default function App() {
   const noRewardsLeft = rewardOptions.length === 0;
 
   const showMenu = entryPhase === ENTRY_PHASE.MENU && !showRotateLock;
-  const showRotateGate = entryPhase === ENTRY_PHASE.MENU && showRotateLock;
-  const showRotateDuringPlay = entryPhase === ENTRY_PHASE.PLAYING && showRotateLock;
+  const showRotateGate = showRotateLock;
+  const isCoarsePointer = isCoarsePointerDevice();
 
   const currentObjectives = getObjectiveProgressList(gameState);
   const unlockedBiomes = getUnlockedBiomes(gameState.bestCave ?? 1);
@@ -815,10 +923,15 @@ export default function App() {
   const totalRelics = getTotalRelics(gameState.collection);
   const activeProgress = getBiomeProgress(gameState.cave);
   const activeBiome = activeProgress.biome;
-  const currentLocalCave = activeProgress.localCave;
   const currentBiomeTotal = activeProgress.totalCaves;
   const nextProgress = getBiomeProgress(nextCaveNumber);
   const pendingBiome = pendingBiomeState ? getBiomeForCave(pendingBiomeState.cave) : null;
+  const messageLog = gameState.messageLog ?? [];
+  const bestCaveProgress = getBiomeProgress(profile.bestCave ?? 1);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('cob-hud-inset', { detail: { height: hudHeight } }));
+  }, [hudHeight]);
 
   return (
     <div className="app-shell">
@@ -827,37 +940,49 @@ export default function App() {
 
         {showGameHud && (
           <>
-            <div className="top-hud">
-              <div className="hud-pill">
-                <span>Cave Atual</span>
-                <strong>{activeProgress.label}</strong>
+            <div className="hud-bar" ref={hudRef}>
+              <div className="hud-cluster">
+                <div className="hud-pill">
+                  <span>Cave</span>
+                  <strong>{activeProgress.label}</strong>
+                </div>
+
+                <div className="hud-pill hud-pill-wide">
+                  <span>Bioma</span>
+                  <strong>{activeBiome.name}</strong>
+                </div>
               </div>
 
-              <div className="hud-pill">
-                <span>Bioma</span>
-                <strong>{activeBiome.name}</strong>
+              <div className="hud-cluster hud-cluster-vitals">
+                <div className="hud-pill hud-pill-heart" title="Vida atual">
+                  <span aria-hidden="true">❤️</span>
+                  <strong>
+                    {gameState.hp}/{gameState.maxHp}
+                  </strong>
+                </div>
+
+                <div className="hud-pill" title="Moedas acumuladas nesta run">
+                  <span aria-hidden="true">🪙</span>
+                  <strong>{gameState.coins}</strong>
+                </div>
+
+                <div className="hud-pill hud-pill-risk" title="Bombas ainda escondidas nesta cave">
+                  <span aria-hidden="true">💣</span>
+                  <strong>{gameState.bombsRemaining ?? 0}</strong>
+                </div>
+
+                <div className="hud-pill" title="Relíquias na coleção">
+                  <span aria-hidden="true">🔮</span>
+                  <strong>{totalRelics}</strong>
+                </div>
+
+                <div className="hud-pill" title="Nível da picareta">
+                  <span aria-hidden="true">⛏️</span>
+                  <strong>{gameState.pickaxeLevel}</strong>
+                </div>
               </div>
 
-              <div className="hud-pill">
-                <span>Moedas</span>
-                <strong>{gameState.coins}</strong>
-              </div>
-
-              <div className="hud-pill">
-                <span>Vida</span>
-                <strong>
-                  {gameState.hp}/{gameState.maxHp}
-                </strong>
-              </div>
-
-              <div className="hud-pill">
-                <span>Relíquias</span>
-                <strong>{totalRelics}</strong>
-              </div>
-            </div>
-
-            <div className="utility-bar-wrap">
-              <div className="utility-bar">
+              <div className="utility-bar" role="group" aria-label="Utilitários da run">
                 {utilityCatalog.map((utility) => {
                   const count = gameState.utilities?.[utility.id] ?? 0;
                   const isSelected = selectedUtility === utility.id;
@@ -869,13 +994,19 @@ export default function App() {
                         type="button"
                         onClick={() => setSelectedUtility(isSelected ? null : utility.id)}
                         disabled={count <= 0}
+                        aria-pressed={isSelected}
+                        aria-label={`${utility.name} (${count} na mochila). ${utility.description}`}
                         title={`${utility.name} · ${count}`}
                       >
-                        <span className="utility-icon">{utility.icon}</span>
+                        <span className="utility-icon" aria-hidden="true">
+                          {utility.icon}
+                        </span>
                         <span className="utility-count">x{count}</span>
                       </button>
 
-                      <span className="utility-label">{utility.shortName}</span>
+                      <span className="utility-label" aria-hidden="true">
+                        {utility.shortName}
+                      </span>
 
                       {isSelected && count > 0 && (
                         <button className="utility-use-btn" type="button" onClick={() => useUtility(utility.id)}>
@@ -887,6 +1018,16 @@ export default function App() {
                 })}
               </div>
             </div>
+
+            {messageLog.length > 0 && (
+              <ol className="message-log" aria-live="polite" aria-label="Registro da exploração">
+                {messageLog.slice(0, 3).map((entry) => (
+                  <li key={entry.id} className={`message-log-item ${entry.tone ?? 'info'}`}>
+                    {entry.text}
+                  </li>
+                ))}
+              </ol>
+            )}
           </>
         )}
 
@@ -1153,9 +1294,11 @@ export default function App() {
         {entryPhase === ENTRY_PHASE.LOGO && (
           <div className="entry-overlay splash-overlay">
             <img
-              src="/assets/archangelsoft_splash.png"
+              src="./assets/archangelsoft_splash.jpg"
               alt="ArchangelSoft"
               className="archangelsoft-splash"
+              width="1280"
+              height="1280"
             />
           </div>
         )}
@@ -1182,7 +1325,23 @@ export default function App() {
                   const completed = isBiomeCompleted(biome, gameState.bestCave ?? 1);
                   const selected = selectedBiomeId === biome.id;
                   const selectable = biomeSelectContext === 'menu' ? unlocked : pendingBiome?.id === biome.id;
-                  const statusLabel = !unlocked ? 'Bloqueado' : completed ? 'Concluído' : selectable ? 'Disponível' : 'Visitado';
+                  const statusLabel = !unlocked
+                    ? 'Bloqueado'
+                    : completed
+                      ? 'Concluído'
+                      : selectable
+                        ? 'Disponível'
+                        : 'Visitado';
+
+                  let description = 'Ambiente disponível para exploração.';
+
+                  if (!unlocked) {
+                    description = `Conclua a Cave ${getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave} para liberar.`;
+                  } else if (biome.id === activeBiome.id) {
+                    description = 'Bioma atual da sua run.';
+                  } else if (completed) {
+                    description = 'Você já concluiu este bioma.';
+                  }
 
                   return (
                     <button
@@ -1199,7 +1358,7 @@ export default function App() {
                       </div>
 
                       <span className="biome-card-range">{biome.rangeLabel}</span>
-                      <p>{biome.id === activeBiome.id ? 'Bioma atual da sua run.' : 'Ambiente disponível para exploração.'}</p>
+                      <p>{description}</p>
                     </button>
                   );
                 })}
@@ -1223,24 +1382,79 @@ export default function App() {
             <div className="menu-settings-modal" onClick={(event) => event.stopPropagation()}>
               <h2>Configurações</h2>
 
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings.reducedMotion}
+                  onChange={(event) =>
+                    setSettings((current) => ({ ...current, reducedMotion: event.target.checked }))
+                  }
+                />
+                <span>
+                  <strong>Reduzir animações</strong>
+                  <small>Desliga partículas, tremor da picareta e pulsos da saída.</small>
+                </span>
+              </label>
+
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings.showGrid}
+                  onChange={(event) => setSettings((current) => ({ ...current, showGrid: event.target.checked }))}
+                />
+                <span>
+                  <strong>Grade isométrica</strong>
+                  <small>Desenha a malha de tiles para ajudar a mapear a cave.</small>
+                </span>
+              </label>
+
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings.persistProgress}
+                  onChange={(event) =>
+                    setSettings((current) => ({ ...current, persistProgress: event.target.checked }))
+                  }
+                />
+                <span>
+                  <strong>Lembrar melhor cave</strong>
+                  <small>Salva o recorde neste navegador (localStorage).</small>
+                </span>
+              </label>
+
               <div className="settings-line">
-                <span>Animação de entrada</span>
-                <strong>Ativada</strong>
+                <span>Entrada</span>
+                <strong>{settings.reducedMotion ? 'Reduzida' : 'Animada'}</strong>
               </div>
 
               <div className="settings-line">
-                <span>Orientação ideal</span>
-                <strong>Paisagem</strong>
+                <span>Orientação recomendada</span>
+                <strong>{isCoarsePointer ? 'Paisagem' : 'Paisagem (desktop)'}</strong>
               </div>
 
               <div className="settings-line">
-                <span>Meta atual</span>
-                <strong>{activeBiome.name}</strong>
+                <span>Melhor cave registrada</span>
+                <strong>
+                  {profile.bestCave ?? 1} · {bestCaveProgress.label}
+                </strong>
               </div>
 
-              <button className="menu-primary-btn compact" type="button" onClick={() => setShowSettings(false)}>
-                Fechar
-              </button>
+              <div className="settings-actions">
+                <button className="menu-primary-btn compact" type="button" onClick={() => setShowSettings(false)}>
+                  Fechar
+                </button>
+
+                <button
+                  className="ghost-btn settings-reset-btn"
+                  type="button"
+                  onClick={() => {
+                    setProfile({ bestCave: 1 });
+                    setSettings(DEFAULT_SETTINGS);
+                  }}
+                >
+                  Reiniciar progresso
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1326,28 +1540,22 @@ export default function App() {
           </div>
         )}
 
-        {entryPhase === ENTRY_PHASE.PLAYING && !showRotateLock && (
-          <div className="rotate-device-hint">
-            Gire o celular para jogar melhor em modo paisagem.
-          </div>
+        {entryPhase === ENTRY_PHASE.PLAYING && isCoarsePointer && !showRotateLock && (
+          <div className="rotate-device-hint">Gire o celular para jogar melhor em modo paisagem.</div>
         )}
 
         {showRotateGate && (
           <div className="rotate-lock-overlay">
             <div className="rotate-lock-card">
-              <div className="rotate-lock-icon">📱</div>
+              <div className="rotate-lock-icon" aria-hidden="true">
+                📱
+              </div>
               <h2>Gire o celular</h2>
-              <p>Use o dispositivo no modo paisagem para liberar o menu.</p>
-            </div>
-          </div>
-        )}
-
-        {showRotateDuringPlay && (
-          <div className="rotate-lock-overlay">
-            <div className="rotate-lock-card">
-              <div className="rotate-lock-icon">📱</div>
-              <h2>Gire o celular</h2>
-              <p>Para continuar jogando, use o dispositivo no modo paisagem.</p>
+              <p>
+                {entryPhase === ENTRY_PHASE.PLAYING
+                  ? 'Para continuar jogando, use o dispositivo no modo paisagem.'
+                  : 'Use o dispositivo no modo paisagem para liberar o menu.'}
+              </p>
             </div>
           </div>
         )}

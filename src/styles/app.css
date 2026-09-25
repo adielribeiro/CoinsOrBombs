@@ -25,6 +25,21 @@ button {
   font: inherit;
 }
 
+:focus-visible {
+  outline: 2px solid #8df0b0;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .app-shell {
   width: 100%;
   height: 100vh;
@@ -55,68 +70,161 @@ button {
   height: 100% !important;
 }
 
-/* HUD */
+/* HUD
+   O HUD e a barra de utilitários vivem na MESMA faixa horizontal e antes
+   ficavam em dois blocos independentes: a 790px de largura o .top-hud
+   terminava em x=625 e a .utility-bar começava em x=594 (31px de
+   sobreposição). Agora é uma única barra com grid responsivo. */
 
-.top-hud {
+.hud-bar {
   position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 30;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  /* Três blocos reais (identificação / vitais / utilitários). Com duas
+     colunas o terceiro quebrava para uma segunda linha e o HUD virava
+     134px, empurrando o mapa para baixo da tela. */
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
   align-items: center;
-  width: min(460px, calc(100% - 180px));
+  gap: 10px;
+  padding: 10px clamp(10px, 2vw, 20px);
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: linear-gradient(180deg, rgba(8, 12, 18, 0.92), rgba(8, 12, 18, 0.55) 70%, rgba(8, 12, 18, 0));
   pointer-events: none;
 }
 
+.hud-bar > * {
+  pointer-events: auto;
+}
+
+.hud-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  justify-self: start;
+}
+
+.hud-cluster-vitals {
+  justify-self: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+
 .hud-pill {
-  min-width: 108px;
-  padding: 8px 12px;
-  border-radius: 14px;
+  min-width: 62px;
+  padding: 6px 10px;
+  border-radius: 12px;
   background: rgba(10, 16, 24, 0.84);
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
+}
+
+.hud-pill-wide {
+  min-width: 0;
 }
 
 .hud-pill span {
-  font-size: 11px;
+  font-size: 10px;
+  line-height: 1.1;
   color: #9fb1c8;
+  white-space: nowrap;
 }
 
 .hud-pill strong {
-  font-size: 18px;
+  font-size: 16px;
   color: #f4fbff;
   line-height: 1.05;
+  white-space: nowrap;
+}
+
+.hud-pill-heart strong {
+  color: #ff9d9d;
+}
+
+.hud-pill-risk strong {
+  color: #ffb0b0;
+}
+
+/* Registro de exploração
+   O lastMessage era escrito pelo Phaser mas nunca renderizado: todo o
+   feedback de gameplay (moeda, bomba, relíquia, "só pedra e poeira")
+   ficava invisível. */
+
+.message-log {
+  position: absolute;
+  left: clamp(10px, 2vw, 20px);
+  bottom: clamp(10px, 2.5vh, 22px);
+  z-index: 29;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: min(460px, calc(100% - 40px));
+  pointer-events: none;
+}
+
+.message-log-item {
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: #dbe7f3;
+  background: rgba(10, 16, 24, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(6px);
+  animation: logSlideIn 0.22s ease both;
+}
+
+.message-log-item:first-child {
+  color: #f4fbff;
+  border-color: rgba(141, 240, 176, 0.3);
+}
+
+.message-log-item.warn {
+  color: #ffd39d;
+  border-color: rgba(255, 187, 88, 0.34);
+}
+
+@keyframes logSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Barra de utilitários */
 
-.utility-bar-wrap {
-  position: absolute;
-  top: 14px;
-  right: clamp(12px, calc(50% - 560px), 140px);
-  z-index: 31;
-  max-width: calc(100vw - 24px);
-  display: flex;
-  justify-content: flex-end;
-}
-
 .utility-bar {
   display: flex;
   gap: 5px;
-  padding: 6px 8px;
+  padding: 5px 7px;
   border-radius: 14px;
   background: rgba(10, 16, 24, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(8px);
+  justify-self: end;
+}
+
+@media (max-width: 860px) {
+  /* Espaço apertado: o nome do bioma é o único pill dispensável, e ele
+     reaparece no lobby e no seletor de biomas. */
+  .hud-pill-wide {
+    display: none;
+  }
 }
 
 .utility-slot {
@@ -657,11 +765,19 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Rotação
+   BUG CRÍTICO: este overlay tinha `display: none` e só ficava `flex` em
+   @media (max-width: 640px). O React, porém, decidia esconder o menu
+   whenever a janela tinha menos de 900px de largura em retrato. Entre
+   641px e 900px o menu sumia E o aviso não aparecia: tela preta sem
+   nenhuma forma de sair. O overlay agora é controlado só pelo React
+   (condicional), e o CSS nunca o esconde. */
+
 .rotate-lock-overlay {
   position: absolute;
   inset: 0;
-  z-index: 120;
-  display: none;
+  z-index: 130;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
@@ -881,6 +997,72 @@ button {
   color: #8df0b0;
 }
 
+.settings-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.settings-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.settings-toggle input {
+  margin: 2px 0 0;
+  width: 17px;
+  height: 17px;
+  accent-color: #2f9d63;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.settings-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.settings-toggle strong {
+  font-size: 14px;
+  color: #f4fbff;
+}
+
+.settings-toggle small {
+  font-size: 12px;
+  line-height: 1.35;
+  color: #9fb1c8;
+}
+
+.settings-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.settings-reset-btn {
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 14px;
+  color: #ff9d9d;
+  border: 1px solid rgba(255, 118, 118, 0.3);
+  background: rgba(255, 92, 92, 0.08);
+  cursor: pointer;
+}
+
+.settings-reset-btn:hover {
+  background: rgba(255, 92, 92, 0.16);
+}
+
 /* Breakpoints */
 
 @media (max-width: 960px) {
@@ -903,52 +1085,58 @@ button {
 }
 
 @media (max-width: 640px) {
-  .top-hud {
-    width: min(100%, calc(100% - 16px));
+  .hud-bar {
     gap: 6px;
+    padding: 8px;
+    padding-top: max(8px, env(safe-area-inset-top));
   }
 
   .hud-pill {
-    min-width: 78px;
-    padding: 6px 8px;
-    border-radius: 12px;
+    min-width: 48px;
+    padding: 5px 7px;
+    border-radius: 10px;
   }
 
   .hud-pill span {
-    font-size: 9px;
+    font-size: 8px;
   }
 
   .hud-pill strong {
-    font-size: 14px;
+    font-size: 13px;
   }
 
-  .utility-bar-wrap {
-    top: 60px;
-    right: 8px;
-    max-width: calc(100vw - 16px);
+  .message-log {
+    max-width: calc(100% - 20px);
+    bottom: 8px;
+    left: 8px;
+  }
+
+  .message-log-item {
+    font-size: 11px;
+    padding: 4px 8px;
   }
 
   .utility-bar {
     gap: 4px;
-    padding: 5px 6px;
+    padding: 4px 5px;
     border-radius: 12px;
   }
 
   .utility-slot {
-    min-width: 44px;
+    min-width: 40px;
     gap: 2px;
   }
 
   .utility-icon-btn {
-    width: 38px;
-    min-width: 38px;
-    height: 32px;
-    min-height: 32px;
+    width: 36px;
+    min-width: 36px;
+    height: 30px;
+    min-height: 30px;
     border-radius: 8px;
   }
 
   .utility-icon {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .utility-count {
@@ -956,7 +1144,7 @@ button {
   }
 
   .utility-label {
-    max-width: 42px;
+    max-width: 40px;
     font-size: 7px;
   }
 
@@ -964,6 +1152,10 @@ button {
     font-size: 9px;
     padding: 3px 6px;
     border-radius: 8px;
+  }
+
+  .settings-actions {
+    grid-template-columns: 1fr;
   }
 
   .exit-decision-overlay,

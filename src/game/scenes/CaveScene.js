@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH, getTileMetrics, toIso } from '../config.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { generateMap } from '../systems/mapGenerator.js';
-import { getNeighbors4, isExitUnlocked, isFrontierRock } from '../systems/helpers.js';
+import { getNeighbors4, isFrontierRock } from '../systems/helpers.js';
+
+const MAX_MESSAGE_LOG = 6;
 
 export class CaveScene extends Phaser.Scene {
   constructor() {
@@ -42,12 +44,21 @@ export class CaveScene extends Phaser.Scene {
       lobbyReason: null,
       nextCaveAvailable: null,
       outcomeCave: null,
-      lastMessage: 'Quebre uma rocha na beirada da área aberta para começar.'
+      lastMessage: 'Quebre uma rocha na beirada da área aberta para começar.',
+      messageLog: [
+        { id: 'boot', text: 'Quebre uma rocha na beirada da área aberta para começar.', tone: 'info' }
+      ]
     };
 
     this.purchased = [];
     this.hoveredRockTile = null;
     this.pendingResponsiveRefreshes = [];
+    this.pendingEffects = [];
+    this.clearedCaves = new Set();
+    this.logSequence = 0;
+    this.reducedMotion = false;
+    this.showGrid = false;
+    this.hudInset = 0;
 
     this.renderMetrics = {
       ...getTileMetrics(1),
@@ -109,7 +120,6 @@ export class CaveScene extends Phaser.Scene {
       };
       this.purchased = [...(event.detail.purchased ?? this.purchased)];
       this.syncUI();
-      this.renderStatusBanner();
     };
 
     this.onUtilityUse = (event) => {
@@ -158,29 +168,27 @@ export class CaveScene extends Phaser.Scene {
       this.scheduleResponsiveRefresh();
     };
 
-    this.onNextCave = (event) => {
-      this.metaState = {
-        ...this.metaState,
-        ...event.detail,
-        collection: { ...createCollectionState(), ...(event.detail?.collection ?? this.metaState.collection) },
-        stats: { ...createStatsState(), ...(event.detail?.stats ?? this.metaState.stats) },
-        utilities: {
-          lifePotion: 0,
-          revealBomb: 0,
-          safePath: 0,
-          ...(event.detail?.utilities ?? {})
-        },
-        inLobby: false,
-        lobbyReason: null,
-        nextCaveAvailable: null,
-        outcomeCave: null
-      };
-      this.refreshRun(true);
+    this.onResize = () => {
       this.scheduleResponsiveRefresh();
     };
 
-    this.onResize = () => {
-      this.scheduleResponsiveRefresh();
+    this.onSettingsChange = (event) => {
+      const next = event?.detail ?? {};
+
+      if (this.reducedMotion === Boolean(next.reducedMotion)) {
+        if (this.showGrid === Boolean(next.showGrid)) return;
+      }
+
+      this.reducedMotion = Boolean(next.reducedMotion);
+      this.showGrid = Boolean(next.showGrid);
+
+      if (this.mapData && !this.metaState.inLobby) {
+        this.renderMap();
+      }
+    };
+
+    this.onHudInset = (event) => {
+      this.setHudInset(event?.detail?.height);
     };
 
     this.onForcedResize = () => {
@@ -195,27 +203,28 @@ export class CaveScene extends Phaser.Scene {
       this.openLobby('exit', message, nextCave);
     };
 
-    window.addEventListener('cob-buy-upgrade', this.onExternalSync);
     window.addEventListener('cob-buy-utility', this.onExternalSync);
     window.addEventListener('cob-use-utility', this.onUtilityUse);
     window.addEventListener('cob-restart-run', this.onManualRestart);
     window.addEventListener('cob-enter-cave', this.onEnterCave);
-    window.addEventListener('cob-next-cave', this.onNextCave);
     window.addEventListener('cob-open-exit-lobby', this.onOpenExitLobby);
+    window.addEventListener('cob-settings', this.onSettingsChange);
+    window.addEventListener('cob-hud-inset', this.onHudInset);
     window.addEventListener('cob-force-resize', this.onForcedResize);
     this.scale.on('resize', this.onResize);
 
     this.events.on('shutdown', () => {
-      window.removeEventListener('cob-buy-upgrade', this.onExternalSync);
       window.removeEventListener('cob-buy-utility', this.onExternalSync);
       window.removeEventListener('cob-use-utility', this.onUtilityUse);
       window.removeEventListener('cob-restart-run', this.onManualRestart);
       window.removeEventListener('cob-enter-cave', this.onEnterCave);
-      window.removeEventListener('cob-next-cave', this.onNextCave);
       window.removeEventListener('cob-open-exit-lobby', this.onOpenExitLobby);
+      window.removeEventListener('cob-settings', this.onSettingsChange);
+      window.removeEventListener('cob-hud-inset', this.onHudInset);
       window.removeEventListener('cob-force-resize', this.onForcedResize);
       this.scale.off('resize', this.onResize);
       this.clearResponsiveRefreshQueue();
+      this.flushPendingEffects();
     });
 
     if (this.metaState.inLobby) {
@@ -232,12 +241,32 @@ export class CaveScene extends Phaser.Scene {
     if (!this.pendingResponsiveRefreshes?.length) return;
 
     this.pendingResponsiveRefreshes.forEach((timer) => {
-      if (timer && !timer.hasDispatched) {
+      if (timer) {
         timer.remove(false);
       }
     });
 
     this.pendingResponsiveRefreshes = [];
+  }
+
+  /**
+   * Registra um callback atrasado para que ele seja cancelado quando a run
+   * muda de cave. Sem isso, uma quebra em cascata disparada com atraso
+   * poderia invadir a próxima cave e conceder recompensas da cave anterior.
+   */
+  trackEffect(timer) {
+    this.pendingEffects.push(timer);
+    return timer;
+  }
+
+  flushPendingEffects() {
+    if (this.pendingEffects.length) {
+      this.pendingEffects.forEach((timer) => timer?.remove?.(false));
+      this.pendingEffects = [];
+    }
+
+    this.clearHoveredRock();
+    this.hidePickaxeEffect();
   }
 
   performResponsiveRefresh() {
@@ -251,7 +280,6 @@ export class CaveScene extends Phaser.Scene {
 
     if (this.mapData) {
       this.renderMap();
-      this.renderStatusBanner();
       this.syncUI();
     }
   }
@@ -278,6 +306,11 @@ export class CaveScene extends Phaser.Scene {
     const isNarrow = width <= 900;
     const isMobileLandscape = isLandscape && (height <= 500 || width <= 920);
 
+    // A altura real do HUD em React vence a heurística: sem isso o topo do
+    // mapa ficava escondido atrás do HUD de 2-3 linhas.
+    const fallbackHud = isMobileLandscape ? 50 : height <= 560 ? 58 : 74;
+    const hudTopOffset = this.hudInset > 0 ? this.hudInset : fallbackHud;
+
     return {
       width,
       height,
@@ -286,11 +319,23 @@ export class CaveScene extends Phaser.Scene {
       isNarrow,
       isMobileLandscape,
       isCompact: height <= 430 || width <= 760,
-      hudTopOffset: isMobileLandscape ? 50 : height <= 560 ? 58 : 74,
+      hudTopOffset,
       bottomPadding: isMobileLandscape ? 10 : 18,
       sidePadding: isMobileLandscape ? 18 : width <= 1100 ? 24 : 34,
       verticalNudge: isMobileLandscape ? 6 : 28
     };
+  }
+
+  setHudInset(value) {
+    const next = Math.max(0, Math.round(value || 0));
+
+    if (Math.abs(next - this.hudInset) < 2) return;
+
+    this.hudInset = next;
+
+    if (this.mapData || this.metaState.inLobby) {
+      this.scheduleResponsiveRefresh();
+    }
   }
 
   getMapBoundsForMetrics(originX, originY, tileWidth, tileHeight) {
@@ -303,8 +348,11 @@ export class CaveScene extends Phaser.Scene {
         points.push({
           minX: point.x - tileWidth / 2,
           maxX: point.x + tileWidth / 2,
-          minY: point.y - tileHeight * 1.5,
-          maxY: point.y + tileHeight / 2 + tileHeight * 0.5
+          // Apenas a "coroa" da rocha entra acima do centro do tile, e o
+          // brilho do chão few pixels abaixo. Usar 1.5x/1.0x inflava a caixa
+          // em ~1.8x e encolhia o mapa inteiro na tela.
+          minY: point.y - tileHeight * 0.95,
+          maxY: point.y + tileHeight * 0.62
         });
       }
     }
@@ -346,13 +394,25 @@ export class CaveScene extends Phaser.Scene {
     };
   }
 
+  countHiddenBombs() {
+    if (!this.mapData) return 0;
+
+    let total = 0;
+
+    for (let row = 0; row < this.mapData.height; row += 1) {
+      for (let col = 0; col < this.mapData.width; col += 1) {
+        if (this.mapData.tiles[row][col].hiddenContent === 'bomb') total += 1;
+      }
+    }
+
+    return total;
+  }
+
   refreshRun(keepCave = false) {
     this.backgroundLayer.removeAll(true);
     this.floorLayer.removeAll(true);
     this.objectLayer.removeAll(true);
-    this.clearHoveredRock();
-    this.clearStatusBanner();
-    this.hidePickaxeEffect();
+    this.flushPendingEffects();
 
     if (!keepCave && this.metaState.hp <= 0) {
       this.metaState.cave = 1;
@@ -366,12 +426,16 @@ export class CaveScene extends Phaser.Scene {
       return;
     }
 
-    this.mapData = generateMap(this.metaState.cave, this.metaState.pickaxePower, 0);
+    this.mapData = generateMap(
+      this.metaState.cave,
+      this.metaState.pickaxePower,
+      (this.metaState.coinBonusLevel ?? 0) * 0.008
+    );
     this.metaState.biomeId = this.mapData.biome?.id ?? getBiomeForCave(this.metaState.cave).id;
     this.metaState.biomeName = this.mapData.biome?.name ?? getBiomeForCave(this.metaState.cave).name;
+    this.metaState.bombsRemaining = this.countHiddenBombs();
     this.cameras.main.setBackgroundColor(this.mapData.biome?.palette?.background ?? '#14181f');
     this.renderMap();
-    this.renderStatusBanner();
     this.syncUI();
   }
 
@@ -441,7 +505,7 @@ export class CaveScene extends Phaser.Scene {
   }
 
   addBackdropRock(x, y, scale = 1.6, alpha = 0.22, tint = 0x2f251c) {
-    const variants = ['rock_01', 'rock_02', 'rock_03'];
+    const variants = ['rock', 'rock_01', 'rock_02', 'rock_03'];
     const texture = Phaser.Utils.Array.GetRandom(variants);
 
     const rock = this.add.image(x, y, texture);
@@ -614,6 +678,7 @@ export class CaveScene extends Phaser.Scene {
     this.backgroundLayer.removeAll(true);
     this.floorLayer.removeAll(true);
     this.objectLayer.removeAll(true);
+    this.hoveredRockTile = null;
     this.hoverIndicator.setVisible(false);
 
     const centeredOrigin = this.getCenteredMapOrigin();
@@ -625,108 +690,160 @@ export class CaveScene extends Phaser.Scene {
     this.renderCaveBackdrop(originX, originY);
     const biome = this.mapData.biome ?? getBiomeForCave(this.metaState.cave);
 
+    if (this.showGrid) {
+      this.renderIsoGrid(originX, originY, tileWidth, tileHeight);
+    }
+
+    // Filhos de um Phaser.Container são desenhados na ordem de inserção:
+    // setDepth() é ignorado dentro de containers. Em isométrico o grid
+    // precisa de ordenação por Y real, e o loop row->col original não é
+    // monotônico em Y, o que fazia rochas da frente sumirem atrás de
+    // tiles que deveriam ficar atrás delas.
+    const drawOrder = [];
+
     for (let row = 0; row < this.mapData.height; row += 1) {
       for (let col = 0; col < this.mapData.width; col += 1) {
-        const tile = this.mapData.tiles[row][col];
-        const point = toIso(col, row, originX, originY, tileWidth, tileHeight);
-
-        const floorKey = tile.floorVariant || 'floor_01';
-        const floor = this.add.image(point.x, point.y, floorKey).setDisplaySize(tileWidth + 4, tileHeight + 18);
-
-        floor.setDepth(point.y);
-        tile.floorSprite = floor;
-
-        if (tile.type === 'exit') {
-          floor.setTint(biome.palette.exit);
-          floor.setScale(1.05);
-          floor.setInteractive({ cursor: 'pointer' });
-        }
-
-        if (tile.type === 'entrance') {
-          floor.setTint(biome.palette.entrance);
-        }
-
-        this.floorLayer.add(floor);
-
-        if (tile.safePath) {
-          this.renderSafePathHighlight(point, point.y + 3);
-        }
-
-        if (tile.type === 'rock') {
-          const revealedBomb = tile.utilityRevealBomb === true;
-          const rockKey = revealedBomb ? 'bomb' : tile.rockVariant || 'rock_01';
-          const rock = this.add
-            .image(point.x, point.y - tileHeight * (revealedBomb ? 0.44 : 0.5), rockKey)
-            .setDisplaySize(
-              Math.round(tileWidth * (revealedBomb ? 0.5 : 0.75)),
-              Math.round(tileHeight * (revealedBomb ? 1.15 : 1.72))
-            )
-            .setInteractive({ cursor: 'pointer' });
-
-          rock.setData('tile', tile);
-          rock.setDepth(point.y + 10);
-
-          if (revealedBomb) {
-            rock.setTint(0xffb0b0);
-          } else if (biome.id === 'frost') {
-            rock.setTint(0xd7f0ff);
-          } else if (biome.id === 'ember') {
-            rock.setTint(0xffc0b1);
-          } else if (biome.id === 'ruins') {
-            rock.setTint(0xe1d2ff);
-          }
-
-          this.attachRockHover(rock, tile);
-          this.objectLayer.add(rock);
-
-          tile.rockSprite = rock;
-          tile.sprite = rock;
-        } else {
-          floor.setData('tile', tile);
-          tile.sprite = floor;
-          this.renderDecoration(tile, point);
-        }
-
-        if (tile.type === 'exit') {
-          this.renderExitHighlight(point);
-          this.renderExitStructure(point, point.y + 11);
-
-          const glow = this.add.image(point.x, point.y - tileHeight * 0.42, 'exit_glow');
-          glow.setScale(0.56 * mapScale);
-          glow.setDepth(point.y + 13);
-          this.objectLayer.add(glow);
-
-          const marker = this.add.text(point.x - tileWidth * 0.32, point.y - tileHeight * 1.18, 'SAÍDA', {
-            fontSize: this.getMarkerFontSize(18),
-            color: '#f6fff9',
-            fontStyle: 'bold',
-            stroke: '#0d2a1c',
-            strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
-          });
-
-          marker.setDepth(point.y + 16);
-          this.objectLayer.add(marker);
-        }
-
-        if (tile.type === 'entrance') {
-          const frame = this.add.image(point.x, point.y - tileHeight * 0.64, 'entrance_frame');
-          frame.setScale(0.54 * mapScale);
-          frame.setDepth(point.y + 11);
-          this.objectLayer.add(frame);
-
-          const marker = this.add.text(point.x - tileWidth * 0.16, point.y - tileHeight * 1.18, 'IN', {
-            fontSize: this.getMarkerFontSize(16),
-            color: '#f1fbff',
-            fontStyle: 'bold',
-            stroke: '#10263c',
-            strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
-          });
-
-          marker.setDepth(point.y + 12);
-          this.objectLayer.add(marker);
-        }
+        drawOrder.push({ row, col, y: originY + (col + row) * (tileHeight / 2) });
       }
     }
+
+    drawOrder.sort((a, b) => a.y - b.y);
+
+    drawOrder.forEach(({ row, col, y }) => {
+      const tile = this.mapData.tiles[row][col];
+      const point = toIso(col, row, originX, originY, tileWidth, tileHeight);
+      const isRock = tile.type === 'rock';
+
+      // Chão: preserva a proporção do losango isométrico (2:1). O código
+      // antigo esticava para tileWidth+4 x tileHeight+18, o que achatava o
+      // bloco de pedra e fazia os tiles se sobreporem verticalmente.
+      const floor = this.add
+        .image(point.x, point.y, tile.floorVariant || 'floor_01')
+        .setDisplaySize(tileWidth * 1.02, tileHeight * 1.04);
+
+      floor.setData('tile', tile);
+      tile.floorSprite = floor;
+
+      if (tile.type === 'exit') {
+        floor.setTint(biome.palette.exit);
+        floor.setInteractive({ cursor: 'pointer' });
+      }
+
+      if (tile.type === 'entrance') {
+        floor.setTint(biome.palette.entrance);
+      }
+
+      this.floorLayer.add(floor);
+
+      if (isRock) {
+        const revealedBomb = tile.utilityRevealBomb === true;
+        const rockKey = revealedBomb ? 'bomb' : tile.rockVariant || 'rock_01';
+
+        // rock_01..03 são lajes largas dentro de um canvas quadrado.
+        // Forçá-las para 0.75w x 1.72h transformava a laje numa "cúpula"
+        // espremida; agora respeitamos a proporção do desenho.
+        const rockWidth = tileWidth * 0.84;
+        const rock = this.add
+          .image(
+            point.x,
+            point.y - tileHeight * (revealedBomb ? 0.36 : 0.34),
+            rockKey
+          )
+          .setDisplaySize(
+            Math.round(revealedBomb ? rockWidth * 0.46 : rockWidth),
+            Math.round(revealedBomb ? rockWidth * 0.46 : tileHeight * 0.92)
+          )
+          .setInteractive({ cursor: 'pointer' });
+
+        rock.setData('tile', tile);
+
+        if (revealedBomb) {
+          rock.setTint(0xffb0b0);
+        } else if (biome.id !== 'sunstone') {
+          rock.setTint(biome.palette.rockHighlight);
+        }
+
+        this.attachRockHover(rock, tile);
+        this.objectLayer.add(rock);
+
+        tile.rockSprite = rock;
+        tile.sprite = rock;
+
+        return;
+      }
+
+      tile.sprite = floor;
+      this.renderDecoration(tile, point);
+
+      if (tile.safePath) {
+        this.renderSafePathHighlight(point, point.y + 3);
+      }
+
+      if (tile.type === 'exit') {
+        this.renderExitHighlight(point);
+        this.renderExitStructure(point, point.y + 11);
+
+        const glow = this.add.image(point.x, point.y - tileHeight * 0.42, 'exit_glow');
+        glow.setScale(0.56 * mapScale);
+        glow.setDepth(point.y + 13);
+        this.objectLayer.add(glow);
+
+        const marker = this.add.text(point.x, point.y - tileHeight * 1.06, 'SAÍDA', {
+          fontSize: this.getMarkerFontSize(18),
+          color: '#f6fff9',
+          fontStyle: 'bold',
+          align: 'center',
+          stroke: '#0d2a1c',
+          strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
+        }).setOrigin(0.5);
+
+        this.objectLayer.add(marker);
+      }
+
+      if (tile.type === 'entrance') {
+        const frame = this.add.image(point.x, point.y - tileHeight * 0.52, 'entrance_frame');
+        frame.setScale(0.54 * mapScale);
+        this.objectLayer.add(frame);
+
+        const marker = this.add.text(point.x, point.y - tileHeight * 1.02, 'IN', {
+          fontSize: this.getMarkerFontSize(15),
+          color: '#f1fbff',
+          fontStyle: 'bold',
+          align: 'center',
+          stroke: '#10263c',
+          strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
+        }).setOrigin(0.5);
+
+        this.objectLayer.add(marker);
+      }
+    });
+  }
+
+  renderIsoGrid(originX, originY, tileWidth, tileHeight) {
+    const grid = this.add.graphics();
+    const color = 0x8fb6d8;
+    const halfW = tileWidth / 2;
+    const halfH = tileHeight / 2;
+
+    grid.lineStyle(1, color, 0.22);
+
+    for (let row = 0; row < this.mapData.height; row += 1) {
+      for (let col = 0; col < this.mapData.width; col += 1) {
+        const point = toIso(col, row, originX, originY, tileWidth, tileHeight);
+
+        grid.strokePoints(
+          [
+            { x: point.x, y: point.y - halfH },
+            { x: point.x + halfW, y: point.y },
+            { x: point.x, y: point.y + halfH },
+            { x: point.x - halfW, y: point.y }
+          ],
+          true
+        );
+      }
+    }
+
+    this.floorLayer.add(grid);
   }
 
   renderExitStructure(point, depth) {
@@ -859,23 +976,6 @@ export class CaveScene extends Phaser.Scene {
     tile.exitMarkerSprite = marker;
   }
 
-  openExitDecision() {
-    if (this.metaState.inLobby) return;
-
-    const nextCave = this.metaState.nextCaveAvailable ?? this.metaState.cave + 1;
-    this.metaState.nextCaveAvailable = nextCave;
-    this.metaState.lastMessage = `Você encontrou a saída da Cave ${this.metaState.cave}. Deseja seguir para a próxima cave ou continuar explorando esta cave?`;
-    this.syncUI();
-
-    window.dispatchEvent(
-      new CustomEvent('cob-exit-decision', {
-        detail: {
-          state: { ...this.metaState }
-        }
-      })
-    );
-  }
-
   attachRockHover(rock, tile) {
     rock.on('pointerover', () => this.setHoveredRock(tile));
     rock.on('pointerout', () => {
@@ -886,7 +986,7 @@ export class CaveScene extends Phaser.Scene {
   }
 
   applyRockBaseTint(tile) {
-    if (!tile?.sprite || tile.type !== 'rock') {
+    if (!tile?.sprite?.active || tile.type !== 'rock') {
       return;
     }
 
@@ -896,19 +996,10 @@ export class CaveScene extends Phaser.Scene {
     }
 
     const biome = this.mapData?.biome ?? getBiomeForCave(this.metaState.cave);
+    const tint = biome.palette?.rockHighlight;
 
-    if (biome.id === 'frost') {
-      tile.sprite.setTint(0xd7f0ff);
-      return;
-    }
-
-    if (biome.id === 'ember') {
-      tile.sprite.setTint(0xffc0b1);
-      return;
-    }
-
-    if (biome.id === 'ruins') {
-      tile.sprite.setTint(0xe1d2ff);
+    if (typeof tint === 'number' && tint !== 0xffffff) {
+      tile.sprite.setTint(tint);
       return;
     }
 
@@ -969,6 +1060,7 @@ export class CaveScene extends Phaser.Scene {
 
   animatePickaxe(tile) {
     if (!this.origin) return;
+    if (this.reducedMotion) return;
 
     const { tileWidth, tileHeight, mapScale } = this.renderMetrics;
     const point = toIso(tile.col, tile.row, this.origin.x, this.origin.y, tileWidth, tileHeight);
@@ -1026,21 +1118,62 @@ export class CaveScene extends Phaser.Scene {
     tile.hp -= 1;
 
     if (tile.hp > 0) {
-      this.setMessage(`Rocha danificada. Falta ${tile.hp} clique(s).`);
-      tile.sprite.setTint(0xffd39d);
+      this.setMessage(`Rocha danificada. Faltam ${tile.hp} clique(s).`, 'warn');
+      this.flashRockHit(tile);
+      return;
+    }
 
-      this.time.delayedCall(110, () => {
+    this.resolveBrokenRock(tile, isBonus);
+  }
+
+  flashRockHit(tile) {
+    const sprite = tile.sprite;
+
+    if (!sprite?.active) return;
+
+    sprite.setTint(0xffd39d);
+
+    this.tweens.add({
+      targets: sprite,
+      scaleX: sprite.scaleX * 1.12,
+      scaleY: sprite.scaleY * 0.88,
+      duration: 90,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        if (!sprite.active) return;
+
         if (this.hoveredRockTile === tile) {
           this.setHoveredRock(tile);
         } else {
           this.applyRockBaseTint(tile);
         }
+      }
+    });
+  }
+
+  spawnBreakDebris(tile, point) {
+    if (this.reducedMotion) return;
+
+    const { tileWidth } = this.renderMetrics;
+
+    for (let i = 0; i < 5; i += 1) {
+      const chunk = this.add
+        .image(point.x + Phaser.Math.Between(-10, 10), point.y - Phaser.Math.Between(4, 22), 'deco_rubble')
+        .setDisplaySize(tileWidth * 0.18, tileWidth * 0.18)
+        .setAlpha(0.9);
+
+      this.tweens.add({
+        targets: chunk,
+        x: chunk.x + Phaser.Math.Between(-34, 34),
+        y: chunk.y + Phaser.Math.Between(10, 34),
+        angle: Phaser.Math.Between(-180, 180),
+        alpha: 0,
+        duration: Phaser.Math.Between(320, 520),
+        ease: 'Quad.easeOut',
+        onComplete: () => chunk.destroy()
       });
-
-      return;
     }
-
-    this.resolveBrokenRock(tile, isBonus);
   }
 
   resolveBrokenRock(tile, isBonus = false) {
@@ -1067,6 +1200,8 @@ export class CaveScene extends Phaser.Scene {
 
     const { tileWidth, tileHeight } = this.renderMetrics;
     const rewardPos = toIso(tile.col, tile.row, this.origin.x, this.origin.y, tileWidth, tileHeight);
+
+    this.spawnBreakDebris(tile, rewardPos);
 
     if (tile.sprite) {
       tile.sprite.destroy();
@@ -1153,6 +1288,7 @@ export class CaveScene extends Phaser.Scene {
       message = `${isBonus ? 'Quebra bônus! ' : ''}Você encontrou ${gain} moeda(s).`;
     } else if (revealedContent === 'bomb') {
       this.metaState.bombs += 1;
+      this.metaState.bombsRemaining = Math.max(0, (this.metaState.bombsRemaining ?? 0) - 1);
       this.metaState.hp -= 1;
 
       const bomb = this.add.image(rewardPos.x, rewardPos.y - tileHeight * 0.68, 'bomb').setDisplaySize(
@@ -1268,15 +1404,17 @@ export class CaveScene extends Phaser.Scene {
     }
 
     candidates.forEach((bonusTile, index) => {
-      this.time.delayedCall(70 + index * 70, () => {
-        if (!bonusTile || bonusTile.type !== 'rock' || this.metaState.inLobby) {
-          return;
-        }
+      this.trackEffect(
+        this.time.delayedCall(70 + index * 70, () => {
+          if (!bonusTile || bonusTile.type !== 'rock' || this.metaState.inLobby) {
+            return;
+          }
 
-        bonusTile.hp = 1;
-        this.animatePickaxe(bonusTile);
-        this.damageRock(bonusTile, true);
-      });
+          bonusTile.hp = 1;
+          this.animatePickaxe(bonusTile);
+          this.damageRock(bonusTile, true);
+        })
+      );
     });
   }
 
@@ -1335,17 +1473,6 @@ export class CaveScene extends Phaser.Scene {
         utilityValue.destroy();
       }
     });
-
-    window.dispatchEvent(
-      new CustomEvent('cob-utility-found', {
-        detail: {
-          id: reward.id,
-          label: reward.label,
-          amount: 1,
-          cave: this.metaState.cave
-        }
-      })
-    );
   }
 
   showRelicFoundEffect(rewardPos, relic) {
@@ -1494,6 +1621,7 @@ export class CaveScene extends Phaser.Scene {
 
       hiddenBomb.utilityRevealBomb = true;
       this.consumeUtility(type);
+      this.hoveredRockTile = null;
       this.renderMap();
       this.setMessage('Poção dedo-duro usada. Uma bomba foi revelada no mapa.');
       this.syncUI();
@@ -1504,11 +1632,12 @@ export class CaveScene extends Phaser.Scene {
       const success = this.revealSafePath();
 
       if (!success) {
-        this.setMessage('Não encontrei uma rota segura completa nesta cave. O subterrâneo resolveu ser dramático.');
+        this.setMessage('Não encontrei uma rota segura completa nesta cave. O subterrâneo resolveu ser dramático.', 'warn');
         return;
       }
 
       this.consumeUtility(type);
+      this.hoveredRockTile = null;
       this.renderMap();
       this.setMessage('Poção caminho seguro usada. A rota verde até a saída foi revelada.');
       this.syncUI();
@@ -1573,7 +1702,10 @@ export class CaveScene extends Phaser.Scene {
         if (visited.has(neighborKey)) continue;
 
         const tile = this.mapData.tiles[neighbor.row][neighbor.col];
-        const isSafeTile = tile.type !== 'rock' || tile.hiddenContent !== 'bomb';
+        // A rota segura precisa ser caminhável de verdade: a versão
+        // anterior tratava qualquer tile que não fosse bomba como seguro,
+        // o que desenhava o caminho verde atravessando rochas maciças.
+        const isSafeTile = tile.type !== 'rock' && tile.hiddenContent !== 'bomb';
 
         if (!isSafeTile) continue;
 
@@ -1599,24 +1731,14 @@ export class CaveScene extends Phaser.Scene {
     return true;
   }
 
-  renderStatusBanner() {
-    this.clearStatusBanner();
-  }
-
-  clearStatusBanner() {
-    if (!this.statusBanner) return;
-    this.statusBanner.forEach((item) => item.destroy());
-    this.statusBanner = null;
-  }
-
   openExitDecision(message) {
+    if (this.metaState.inLobby) return;
+
     this.metaState.inLobby = false;
     this.metaState.lobbyReason = null;
     this.metaState.nextCaveAvailable = this.metaState.cave + 1;
     this.metaState.outcomeCave = this.metaState.cave;
-    this.metaState.lastMessage = message;
-
-    this.syncUI();
+    this.setMessage(message);
 
     window.dispatchEvent(
       new CustomEvent('cob-exit-decision', {
@@ -1629,13 +1751,22 @@ export class CaveScene extends Phaser.Scene {
 
   openLobby(reason, message, nextCave = null) {
     const resolvedCave = this.metaState.cave;
+    const firstTimeClear = reason === 'exit' && !this.clearedCaves.has(resolvedCave);
 
     if (reason === 'exit') {
-      this.metaState.stats = {
-        ...createStatsState(),
-        ...this.metaState.stats,
-        totalCavesCleared: (this.metaState.stats?.totalCavesCleared ?? 0) + 1
-      };
+      this.clearedCaves.add(resolvedCave);
+
+      // Sem este guard, clicar na saída várias vezes na mesma cave
+      // contava a cave como concluída repetidamente e o objetivo
+      // "Explorador" podia ser farmado sem avançar.
+      if (firstTimeClear) {
+        this.metaState.stats = {
+          ...createStatsState(),
+          ...this.metaState.stats,
+          totalCavesCleared: (this.metaState.stats?.totalCavesCleared ?? 0) + 1
+        };
+      }
+
       this.metaState.bestCave = Math.max(this.metaState.bestCave ?? 1, resolvedCave);
     }
 
@@ -1647,6 +1778,7 @@ export class CaveScene extends Phaser.Scene {
 
     this.clearHoveredRock();
     this.hidePickaxeEffect();
+    this.flushPendingEffects();
     this.syncUI();
 
     if (reason === 'death') {
@@ -1669,14 +1801,23 @@ export class CaveScene extends Phaser.Scene {
 
   update() {}
 
-  setMessage(message) {
+  setMessage(message, tone = 'info') {
+    if (!message) return;
+
     this.metaState.lastMessage = message;
+
+    const entry = {
+      id: `${Date.now()}-${this.logSequence++}`,
+      text: message,
+      tone
+    };
+
+    this.metaState.messageLog = [entry, ...(this.metaState.messageLog ?? [])].slice(0, MAX_MESSAGE_LOG);
     this.syncUI();
   }
 
   syncUI() {
     this.game?.uiBridge?.syncUI?.({ state: this.metaState, purchased: this.purchased });
-    window.dispatchEvent(new CustomEvent('cob-state', { detail: this.metaState }));
   }
 
   renderDecoration(tile, point) {

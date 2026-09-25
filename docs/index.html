@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CoinsOrBombs — minerar moedas ou detonar bombas</title>
+    <meta
+      name="description"
+      content="CoinsOrBombs: jogo isométrico de mineração e risco em React + Phaser. Quebre rochas, ache a saída escondida, colete moedas e relíquias e evite as bombas em 4 biomas e 80 caves."
+    />
+    <link rel="canonical" href="https://adielribeiro.github.io/CoinsOrBombs/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="CoinsOrBombs — minerar moedas ou detonar bombas" />
+    <meta
+      property="og:description"
+      content="Jogo isométrico de mineração e risco: 4 biomas, 80 caves, bombas escondidas, relíquias e melhorias a cada cave."
+    />
+    <meta property="og:url" content="https://adielribeiro.github.io/CoinsOrBombs/" />
+    <meta property="og:image" content="https://adielribeiro.github.io/CoinsOrBombs/assets/og-image.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" href="assets/icon-192.jpg" sizes="192x192" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <header class="site">
+      <div class="wrap">
+        <a class="brand" href="./">Coins<span>Or</span>Bombs</a>
+        <nav class="links">
+          <a href="#jogo">Jogo</a>
+          <a href="#como-jogar">Como jogar</a>
+          <a href="#biomas">Biomas</a>
+          <a href="#tech">Tecnologias</a>
+          <a href="https://github.com/adielribeiro/CoinsOrBombs">Código</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <div class="hero">
+        <span class="kicker">ArchangelSoft apresenta</span>
+        <h1>Coins <em>or</em> Bombs</h1>
+        <p class="lede">
+          Um jogo isométrico de mineração e risco. Cada rocha pode esconder uma moeda, uma
+          relíquia, uma bomba — ou a saída da caverna. Você tem vida suficiente para errar? Miner e
+          descubra.
+        </p>
+        <div class="cta">
+          <a class="btn btn-primary" href="game/">▶ Jogar agora</a>
+          <a class="btn" href="https://github.com/adielribeiro/CoinsOrBombs">Ver no GitHub</a>
+          <a class="btn" href="https://coins-or-bombs.vercel.app">Abrir na Vercel</a>
+        </div>
+        <div class="badges">
+          <img
+            alt="React"
+            src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=20232A"
+          />
+          <img
+            alt="Phaser"
+            src="https://img.shields.io/badge/Phaser-3-EC7B31?style=flat-square&logo=phaser&logoColor=20232A"
+          />
+          <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646CFF?style=flat-square&logo=vite&logoColor=20232A" />
+          <img
+            alt="Licença"
+            src="https://img.shields.io/badge/license-MIT-8df0b0?style=flat-square"
+          />
+        </div>
+      </div>
+    </div>
+
+    <section id="jogo">
+      <div class="wrap">
+        <h2>O jogo</h2>
+        <p class="sub">
+          Layout pensado para celular em paisagem, mas roda bem em desktop. Sem instalação: abra a
+          página e jogue.
+        </p>
+
+        <div class="shots">
+          <figure class="shot">
+            <img src="assets/gameplay.jpg" alt="Tela de gameplay mostrando o mapa isométrico, o HUD e o registro de exploração" />
+            <figcaption>Exploração: o mapa é gerado por cave e o registro no canto inferior mostra o que acabou de acontecer.</figcaption>
+          </figure>
+          <div style="display: grid; gap: 18px">
+            <figure class="shot">
+              <img src="assets/menu.jpg" alt="Menu inicial com os botões Entrar, Configurações e Informações" />
+              <figcaption>Menu inicial.</figcaption>
+            </figure>
+            <figure class="shot">
+              <img src="assets/splash.jpg" alt="Splash screen da ArchangelSoft" />
+              <figcaption>Splash da ArchangelSoft.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="como-jogar">
+      <div class="wrap">
+        <h2>Como jogar</h2>
+        <p class="sub">Tudo acontece com o mouse ou o toque. Não existe pressionar uma tecla.</p>
+
+        <div class="steps">
+          <div class="step">
+            <div>
+              <strong>Quebre a borda da área aberta</strong>
+              <span>
+                Só rochas que tocam um tile já aberto podem ser quebradas. O contorno fica verde quando
+                a rocha está ao seu alcance e vermelho quando não está.
+              </span>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <strong>Ache a saída escondida</strong>
+              <span>
+                Uma das rochas esconde a saída da cave. Só quebrando você descobre qual é — e pode
+                escolher continuar explorando em vez de seguir em frente.
+              </span>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <strong>Aprenda a ler o risco</strong>
+              <span>
+                O contador 💣 mostra quantas bombas ainda restam na cave. A vida não regenera sozinha:
+                cada bomba custa 1 ponto e zerar a vida encerra a run.
+              </span>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <strong>Escolha uma melhoria por cave</strong>
+              <span>
+                Entre caves você recebe 3 opções de melhoria (picareta, vitalidade, moedas,utility e
+                revelação de bombas) e pode gastar moedas para trocar as opções.
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout" style="margin-top: 20px">
+          <strong>Morrer não é o fim.</strong> Você volta ao início do bioma atual, mas mantém moedas,
+          objetivos e relíquias. Só as melhorias da run são perdidas.
+        </div>
+      </div>
+    </section>
+
+    <section id="recursos">
+      <div class="wrap">
+        <h2>O que já existe</h2>
+        <p class="sub">Estado atual do protótipo, sem contar o roadmap.</p>
+
+        <div class="grid">
+          <div class="card">
+            <span class="ico">🗺️</span>
+            <h3>Mapa procedural por cave</h3>
+            <p>
+              Cada cave é gerada com tamanho, densidade de bombas, decoração e posição de saída
+              próprios. A resistência das rochas sobe com a profundidade.
+            </p>
+          </div>
+          <div class="card">
+            <span class="ico">💣</span>
+            <h3>Risco real</h3>
+            <p>
+              As bombas são plantadas nas rochas e você não tem como prever. O instinto de garimpo
+              revela uma bomba aleatória por quebra, e a poção dedal-duro faz o mesmo na hora.
+            </p>
+          </div>
+          <div class="card">
+            <span class="ico">🎒</span>
+            <h3>Utilitários</h3>
+            <p>
+              Poção de vida, poção dedo-duro e poção caminho seguro: compradas na loja do lobby ou
+              encontradas em drops durante a quebra.
+            </p>
+          </div>
+          <div class="card">
+            <span class="ico">📈</span>
+            <h3>Progressão de run</h3>
+            <p>Seis trilhas de melhoria sorteadas a cada cave, com reroll pago em moedas.</p>
+          </div>
+          <div class="card">
+            <span class="ico">🔮</span>
+            <h3>Relíquias e objetivos</h3>
+            <p>Uma relíquia por bioma e quatro objetivos persistentes para acompanhar.</p>
+          </div>
+          <div class="card">
+            <span class="ico">📱</span>
+            <h3>Celular em paisagem</h3>
+            <p>
+              HUD responsivo medido em tempo real, layout que se adapta e instalação como app (PWA).
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="biomas">
+      <div class="wrap">
+        <h2>Biomas</h2>
+        <p class="sub">Cada bioma tem 20 caves, com paleta, cenário, densidade de moedas e de bombas próprios.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Bioma</th>
+                <th>Caves</th>
+                <th>Desbloqueia</th>
+                <th>Relíquia</th>
+                <th>Moedas</th>
+                <th>Bombas</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="dot" style="background: #ffc26b"></span>Mina Solar</td>
+                <td>1–20</td>
+                <td>Início</td>
+                <td>Presa Âmbar</td>
+                <td>×1.00</td>
+                <td>×1.00</td>
+              </tr>
+              <tr>
+                <td><span class="dot" style="background: #8fd8ff"></span>Gruta de Gelo</td>
+                <td>21–40</td>
+                <td>Cave 20</td>
+                <td>Flor de Gelo</td>
+                <td>×0.94</td>
+                <td>×1.04</td>
+              </tr>
+              <tr>
+                <td><span class="dot" style="background: #ff926b"></span>Profundezas Rubras</td>
+                <td>41–60</td>
+                <td>Cave 40</td>
+                <td>Núcleo Incandescente</td>
+                <td>×1.02</td>
+                <td>×1.08</td>
+              </tr>
+              <tr>
+                <td><span class="dot" style="background: #b99cff"></span>Ruínas Abissais</td>
+                <td>61–80</td>
+                <td>Cave 60</td>
+                <td>Placa das Ruínas</td>
+                <td>×0.96</td>
+                <td>×1.12</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tech">
+      <div class="wrap">
+        <h2>Tecnologias</h2>
+        <p class="sub">React para a interface, Phaser para o mundo isométrico, Vite para o build.</p>
+
+        <div class="grid" style="margin-bottom: 20px">
+          <div class="card">
+            <span class="ico">⚛️</span>
+            <h3>React 18</h3>
+            <p>HUD, lobby, loja de utilitários, seleção de bioma e modais.</p>
+          </div>
+          <div class="card">
+            <span class="ico">🎮</span>
+            <h3>Phaser 3</h3>
+            <p>Render isométrico, input, tweens e câmera.</p>
+          </div>
+          <div class="card">
+            <span class="ico">📦</span>
+            <h3>Vite 7</h3>
+            <p>Dev server instantâneo e build com code-splitting entre Phaser e React.</p>
+          </div>
+        </div>
+
+        <h3 style="margin: 28px 0 10px">Rodando localmente</h3>
+        <pre><code>git clone https://github.com/adielribeiro/CoinsOrBombs.git
+cd CoinsOrBombs
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # gera dist/
+npm run preview  # serve o build</code></pre>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="wrap">
+        <h2>Roadmap</h2>
+        <p class="sub">O que está planejado, em ordem de prioridade.</p>
+        <div class="grid">
+          <div class="card">
+            <h3>Próximo</h3>
+            <p>Áudio e feedback sonoro, save completo da run e mais biomas.</p>
+          </div>
+          <div class="card">
+            <h3>Depois</h3>
+            <p>Inimigos, eventos aleatórios por cave e um modo diário com semente fixa.</p>
+          </div>
+          <div class="card">
+            <h3>Ideias</h3>
+            <p>Multiplayer cooperativo e tabela de leaderboard online.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="site">
+    <div class="wrap">
+      <span>© 2026 Adiel Vale · ArchangelSoft · Licença MIT</span>
+      <nav>
+        <a href="game/">Jogar</a>
+        <a href="https://github.com/adielribeiro/CoinsOrBombs">Repositório</a>
+        <a href="https://github.com/adielribeiro/CoinsOrBombs/issues">Issues</a>
+        <a href="https://github.com/adielribeiro/CoinsOrBombs/blob/main/CONTRIBUTING.md">Contribuir</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

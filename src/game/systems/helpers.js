@@ -91,3 +91,19 @@ export function isExitUnlocked(mapData, exit) {
     return tile.type !== 'rock';
   });
 }
+
+/**
+ * A cave só é vencível quando existe caminho caminhável da entrada até um
+ * vizinho da saída. O gerador usa isto para garantir que toda cave gerada é
+ * terminável — sem isso, uma saída totalmente cercada por rocha maciça
+ * geraria uma run impossível.
+ */
+export function isExitReachable(mapData) {
+  if (!isExitUnlocked(mapData, mapData.exit)) return false;
+
+  const connected = getConnectedOpenTiles(mapData, mapData.entry);
+
+  return getNeighbors4(mapData.exit.col, mapData.exit.row, mapData.width, mapData.height).some(
+    (neighbor) => connected.has(`${neighbor.col},${neighbor.row}`)
+  );
+}

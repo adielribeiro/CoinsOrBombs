@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Prepare Pages output
+        run: node scripts/prepare-pages.mjs
+
+      - name: Check that docs/game was produced
+        run: test -f docs/game/index.html
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinsorbombs-dist
+          path: dist
+          retention-days: 7

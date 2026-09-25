@@ -1,0 +1,40 @@
+name: Feature request
+
+description: Sugestão de mecânica, conteúdo ou melhoria de interface
+
+labels: ["enhancement"]
+
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: O que você quer ver no jogo
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Gameplay / mecânica
+        - Progressão e balanceamento
+        - Interface e responsividade
+        - Conteúdo (biomas, relíquias, melhorias)
+        - Áudio
+        - Infraestrutura / build
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Por que isso valeria a pena
+      description: Ajuda a priorizar: o que trava hoje e como a mudança resolveria.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas que você já pensou

@@ -20,6 +20,7 @@ export const BIOMES = [
       edge: 0x24160f,
       entrance: 0x71bfff,
       exit: 0x78ffb6,
+      rockHighlight: 0xffdcae,
       highlight: 0xffc26b
     }
   },
@@ -44,6 +45,7 @@ export const BIOMES = [
       edge: 0x0f2230,
       entrance: 0x9bd9ff,
       exit: 0xb6ffef,
+      rockHighlight: 0xd7f0ff,
       highlight: 0x8fd8ff
     }
   },
@@ -68,6 +70,7 @@ export const BIOMES = [
       edge: 0x2a120f,
       entrance: 0xffc283,
       exit: 0xff9878,
+      rockHighlight: 0xffc0b1,
       highlight: 0xff926b
     }
   },
@@ -92,6 +95,7 @@ export const BIOMES = [
       edge: 0x171021,
       entrance: 0xbcb2ff,
       exit: 0xc6ffd6,
+      rockHighlight: 0xe1d2ff,
       highlight: 0xb99cff
     }
   }

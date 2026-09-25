@@ -1,8 +1,11 @@
 import { createRelicContent, getBiomeForCave, getBiomeProgress } from '../progression.js';
-import { getNeighbors4, getNeighbors8 } from './helpers.js';
+import { getNeighbors4, getNeighbors8, isExitReachable } from './helpers.js';
 
 const FLOOR_VARIANTS = ['floor_01', 'floor_02', 'floor_03'];
-const ROCK_VARIANTS = ['rock_01', 'rock_02', 'rock_03'];
+// O boulder redondo entra com peso maior: as lajes com rachadura (rock_01..03)
+// são ambíguas em silhueta pequena, enquanto o boulder lê imediatamente como
+// "isto aqui é uma rocha".
+const ROCK_VARIANTS = ['rock', 'rock', 'rock_01', 'rock_02', 'rock_03'];
 
 function getMapSize(cave) {
   return {
@@ -11,8 +14,16 @@ function getMapSize(cave) {
   };
 }
 
-function getRockHp(pickaxePower = 1) {
-  return Math.max(1, 6 - pickaxePower);
+/**
+ * A resistência da rocha agora também cresce com a profundidade do bioma.
+ * Antes ela dependia só da picareta, então a Cave 20 era idêntica à
+ * Cave 1 em dificuldade de quebra.
+ */
+function getRockHp(pickaxePower = 1, localCave = 1) {
+  const base = 6 - pickaxePower;
+  const depthBonus = Math.floor((localCave - 1) / 4);
+
+  return Math.max(1, base + depthBonus);
 }
 
 function pickRandom(list) {
@@ -123,7 +134,7 @@ function buildMainPath(width, height, entry, exit) {
 
   path.push(`${exit.col},${exit.row}`);
 
-  return new Set(path);
+  return path;
 }
 
 function decorateOpenTiles(tiles, width, height, entry, biome) {
@@ -190,15 +201,95 @@ function decorateOpenTiles(tiles, width, height, entry, biome) {
   }
 }
 
+/**
+ * Abre o menor trecho de caminho necessário para que a rocha da saída fique
+ * encostada na área já aberta.
+ *
+ * Sem isto, uma cave pode sair da geração com a saída cercada por rocha que
+ * não é fronteira — o jogador não conseguiria nem sequer clicar nela, e a
+ * run ficaria sem solução possível. O caminho para em UM vizinho da saída:
+ * os outros lados continuam rocha, então a saída segue "escondida".
+ */
+function ensureExitReachable(mapData) {
+  if (hasOpenNeighborAtExit(mapData)) return;
+
+  const { width, height, entry, exit } = mapData;
+  const path = buildMainPath(width, height, entry, exit);
+  const exitNeighbors = new Set(
+    getNeighbors4(exit.col, exit.row, width, height).map((n) => `${n.col},${n.row}`)
+  );
+
+  const open = (key) => {
+    const [col, row] = key.split(',').map(Number);
+    const tile = mapData.tiles[row][col];
+
+    if (tile.type === 'rock' && !tile.isHiddenExit) {
+      tile.type = 'floor';
+      tile.walkable = true;
+      tile.revealed = true;
+      tile.hp = 0;
+      tile.deco = null;
+    }
+  };
+
+  for (const key of path) {
+    if (key === `${entry.col},${entry.row}`) continue;
+
+    // Para no primeiro vizinho da saída: abre a rota, mantém o resto fechado.
+    if (exitNeighbors.has(key)) {
+      open(key);
+      return;
+    }
+
+    open(key);
+  }
+}
+
+function hasOpenNeighborAtExit(mapData) {
+  const { width, height, entry, exit } = mapData;
+  const openRegion = floodOpenTiles(mapData, entry);
+  const exitNeighbors = new Set(
+    getNeighbors4(exit.col, exit.row, width, height).map((n) => `${n.col},${n.row}`)
+  );
+
+  for (const key of openRegion) {
+    if (exitNeighbors.has(key)) return true;
+  }
+
+  return false;
+}
+
+function floodOpenTiles(mapData, start) {
+  const visited = new Set([`${start.col},${start.row}`]);
+  const queue = [start];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    getNeighbors8(current.col, current.row, mapData.width, mapData.height).forEach((neighbor) => {
+      const key = `${neighbor.col},${neighbor.row}`;
+
+      if (visited.has(key)) return;
+      if (mapData.tiles[neighbor.row][neighbor.col].type === 'rock') return;
+
+      visited.add(key);
+      queue.push(neighbor);
+    });
+  }
+
+  return visited;
+}
+
 export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
   const biome = getBiomeForCave(cave);
+
   const { localCave } = getBiomeProgress(cave);
   const { width, height } = getMapSize(localCave);
   const entryRow = Math.floor(height / 2);
 
   const entry = { col: 0, row: entryRow };
   const exit = pickHiddenExitPosition(width, height, entry);
-  const rockHp = getRockHp(pickaxePower);
+  const rockHp = getRockHp(pickaxePower, localCave);
   const tiles = [];
 
   for (let row = 0; row < height; row += 1) {
@@ -231,9 +322,11 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
     isHiddenExit: true
   };
 
-  const pathTiles = buildMainPath(width, height, entry, exit);
-  pathTiles.delete(`${entry.col},${entry.row}`);
-  pathTiles.delete(`${exit.col},${exit.row}`);
+  const pathTiles = new Set(
+    buildMainPath(width, height, entry, exit).filter(
+      (key) => key !== `${entry.col},${entry.row}` && key !== `${exit.col},${exit.row}`
+    )
+  );
 
   const protectedExitSides = new Set(
     getNeighbors4(exit.col, exit.row, width, height).map(
@@ -269,9 +362,12 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
     }
   }
 
-  const baseBombCount = 5 + Math.floor((localCave - 1) / 2);
-  const bombDifficultyBonus = Math.floor((localCave - 1) / 5) * 0.02;
-  const bombCount = Math.ceil(baseBombCount * 1.2 * (1 + bombDifficultyBonus) * biome.bombMultiplier);
+  // Densidade em vez de contagem absoluta: o número de rochas cresce ~7x da
+  // Cave 1 para a Cave 20, então uma contagem fixa fazia a densidade de
+  // bomba CAIUR com a profundidade. A Cave 1 ficava com ~24% de chance por
+  // rocha com apenas 2 de vida — a run morria por sorteio antes de qualquer
+  // decisão do jogador.
+  const bombDensity = Math.min(0.3, 0.12 + (localCave - 1) * 0.005) * biome.bombMultiplier;
 
   const bombCandidates = [];
 
@@ -289,7 +385,8 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
     [bombCandidates[i], bombCandidates[j]] = [bombCandidates[j], bombCandidates[i]];
   }
 
-  const bombsToPlace = Math.min(bombCount, bombCandidates.length);
+  const bombCount = Math.min(bombCandidates.length, Math.round(bombCandidates.length * bombDensity));
+  const bombsToPlace = Math.max(1, bombCount);
 
   for (let i = 0; i < bombsToPlace; i += 1) {
     bombCandidates[i].hiddenContent = 'bomb';
@@ -307,7 +404,7 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
 
   decorateOpenTiles(tiles, width, height, entry, biome);
 
-  return {
+  const mapData = {
     width,
     height,
     entry,
@@ -316,4 +413,8 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
     biome,
     localCave
   };
+
+  ensureExitReachable(mapData);
+
+  return mapData;
 }

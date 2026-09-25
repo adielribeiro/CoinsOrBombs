@@ -19,6 +19,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('rock_01', 'assets/rock_01.png');
     this.load.image('rock_02', 'assets/rock_02.png');
     this.load.image('rock_03', 'assets/rock_03.png');
+    this.load.image('rock', 'assets/rock.png');
 
     // Decorations
     this.load.image('deco_rubble', 'assets/deco_rubble.png');
@@ -31,7 +32,6 @@ export class BootScene extends Phaser.Scene {
     // Special
     this.load.image('entrance_frame', 'assets/entrance_frame.png');
     this.load.image('exit_glow', 'assets/exit_glow.png');
-    this.load.image('cave_bg', 'assets/cave_bg.png');
     this.load.image('cave_bg_sunstone', 'assets/cave_bg_sunstone.png');
     this.load.image('cave_bg_frost', 'assets/cave_bg_frost.png');
     this.load.image('cave_bg_ember', 'assets/cave_bg_ember.png');
