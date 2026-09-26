@@ -55,6 +55,7 @@ export class CaveScene extends Phaser.Scene {
     this.reducedMotion = false;
     this.showGrid = false;
     this.hudInset = 0;
+    this.attractMode = false;
 
     this.renderMetrics = {
       ...getTileMetrics(1),
@@ -168,6 +169,21 @@ export class CaveScene extends Phaser.Scene {
       this.scheduleResponsiveRefresh();
     };
 
+    this.onAttractMode = (event) => {
+      const active = Boolean(event?.detail?.active);
+
+      if (this.attractMode === active) return;
+
+      this.attractMode = active;
+      this.hoveredRockTile = null;
+      this.hoverIndicator.clear();
+      this.hoverIndicator.setVisible(false);
+
+      if (this.mapData && !this.metaState.inLobby) {
+        this.renderMap();
+      }
+    };
+
     this.onSettingsChange = (event) => {
       const next = event?.detail ?? {};
 
@@ -205,6 +221,7 @@ export class CaveScene extends Phaser.Scene {
     window.addEventListener('cob-enter-cave', this.onEnterCave);
     window.addEventListener('cob-open-exit-lobby', this.onOpenExitLobby);
     window.addEventListener('cob-settings', this.onSettingsChange);
+    window.addEventListener('cob-attract-mode', this.onAttractMode);
     window.addEventListener('cob-hud-inset', this.onHudInset);
     window.addEventListener('cob-force-resize', this.onForcedResize);
     this.scale.on('resize', this.onResize);
@@ -216,6 +233,7 @@ export class CaveScene extends Phaser.Scene {
       window.removeEventListener('cob-enter-cave', this.onEnterCave);
       window.removeEventListener('cob-open-exit-lobby', this.onOpenExitLobby);
       window.removeEventListener('cob-settings', this.onSettingsChange);
+      window.removeEventListener('cob-attract-mode', this.onAttractMode);
       window.removeEventListener('cob-hud-inset', this.onHudInset);
       window.removeEventListener('cob-force-resize', this.onForcedResize);
       this.scale.off('resize', this.onResize);
@@ -231,6 +249,11 @@ export class CaveScene extends Phaser.Scene {
     }
 
     this.scheduleResponsiveRefresh();
+
+    // A cena nasce depois do React montar, então os eventos de intenção de UI
+    // (settings, modo attract, altura do HUD) disparados no mount chegam
+    // antes de existir quem os escute. Este aviso faz o React reenviar tudo.
+    window.dispatchEvent(new CustomEvent('cob-scene-ready'));
   }
 
   clearResponsiveRefreshQueue() {
@@ -791,16 +814,20 @@ export class CaveScene extends Phaser.Scene {
         glow.setDepth(point.y + 13);
         this.objectLayer.add(glow);
 
-        const marker = this.add.text(point.x, point.y - tileHeight * 1.06, 'SAÍDA', {
-          fontSize: this.getMarkerFontSize(18),
-          color: '#f6fff9',
-          fontStyle: 'bold',
-          align: 'center',
-          stroke: '#0d2a1c',
-          strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
-        }).setOrigin(0.5);
+        // No menu principal o mapa é fundo de tela de título: o texto "SAÍDA"
+        // aparecendo por cima da vinheta parecia defeito, não arte.
+        if (!this.attractMode) {
+          const marker = this.add.text(point.x, point.y - tileHeight * 1.06, 'SAÍDA', {
+            fontSize: this.getMarkerFontSize(18),
+            color: '#f6fff9',
+            fontStyle: 'bold',
+            align: 'center',
+            stroke: '#0d2a1c',
+            strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
+          }).setOrigin(0.5);
 
-        this.objectLayer.add(marker);
+          this.objectLayer.add(marker);
+        }
       }
 
       if (tile.type === 'entrance') {
@@ -808,16 +835,18 @@ export class CaveScene extends Phaser.Scene {
         frame.setScale(0.54 * mapScale);
         this.objectLayer.add(frame);
 
-        const marker = this.add.text(point.x, point.y - tileHeight * 1.02, 'IN', {
-          fontSize: this.getMarkerFontSize(15),
-          color: '#f1fbff',
-          fontStyle: 'bold',
-          align: 'center',
-          stroke: '#10263c',
-          strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
-        }).setOrigin(0.5);
+        if (!this.attractMode) {
+          const marker = this.add.text(point.x, point.y - tileHeight * 1.02, 'IN', {
+            fontSize: this.getMarkerFontSize(15),
+            color: '#f1fbff',
+            fontStyle: 'bold',
+            align: 'center',
+            stroke: '#10263c',
+            strokeThickness: this.renderMetrics.isMobileLandscape ? 4 : 5
+          }).setOrigin(0.5);
 
-        this.objectLayer.add(marker);
+          this.objectLayer.add(marker);
+        }
       }
     });
   }

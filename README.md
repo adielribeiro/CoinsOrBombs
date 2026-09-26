@@ -154,6 +154,7 @@ npm run dev      # http://localhost:5173
 | `npm run build` | Build de produção em `dist/` |
 | `npm run preview` | Serve o build na porta 3000 |
 | `npm run pages` | Build + copia para `docs/game` (o que o Pages serve) |
+| `node scripts/fetch-fonts.mjs` | Rebaixa as fontes do Google Fonts para `public/assets/fonts` |
 
 O `vite.config.js` usa `base: './'`, então o mesmo build roda na raiz, em
 `/CoinsOrBombs/` e em qualquer subpasta.
@@ -183,6 +184,32 @@ republicar sem novo commit: **Actions → Deploy GitHub Pages → Run
 workflow**. O workflow `Verificar se o GitHub Pages esta habilitado` diz
 exatamente o que falta caso ele nunca rode.
 
+
+## Identidade visual
+
+A interface segue a linguagem de **tela de título de console**: a arte do jogo
+ocupa a tela toda e a UI recua por cima.
+
+- **Menu em coluna à esquerda**, com itens em caixa alta e tracking largo,
+  separadores de 1px e uma barra de acento que preenche no hover. Sem botão
+  preenchido com gradiente.
+- **Números em monoespaçada** com labels minúsculas — o HUD lê como
+  telemetria, não como cartões.
+- **Hairline no lugar de card**: borda de 1px em vez de sombra e blur.
+- **Tipografia embutida** (396 KB, subsets latin e latin-ext), para o PWA ter
+  a mesma cara offline:
+
+| Uso | Família |
+| --- | --- |
+| Título, títulos de seção | Cinzel |
+| Menus, botões, labels, texto | Barlow + Barlow Condensed |
+| Números, contadores, códigos de cave | IBM Plex Mono |
+
+No menu principal o mapa entra em **modo attract**: os marcadores `IN` e
+`SAÍDA` não são desenhados, porque apareciam por cima da vinheta e pareciam
+defeito em vez de arte.
+
+`Esc` fecha modais e sai da tela cheia (nessa ordem, cada um por vez).
 
 ## Stack
 

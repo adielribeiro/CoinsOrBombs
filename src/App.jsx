@@ -118,6 +118,7 @@ const ENTRY_PHASE = {
 
 const BLACK_SCREEN_MS = 900;
 const LOGO_FADE_MS = 2200;
+const GAME_VERSION = '0.2.0';
 
 const SETTINGS_STORAGE_KEY = 'coinsorbombs:settings:v1';
 const PROFILE_STORAGE_KEY = 'coinsorbombs:profile:v1';
@@ -463,6 +464,26 @@ export default function App() {
     };
   }, []);
 
+  /**
+   * Esc fecha o que estiver aberto, da camada mais alta para a mais baixa.
+   * Em tela cheia o Esc pertence ao navegador, então é ignorado aqui — do
+   * contrário o modal fecharia junto com a tela cheia.
+   */
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape' || isFullscreenActive()) return;
+
+      if (showUtilityShopModal) setShowUtilityShopModal(false);
+      else if (showBiomeSelect) setShowBiomeSelection(null);
+      else if (showSettings) setShowSettings(false);
+      else if (showInfoModal) setShowInfoModal(false);
+      else if (showExitDecision) setShowExitDecision(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showUtilityShopModal, showBiomeSelect, showSettings, showInfoModal, showExitDecision]);
+
   useEffect(() => {
     stateRef.current = gameState;
   }, [gameState]);
@@ -720,9 +741,11 @@ export default function App() {
     setShowUtilityShopModal(false);
   };
 
-  const closeBiomeSelection = () => {
+  const closeBiomeSelection = (nextContext = null) => {
     setShowBiomeSelect(false);
     setPendingBiomeState(null);
+
+    if (nextContext) setBiomeSelectContext(nextContext);
   };
 
   const maybeOpenBiomeSelection = (nextState, context = 'transition') => {
@@ -1020,6 +1043,33 @@ export default function App() {
     window.dispatchEvent(new CustomEvent('cob-hud-inset', { detail: { height: hudHeight } }));
   }, [hudHeight]);
 
+  // No menu principal o mapa é só arte de fundo: sem marcadores de "IN" e
+  // "SAÍDA" aparecendo por cima da vinheta.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('cob-attract-mode', { detail: { active: entryPhase === ENTRY_PHASE.MENU } })
+    );
+  }, [entryPhase]);
+
+  /**
+   * Handshake com a cena do Phaser. A cena é criada depois do React montar, e
+   * o jogo não começa pausado — então tudo que é enviado uma única vez no
+   * mount (configurações, modo attract) se perde na primeira carga. Aqui o
+   * React reenvia o estado atual sempre que a cena se anuncia.
+   */
+  useEffect(() => {
+    const replyToScene = () => {
+      window.dispatchEvent(new CustomEvent('cob-settings', { detail: settings }));
+      window.dispatchEvent(
+        new CustomEvent('cob-attract-mode', { detail: { active: entryPhase === ENTRY_PHASE.MENU } })
+      );
+      window.dispatchEvent(new CustomEvent('cob-hud-inset', { detail: { height: hudHeight } }));
+    };
+
+    window.addEventListener('cob-scene-ready', replyToScene);
+    return () => window.removeEventListener('cob-scene-ready', replyToScene);
+  }, [settings, entryPhase, hudHeight]);
+
   return (
     <div className="app-shell">
       <main className="game-area" ref={shellRef}>
@@ -1028,14 +1078,19 @@ export default function App() {
         {showGameHud && (
           <>
             <div className="hud-bar" ref={hudRef}>
+              {/*
+                Rótulos curtos em vez de emoji: no HUD de console o número é
+                a informação e o texto curto diz o que é. Emoji brigava com
+                a grade do tracker e com a fonte nova.
+              */}
               <div className="hud-cluster">
                 <div className="hud-pill">
-                  <span>Cave</span>
+                  <span>CAVE</span>
                   <strong>{activeProgress.label}</strong>
                 </div>
 
                 <div className="hud-pill hud-pill-wide">
-                  <span>Bioma</span>
+                  <span>BIOMA</span>
                   <strong>{activeBiome.name}</strong>
                 </div>
               </div>
@@ -1045,14 +1100,14 @@ export default function App() {
                   className={`hud-pill hud-pill-heart ${pulsingPill === 'heart' ? 'pulsing' : ''}`}
                   title="Vida atual"
                 >
-                  <span aria-hidden="true">❤️</span>
+                  <span>HP</span>
                   <strong>
                     {gameState.hp}/{gameState.maxHp}
                   </strong>
                 </div>
 
                 <div className="hud-pill" title="Moedas acumuladas nesta run">
-                  <span aria-hidden="true">🪙</span>
+                  <span>MOEDAS</span>
                   <strong>{gameState.coins}</strong>
                 </div>
 
@@ -1060,17 +1115,17 @@ export default function App() {
                   className={`hud-pill hud-pill-risk ${pulsingPill === 'risk' ? 'pulsing' : ''}`}
                   title="Bombas ainda escondidas nesta cave"
                 >
-                  <span aria-hidden="true">💣</span>
+                  <span>BOMBAS</span>
                   <strong>{gameState.bombsRemaining ?? 0}</strong>
                 </div>
 
                 <div className="hud-pill" title="Relíquias na coleção">
-                  <span aria-hidden="true">🔮</span>
+                  <span>RELÍQUIAS</span>
                   <strong>{totalRelics}</strong>
                 </div>
 
                 <div className="hud-pill" title="Nível da picareta">
-                  <span aria-hidden="true">⛏️</span>
+                  <span>PICARETA</span>
                   <strong>{gameState.pickaxeLevel}</strong>
                 </div>
               </div>
@@ -1396,27 +1451,58 @@ export default function App() {
 
         {showMenu && (
           <div className="entry-overlay menu-overlay">
-            <div className="menu-panel">
-              <div className="menu-brand-wrap">
-                <span className="menu-kicker">ArchangelSoft apresenta</span>
-                <h1>Coins or Bombs</h1>
-                <p>Explore 20 caves por bioma, desbloqueie novos ambientes e acompanhe sua coleção pelo botão Informações.</p>
+            {/*
+              Menu em coluna à esquerda, com itens como texto em caixa alta e
+              tracking largo. A referência é a linguagem de tela de título de
+              console: a arte ocupa a tela toda e a UI recua, em vez de um
+              painel centralizado com botões preenchidos.
+            */}
+            <div className="menu-rail">
+              <div className="menu-lockup">
+                <span className="menu-kicker">ArchangelSoft</span>
+                <h1 className="menu-title">
+                  Coins<span className="menu-title-or">or</span>Bombs
+                </h1>
+                <span className="menu-tagline">80 caves · 4 biomas · nenhuma segunda chance</span>
               </div>
 
-              <div className="menu-actions">
+              <nav className="menu-actions" aria-label="Menu principal">
                 <button
-                  className="menu-primary-btn"
+                  className="menu-item"
                   type="button"
                   onClick={() => openBiomeSelection({ context: 'menu', biomeId: activeBiome.id })}
                 >
-                  Entrar
+                  <span className="menu-item-bar" aria-hidden="true" />
+                  <span className="menu-item-label">Entrar</span>
+                  {/* Decorativo: sem aria-hidden o nome acessível vira
+                      "Entrar começar a run". */}
+                  <span className="menu-item-hint" aria-hidden="true">começar a run</span>
                 </button>
-                <button className="menu-secondary-btn" type="button" onClick={() => setShowSettings(true)}>
-                  Configurações
+
+                <button
+                  className="menu-item"
+                  type="button"
+                  onClick={() => setShowSettings(true)}
+                >
+                  <span className="menu-item-bar" aria-hidden="true" />
+                  <span className="menu-item-label">Configurações</span>
+                  <span className="menu-item-hint" aria-hidden="true">tela cheia, grade, animação</span>
                 </button>
-                <button className="menu-secondary-btn" type="button" onClick={() => setShowInfoModal(true)}>
-                  Informações
+
+                <button
+                  className="menu-item"
+                  type="button"
+                  onClick={() => setShowInfoModal(true)}
+                >
+                  <span className="menu-item-bar" aria-hidden="true" />
+                  <span className="menu-item-label">Informações</span>
+                  <span className="menu-item-hint" aria-hidden="true">biomas, relíquias, objetivos</span>
                 </button>
+              </nav>
+
+              <div className="menu-foot">
+                <span className="menu-foot-item">v{GAME_VERSION}</span>
+                <span className="menu-foot-item">React · Phaser · Vite</span>
               </div>
             </div>
           </div>
@@ -1686,9 +1772,13 @@ export default function App() {
                 </div>
               </section>
 
-              <button className="menu-primary-btn compact" type="button" onClick={() => setShowInfoModal(false)}>
-                Fechar
-              </button>
+              {/* Fica preso no fim do scroll: este modal rola ~1000px e o
+                  botão_someava abaixo da dobra. */}
+              <div className="modal-actions">
+                <button className="menu-primary-btn compact" type="button" onClick={() => setShowInfoModal(false)}>
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -31,6 +31,7 @@
         <nav class="links">
           <a href="#jogo">Jogo</a>
           <a href="#como-jogar">Como jogar</a>
+          <a href="#identidade">Visual</a>
           <a href="#biomas">Biomas</a>
           <a href="#tech">Tecnologias</a>
           <a href="https://github.com/adielribeiro/CoinsOrBombs">Código</a>
@@ -64,13 +65,16 @@
         </p>
         <div class="shots">
           <figure class="shot">
-            <img src="assets/gameplay.jpg" alt="Tela de gameplay mostrando o mapa isométrico, o HUD e o registro de exploração" />
-            <figcaption>Exploração: o mapa é gerado por cave e o registro no canto inferior mostra o que acabou de acontecer.</figcaption>
+            <img src="assets/gameplay.jpg" alt="Gameplay com o mapa isométrico e o HUD em faixa de telemetria" />
+            <figcaption>
+              Exploração: o HUD é uma faixa de telemetria — label em caixa alta, número em
+              monoespaçada. O mapa é gerado por cave e o feedback acontece nele, não em texto.
+            </figcaption>
           </figure>
           <div style="display: grid; gap: 18px">
             <figure class="shot">
-              <img src="assets/menu.jpg" alt="Menu inicial com os botões Entrar, Configurações e Informações" />
-              <figcaption>Menu inicial.</figcaption>
+              <img src="assets/menu.jpg" alt="Tela de título do jogo: menu em coluna à esquerda sobre a arte da caverna" />
+              <figcaption>Tela de título.</figcaption>
             </figure>
             <figure class="shot">
               <img src="assets/splash.jpg" alt="Splash screen da ArchangelSoft" />
@@ -238,6 +242,45 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="identidade">
+      <div class="wrap">
+        <h2>Identidade visual</h2>
+        <p class="sub">
+          A interface segue a linguagem de tela de título de console: a arte do jogo ocupa a tela
+          toda e a UI recua por cima.
+        </p>
+        <div class="grid">
+          <div class="card">
+            <h3>Menu em coluna</h3>
+            <p>
+              Itens em caixa alta com tracking largo, separadores de 1px e uma barra de acento que
+              preenche no hover. Nenhum botão preenchido com gradiente.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Números legíveis</h3>
+            <p>
+              O HUD é uma faixa de telemetria: label minúscula e valor em monoespaçada, separado
+              por hairlines.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Hairline no lugar de card</h3>
+            <p>
+              Bordas de 1px em vez de sombra e blur. Quem dá cor é o mapa, não a interface.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Fontes embutidas</h3>
+            <p>
+              Cinzel, Barlow e IBM Plex Mono, 396 KB no total, com subsets latin e latin-ext. Como
+              PWA, o jogo tem a mesma cara offline.
+            </p>
+          </div>
         </div>
       </div>
     </section>

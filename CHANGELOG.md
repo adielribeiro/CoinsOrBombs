@@ -5,6 +5,52 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Mudado
+
+- **Identidade visual inteira refeita** no sentido de tela de título de console,
+  no lugar de painel de web.
+
+  - **Fontes embutidas** (396 KB, subsets latin + latin-ext): Cinzel para
+    títulos, Barlow/Barlow Condensed para UI, IBM Plex Mono para números.
+    `scripts/fetch-fonts.mjs` rebaixa do Google Fonts; nada de CDN, porque o
+    PWA precisa da mesma cara offline. Saiu a Inter.
+  - **Menu principal virou coluna à esquerda** com itens em caixa alta e
+    tracking largo, separadores de 1px, barra de acento no hover, dica
+    opcional à direita e versão/stack no rodapé. Saiu o painel centralizado
+    com borda e os três botões de gradiente verde.
+  - **HUD** como faixa de telemetria: label minúscula em caixa alta com tracking
+    + numeral em monoespaçada, separado por hairlines. Emoji saiu do HUD.
+  - **Botões** hairline, sem gradiente preenchido; o estado selecionado das
+    melhorias virou barra de acento em vez de fundo colorido.
+  - **Modais e lobby** sem `backdrop-filter` e sem sombra de card; divisórias
+    de 1px e títulos em Cinzel.
+  - Recolorido de toda a paleta para algo mais escuro e dessaturado, deixando a
+    cor para o mapa.
+
+- **Modo attract no menu principal**: o mapa vira arte de fundo e os
+  marcadores `IN`/`SAÍDA` deixam de ser desenhados. Antes eles apareciam por
+  cima da vinheta e pareciam defeito.
+
+### Adicionado
+
+- `Esc` fecha modais em ordem de camada e sai da tela cheia. Em tela cheia o
+  Esc pertence ao navegador e o handler ignora, senão os dois acontecem
+  juntos.
+- Ações fixas no fim do scroll em lobby, configurações, informações e seleção de
+  bioma. O modal de informações rola ~1000px numa caixa de 450px e o "Fechar"
+  ficava abaixo da dobra, sem como sair pelo teclado.
+- `aria-hidden` nas dicas do menu: sem isso o nome acessível do botão virava
+  "Entrar começar a run".
+
+### Corrigido
+
+- **Corrida de inicialização React ↔ Phaser.** Os eventos de intenção de UI
+  (configurações, modo attract, altura do HUD) são disparados no mount do
+  React, mas a cena do Phaser só existe depois — então se perdiam na primeira
+  carga. Isso significava, por exemplo, que "reduzir animações" e "grade
+  isométrica" não se aplicavam até a próxima interação. A cena agora anuncia
+  `cob-scene-ready` e o React reenvia o estado atual.
+
 ### Corrigido
 
 - **A Poção Caminho Seguro nunca funcionava — em nenhuma cave.** A busca de
