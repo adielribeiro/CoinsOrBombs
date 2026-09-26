@@ -240,51 +240,60 @@ button {
   cursor: pointer;
 }
 
-.message-log {
+/* Toast
+   Não é o log de ação que existia antes: aquele empilhava uma linha por
+   evento e cobria o canto do mapa. Este só aparece quando o jogador pede
+   algo que não teria efeito (vida cheia, nenhuma bomba restante), some
+   sozinho e nunca acumula. */
+
+.toast {
   position: absolute;
-  left: clamp(10px, 2vw, 20px);
-  bottom: clamp(10px, 2.5vh, 22px);
-  z-index: 29;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-width: min(460px, calc(100% - 76px));
-  pointer-events: none;
-}
-
-.message-log-item {
-  padding: 5px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  line-height: 1.3;
-  color: #dbe7f3;
-  background: rgba(10, 16, 24, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  left: 50%;
+  bottom: clamp(14px, 3vh, 28px);
+  transform: translateX(-50%);
+  z-index: 33;
+  max-width: min(440px, calc(100% - 28px));
+  padding: 9px 16px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-align: center;
+  color: #ffe9c4;
+  background: rgba(24, 18, 8, 0.94);
+  border: 1px solid rgba(255, 187, 88, 0.32);
   backdrop-filter: blur(6px);
-  animation: logSlideIn 0.22s ease both;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+  animation: toastIn 0.2s ease both;
 }
 
-.message-log-item:first-child {
-  color: #f4fbff;
-  border-color: rgba(141, 240, 176, 0.3);
-}
-
-.message-log-item.warn {
-  color: #ffd39d;
-  border-color: rgba(255, 187, 88, 0.34);
-}
-
-@keyframes logSlideIn {
+@keyframes toastIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translate(-50%, 8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Pulso do pill: substitui texto para dizer "a vida subiu" ou
+   "uma bomba foi revelada". */
+.hud-pill.pulsing {
+  animation: pillPulse 0.5s ease;
+}
+
+@keyframes pillPulse {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.16);
+    box-shadow: 0 0 0 2px rgba(141, 240, 176, 0.4);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
@@ -1188,15 +1197,10 @@ button {
     font-size: 13px;
   }
 
-  .message-log {
-    max-width: calc(100% - 20px);
-    bottom: 8px;
-    left: 8px;
-  }
-
-  .message-log-item {
-    font-size: 11px;
-    padding: 4px 8px;
+  .toast {
+    font-size: 11.5px;
+    padding: 7px 12px;
+    bottom: 10px;
   }
 
   .utility-bar {

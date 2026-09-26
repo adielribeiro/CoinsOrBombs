@@ -107,3 +107,63 @@ export function isExitReachable(mapData) {
     (neighbor) => connected.has(`${neighbor.col},${neighbor.row}`)
   );
 }
+
+/**
+ * Rota da entrada até a saída evitando TODOS os tiles com bomba. É o que a
+ * Poção Caminho Seguro revela.
+ *
+ * O percurso atravessa rocha de propósito: no começo da cave o único tile
+ * aberto é a entrada, então exigir "não rocha" faria a busca nunca sair
+ * dali. O valor da poção é exatamente dizer "quebre estas rochas, nesta
+ * ordem, e nenhuma vai ter bomba" — a parte difícil do trabalho é justamente
+ * atravessar a rocha.
+ *
+ * @returns {Array<{col: number, row: number}>|null} tiles em ordem, ou null
+ *   quando nenhuma rota sem bomba existe.
+ */
+export function findSafeRoute(mapData) {
+  const start = mapData.entry;
+  const target = mapData.exit;
+  const startKey = `${start.col},${start.row}`;
+
+  const cameFrom = new Map();
+  const visited = new Set([startKey]);
+  const queue = [start];
+  let reached = null;
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (current.col === target.col && current.row === target.row) {
+      reached = current;
+      break;
+    }
+
+    for (const neighbor of getNeighbors4(current.col, current.row, mapData.width, mapData.height)) {
+      const key = `${neighbor.col},${neighbor.row}`;
+      if (visited.has(key)) continue;
+
+      // Único bloqueio real: bomba. Rocha é atravessável de propósito.
+      if (mapData.tiles[neighbor.row][neighbor.col].hiddenContent === 'bomb') continue;
+
+      visited.add(key);
+      cameFrom.set(key, `${current.col},${current.row}`);
+      queue.push(neighbor);
+    }
+  }
+
+  if (!reached) return null;
+
+  const route = [];
+  let key = `${reached.col},${reached.row}`;
+
+  while (key) {
+    const [col, row] = key.split(',').map(Number);
+    route.push({ col, row });
+    key = cameFrom.get(key);
+  }
+
+  // A remontagem caminha de trás para frente (saída -> entrada); o jogo
+  // precisa da ordem em que a rocha é quebrada.
+  return route.reverse();
+}

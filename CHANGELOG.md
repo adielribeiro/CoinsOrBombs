@@ -5,6 +5,44 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Corrigido
+
+- **A Poção Caminho Seguro nunca funcionava — em nenhuma cave.** A busca de
+  rota exigia "não é rocha E não é bomba". No começo da cave o único tile
+  aberto é a entrada, então a busca nunca saía dela e não alcançava a saída,
+  que é uma rocha. Medido: **0 sucesso em 2.400 caves geradas**. A condição
+  correta é só "não é bomba" — atravessar rocha é justamente o serviço da
+  poção, que diz quais pedras quebrar sem tomar bomba. Esse comportamento foi
+  introduzido ao "consertar" a rota segura na versão anterior.
+- **A rota segura não aparecia.** Mesmo com a busca certa, o destaque verde era
+  desenhado antes do `if (isRock)` e ficava atrás da laje. Agora é desenhado
+  depois, por cima.
+- **1,5% das caves ficavam sem rota possível** (saída isolada por bombas). O
+  gerador agora limpa só as bombas do caminho mais curto até a saída, o que
+  preserva a densidade no resto da cave. Medido: 2.400/2.400 = 100%.
+- 4 novos testes travam isso: existência da rota em todas as caves, rota sem
+  bomba, rota contígua da entrada à saída, e rota que de fato atravessa rocha.
+
+### Adicionado
+
+- Aviso rápido (toast) que aparece sozinho quando uma ação não teria efeito:
+  vida cheia, nenhuma bomba restante. Não é fila nem log, e nunca acumula.
+- "-N" flutuando sobre a rocha mostrando quantos cliques ainda faltam.
+- Flash vermelho na rocha quando o clique não vale, explicando o porquê no
+  ponto do interaction em vez de num canto da tela.
+- Pulso no pill de vida e no de risco ao usar uma poção.
+
+### Mudado
+
+- **Removido o registro de ação da tela.** Ele empilhava uma linha por evento e
+  cobria o canto do mapa. O feedback da exploração continua existindo, mas no
+  próprio mapa: moeda subindo, explosão, relíquia, tremor da rocha, contagem
+  de dano, e o contorno vermelho no hover de rocha inalcançável.
+- Nenhum utilitário é mais bloqueado por momento da run. Enquanto o jogador
+  estiver numa cave e tiver o item, usa. Quando o uso não teria efeito
+  (vida cheia, nenhuma bomba sobrando) o item **não é consumido** e um aviso
+  rápido explica.
+
 ### Adicionado
 
 - **Tela cheia ao começar a run**, em desktop e Android. O pedido sai do mesmo

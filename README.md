@@ -87,13 +87,30 @@ Seis trilhas sorteadas a cada cave concluída:
 
 ### Utilitários
 
+Nenhum deles é bloqueado por momento da run: enquanto você estiver dentro de
+uma cave e tiver o item na mochila, pode usar.
+
 | Item | Efeito |
 | --- | --- |
-| ❤️ Poção de Vida | Recupera 1 ponto de vida durante a run |
+| ❤️ Poção de Vida | Recupera 1 ponto de vida |
 | 💣 Poção Dedo-Duro | Revela uma bomba escondida no mapa atual |
-| 🧭 Poção Caminho Seguro | Mostra a rota caminhável até a saída |
+| 🧭 Poção Caminho Seguro | Marca a rota da entrada até a saída que **não passa por nenhuma bomba** |
+
+A rota segura atravessa a rocha de propósito — ela diz exatamente quais
+pedras quebrar e em que ordem, sem tomar bomba. Todo mapa gerado tem pelo
+menos uma rota dessas; se as bombas isolarem a saída, o gerador limpa só as
+bombas do caminho mais curto.
 
 Comprados na loja do lobby (e revendidos por metade) ou encontrados como drop.
+Quando um uso não teria efeito (vida cheia, nenhuma bomba sobrando na cave) o
+item **não é consumido** e um aviso rápido aparece embaixo.
+
+## Feedback durante a exploração
+
+A tela não mostra log de ação. O retorno do que aconteceu fica no próprio
+mapa: a moeda subindo com o valor, a explosão com o flash de câmera, a
+relíquia dourada, o tremor da rocha, o `-N` flutuando com os cliques que
+faltam, e o contorno vermelho quando você clica numa rocha ainda cercada.
 
 ## Configurações
 

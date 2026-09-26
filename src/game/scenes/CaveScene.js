@@ -2,9 +2,8 @@ import Phaser from 'phaser';
 import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH, getTileMetrics, toIso } from '../config.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { generateMap } from '../systems/mapGenerator.js';
-import { getNeighbors4, isFrontierRock } from '../systems/helpers.js';
+import { findSafeRoute, getNeighbors4, isFrontierRock } from '../systems/helpers.js';
 
-const MAX_MESSAGE_LOG = 6;
 
 export class CaveScene extends Phaser.Scene {
   constructor() {
@@ -44,10 +43,7 @@ export class CaveScene extends Phaser.Scene {
       lobbyReason: null,
       nextCaveAvailable: null,
       outcomeCave: null,
-      lastMessage: 'Quebre uma rocha na beirada da área aberta para começar.',
-      messageLog: [
-        { id: 'boot', text: 'Quebre uma rocha na beirada da área aberta para começar.', tone: 'info' }
-      ]
+      lastMessage: 'Quebre uma rocha na beirada da área aberta para começar.'
     };
 
     this.purchased = [];
@@ -55,7 +51,7 @@ export class CaveScene extends Phaser.Scene {
     this.pendingResponsiveRefreshes = [];
     this.pendingEffects = [];
     this.clearedCaves = new Set();
-    this.logSequence = 0;
+    this.toastSequence = 0;
     this.reducedMotion = false;
     this.showGrid = false;
     this.hudInset = 0;
@@ -769,6 +765,13 @@ export class CaveScene extends Phaser.Scene {
         tile.rockSprite = rock;
         tile.sprite = rock;
 
+        // A rota segura é desenhada DEPOIS da rocha de propósito. Antes ela
+        // entrava antes do `if (isRock)` e ficava escondida atrás da laje —
+        // ou seja, a poção "funcionava" e não mostrava nada.
+        if (tile.safePath) {
+          this.renderSafePathHighlight(point, point.y + 3);
+        }
+
         return;
       }
 
@@ -1099,14 +1102,17 @@ export class CaveScene extends Phaser.Scene {
     }
 
     if (tile.type !== 'rock') {
-      this.setMessage('Agora a interação é focada nas rochas expostas da borda.');
+      // Clicar em chão não é erro, é地板. Nada a dizer.
       return;
     }
 
     const canBreak = isFrontierRock(this.mapData, this.mapData.entry, tile);
 
     if (!canBreak) {
-      this.setMessage('Você só pode quebrar rochas que estejam na beirada da área aberta.');
+      // Sem texto na tela: o porquê aparece no próprio tile, onde o jogador
+      // está olhando. O hover já pinta a rocha de vermelho quando não dá para
+      // quebrar; o flash confirma o clique.
+      this.flashInvalidTile(tile);
       return;
     }
 
@@ -1114,16 +1120,66 @@ export class CaveScene extends Phaser.Scene {
     this.damageRock(tile);
   }
 
+  flashInvalidTile(tile) {
+    const sprite = tile.sprite;
+    if (!sprite?.active) return;
+
+    this.tweens.killTweensOf(sprite);
+    sprite.setTint(0xff6b6b);
+
+    const baseX = sprite.x;
+
+    this.tweens.add({
+      targets: sprite,
+      x: baseX + 4,
+      duration: 55,
+      yoyo: true,
+      repeat: 2,
+      onComplete: () => {
+        if (!sprite.active) return;
+        sprite.x = baseX;
+        this.applyRockBaseTint(tile);
+      }
+    });
+  }
+
   damageRock(tile, isBonus = false) {
     tile.hp -= 1;
 
     if (tile.hp > 0) {
-      this.setMessage(`Rocha danificada. Faltam ${tile.hp} clique(s).`, 'warn');
+      this.showDamageCount(tile);
       this.flashRockHit(tile);
       return;
     }
 
     this.resolveBrokenRock(tile, isBonus);
+  }
+
+  /** Quantos cliques faltam, sobre a própria rocha, em vez de no log. */
+  showDamageCount(tile) {
+    if (this.reducedMotion || !this.origin) return;
+
+    const { tileWidth, tileHeight } = this.renderMetrics;
+    const point = toIso(tile.col, tile.row, this.origin.x, this.origin.y, tileWidth, tileHeight);
+
+    const label = this.add
+      .text(point.x, point.y - tileHeight * 0.86, `-${tile.hp}`, {
+        fontSize: this.getMarkerFontSize(15),
+        color: '#ffe3bd',
+        fontStyle: 'bold',
+        stroke: '#4a2a00',
+        strokeThickness: this.renderMetrics.isMobileLandscape ? 3 : 4
+      })
+      .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: label,
+      y: label.y - tileHeight * 0.45,
+      alpha: 0,
+      duration: 620,
+      ease: 'Cubic.easeOut',
+      onComplete: () => label.destroy()
+    });
   }
 
   flashRockHit(tile) {
@@ -1360,8 +1416,11 @@ export class CaveScene extends Phaser.Scene {
       }
     }
 
+    // A composição de frases existia só para alimentar o log em tela. O
+    // lobby usa `lastMessage`, e lá a frase inteira ainda é o resultado da
+    // cave, então ela continua sendo montada — apenas não é mais desenhada
+    // durante a exploração.
     this.setMessage([message, ...extraMessages].filter(Boolean).join(' '));
-    this.syncUI();
   }
 
   tryRockBurst(originTile) {
@@ -1586,6 +1645,13 @@ export class CaveScene extends Phaser.Scene {
     return true;
   }
 
+  /**
+   * Nenhum utilitário é bloqueado por momento da run: enquanto o jogador
+   * estiver dentro de uma cave e tiver o item, ele pode usar. As duas
+   * mensagens que sobraram são para quando a ação não teria efeito nenhum
+   * (vida cheia, nenhuma bomba sobrando) — nesses casos o item não é
+   * consumido, e o jogador recebe um aviso rápido em vez de um silêncio.
+   */
   handleUtilityUse(type) {
     if (!type || this.metaState.inLobby) {
       return;
@@ -1594,18 +1660,19 @@ export class CaveScene extends Phaser.Scene {
     const currentCount = this.metaState.utilities?.[type] ?? 0;
 
     if (currentCount <= 0) {
-      this.setMessage('Você não tem esse utilitário na mochila.');
+      this.notify('Você não tem esse utilitário na mochila.');
       return;
     }
 
     if (type === 'lifePotion') {
       if (this.metaState.hp >= this.metaState.maxHp) {
-        this.setMessage('Sua vida já está cheia. Guardar poção nunca fez mal a ninguém.');
+        this.notify('Sua vida já está cheia — a poção foi guardada.');
         return;
       }
 
       this.metaState.hp = Math.min(this.metaState.maxHp, this.metaState.hp + 1);
       this.consumeUtility(type);
+      this.pulseHudPill('heart');
       this.setMessage(`Poção de vida usada. Vida atual: ${this.metaState.hp}/${this.metaState.maxHp}.`);
       this.syncUI();
       return;
@@ -1615,7 +1682,7 @@ export class CaveScene extends Phaser.Scene {
       const hiddenBomb = this.findHiddenBombTile();
 
       if (!hiddenBomb) {
-        this.setMessage('Nenhuma bomba escondida restante para dedurar nesta cave.');
+        this.notify('Nenhuma bomba escondida restante nesta cave.');
         return;
       }
 
@@ -1623,6 +1690,7 @@ export class CaveScene extends Phaser.Scene {
       this.consumeUtility(type);
       this.hoveredRockTile = null;
       this.renderMap();
+      this.pulseHudPill('risk');
       this.setMessage('Poção dedo-duro usada. Uma bomba foi revelada no mapa.');
       this.syncUI();
       return;
@@ -1632,7 +1700,7 @@ export class CaveScene extends Phaser.Scene {
       const success = this.revealSafePath();
 
       if (!success) {
-        this.setMessage('Não encontrei uma rota segura completa nesta cave. O subterrâneo resolveu ser dramático.', 'warn');
+        this.notify('Não há rota sem bomba até a saída nesta cave.');
         return;
       }
 
@@ -1642,6 +1710,13 @@ export class CaveScene extends Phaser.Scene {
       this.setMessage('Poção caminho seguro usada. A rota verde até a saída foi revelada.');
       this.syncUI();
     }
+  }
+
+  /** Pulsa um pill do HUD, para a mudança de vida/risco ser perceptível sem texto. */
+  pulseHudPill(kind) {
+    if (typeof window === 'undefined') return;
+
+    window.dispatchEvent(new CustomEvent('cob-pulse-pill', { detail: { kind } }));
   }
 
   consumeUtility(type) {
@@ -1675,57 +1750,18 @@ export class CaveScene extends Phaser.Scene {
   }
 
   revealSafePath() {
-    const cameFrom = new Map();
-    const queue = [this.mapData.entry];
-    const visited = new Set([`${this.mapData.entry.col},${this.mapData.entry.row}`]);
-    let foundExit = null;
-
     for (let row = 0; row < this.mapData.height; row += 1) {
       for (let col = 0; col < this.mapData.width; col += 1) {
         this.mapData.tiles[row][col].safePath = false;
       }
     }
 
-    while (queue.length > 0) {
-      const current = queue.shift();
-      const currentKey = `${current.col},${current.row}`;
+    const route = findSafeRoute(this.mapData);
 
-      if (current.col === this.mapData.exit.col && current.row === this.mapData.exit.row) {
-        foundExit = current;
-        break;
-      }
+    if (!route) return false;
 
-      const neighbors = getNeighbors4(current.col, current.row, this.mapData.width, this.mapData.height);
-
-      for (const neighbor of neighbors) {
-        const neighborKey = `${neighbor.col},${neighbor.row}`;
-        if (visited.has(neighborKey)) continue;
-
-        const tile = this.mapData.tiles[neighbor.row][neighbor.col];
-        // A rota segura precisa ser caminhável de verdade: a versão
-        // anterior tratava qualquer tile que não fosse bomba como seguro,
-        // o que desenhava o caminho verde atravessando rochas maciças.
-        const isSafeTile = tile.type !== 'rock' && tile.hiddenContent !== 'bomb';
-
-        if (!isSafeTile) continue;
-
-        visited.add(neighborKey);
-        cameFrom.set(neighborKey, currentKey);
-        queue.push(neighbor);
-      }
-    }
-
-    if (!foundExit) {
-      return false;
-    }
-
-    let walkKey = `${foundExit.col},${foundExit.row}`;
-
-    while (walkKey) {
-      const [col, row] = walkKey.split(',').map(Number);
-      const tile = this.mapData.tiles[row][col];
-      tile.safePath = true;
-      walkKey = cameFrom.get(walkKey);
+    for (const step of route) {
+      this.mapData.tiles[step.row][step.col].safePath = true;
     }
 
     return true;
@@ -1801,19 +1837,28 @@ export class CaveScene extends Phaser.Scene {
 
   update() {}
 
-  setMessage(message, tone = 'info') {
+  /**
+   * `lastMessage` alimenta os modais de lobby e de decisão de saída, onde a
+   * frase é o resultado da cave. Durante a exploração não existe mais log em
+   * tela: o feedback é visual (moeda, explosão, relíquia, tremor) e texto
+   * demais cobria o mapa.
+   */
+  setMessage(message) {
     if (!message) return;
-
     this.metaState.lastMessage = message;
-
-    const entry = {
-      id: `${Date.now()}-${this.logSequence++}`,
-      text: message,
-      tone
-    };
-
-    this.metaState.messageLog = [entry, ...(this.metaState.messageLog ?? [])].slice(0, MAX_MESSAGE_LOG);
     this.syncUI();
+  }
+
+  /**
+   * Aviso rápido para quando uma ação não pode ser satisfeita agora (vida
+   * cheia, nenhuma bomba restante). Não é log: aparece uma vez e some.
+   */
+  notify(message) {
+    window.dispatchEvent(
+      new CustomEvent('cob-toast', {
+        detail: { id: `${Date.now()}-${this.toastSequence++}`, text: message }
+      })
+    );
   }
 
   syncUI() {

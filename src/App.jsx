@@ -67,7 +67,6 @@ const initialState = {
   stats: createStatsState(),
   lastRelicFound: null,
   utilities: createUtilityInventory(),
-  messageLog: [{ id: 'intro', text: INTRO_MESSAGE, tone: 'info' }],
   inLobby: false,
   lobbyReason: null,
   nextCaveAvailable: null,
@@ -337,7 +336,6 @@ function normalizeProgressState(state) {
     collection: { ...createCollectionState(), ...(state?.collection ?? {}) },
     stats: { ...createStatsState(), ...(state?.stats ?? {}) },
     utilities: { ...createUtilityInventory(), ...(state?.utilities ?? {}) },
-    messageLog: Array.isArray(state?.messageLog) ? state.messageLog : [],
     maxHp,
     hp: Math.min(maxHp, Math.max(0, state?.hp ?? maxHp)),
     biomeId: state?.biomeId ?? getBiomeForCave(state?.cave ?? 1).id,
@@ -388,6 +386,8 @@ export default function App() {
   const [profile, setProfile] = useState(() => readStorage(PROFILE_STORAGE_KEY, { bestCave: 1 }));
   const [isFullscreen, setIsFullscreen] = useState(() => isFullscreenActive());
   const [fullscreenNotice, setFullscreenNotice] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [pulsingPill, setPulsingPill] = useState(null);
 
   const fullscreenAvailable = isFullscreenSupported() || isStandaloneDisplay();
   const needsPwaHint = isIosLike() && !isStandaloneDisplay();
@@ -430,6 +430,37 @@ export default function App() {
       // canvas precisa remedir ou fica com o ratio errado.
       window.dispatchEvent(new CustomEvent('cob-force-resize'));
     });
+  }, []);
+
+  // Toast: some sozinho, sem fila. Substitui o log de ação removido.
+  useEffect(() => {
+    if (!toast) return undefined;
+
+    const timer = window.setTimeout(() => setToast(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!pulsingPill) return undefined;
+
+    const timer = window.setTimeout(() => setPulsingPill(null), 520);
+    return () => window.clearTimeout(timer);
+  }, [pulsingPill]);
+
+  useEffect(() => {
+    const handleToast = (event) => {
+      if (event.detail?.text) setToast(event.detail);
+    };
+
+    const handlePulse = (event) => setPulsingPill(event.detail?.kind ?? null);
+
+    window.addEventListener('cob-toast', handleToast);
+    window.addEventListener('cob-pulse-pill', handlePulse);
+
+    return () => {
+      window.removeEventListener('cob-toast', handleToast);
+      window.removeEventListener('cob-pulse-pill', handlePulse);
+    };
   }, []);
 
   useEffect(() => {
@@ -656,8 +687,7 @@ export default function App() {
       stats: baseState.stats ?? createStatsState(),
       bestCave: baseState.bestCave ?? 1,
       lastRelicFound: baseState.lastRelicFound ?? null,
-      lastMessage: message,
-      messageLog: [{ id: `enter-${targetCave}`, text: message, tone: 'info' }]
+      lastMessage: message
     });
   };
 
@@ -920,8 +950,7 @@ export default function App() {
       // o próximo bioma sem nunca ter concluído nenhuma cave dele.
       bestCave: baseState.bestCave ?? 1,
       lastRelicFound: baseState.lastRelicFound ?? null,
-      lastMessage: message,
-      messageLog: [{ id: `reset-${biomeStartCave}`, text: message, tone: 'warn' }]
+      lastMessage: message
     });
   };
 
@@ -985,7 +1014,6 @@ export default function App() {
   const currentBiomeTotal = activeProgress.totalCaves;
   const nextProgress = getBiomeProgress(nextCaveNumber);
   const pendingBiome = pendingBiomeState ? getBiomeForCave(pendingBiomeState.cave) : null;
-  const messageLog = gameState.messageLog ?? [];
   const bestCaveProgress = getBiomeProgress(profile.bestCave ?? 1);
 
   useEffect(() => {
@@ -1013,7 +1041,10 @@ export default function App() {
               </div>
 
               <div className="hud-cluster hud-cluster-vitals">
-                <div className="hud-pill hud-pill-heart" title="Vida atual">
+                <div
+                  className={`hud-pill hud-pill-heart ${pulsingPill === 'heart' ? 'pulsing' : ''}`}
+                  title="Vida atual"
+                >
                   <span aria-hidden="true">❤️</span>
                   <strong>
                     {gameState.hp}/{gameState.maxHp}
@@ -1025,7 +1056,10 @@ export default function App() {
                   <strong>{gameState.coins}</strong>
                 </div>
 
-                <div className="hud-pill hud-pill-risk" title="Bombas ainda escondidas nesta cave">
+                <div
+                  className={`hud-pill hud-pill-risk ${pulsingPill === 'risk' ? 'pulsing' : ''}`}
+                  title="Bombas ainda escondidas nesta cave"
+                >
                   <span aria-hidden="true">💣</span>
                   <strong>{gameState.bombsRemaining ?? 0}</strong>
                 </div>
@@ -1078,21 +1112,28 @@ export default function App() {
               </div>
             </div>
 
-            {messageLog.length > 0 && (
-              <ol className="message-log" aria-live="polite" aria-label="Registro da exploração">
-                {messageLog.slice(0, 3).map((entry) => (
-                  <li key={entry.id} className={`message-log-item ${entry.tone ?? 'info'}`}>
-                    {entry.text}
-                  </li>
-                ))}
-              </ol>
-            )}
-
+            {/*
+              A tela não mostra mais log de ação. O feedback da exploração é
+              visual e fica no mapa: moeda subindo, explosão, relíquia,
+              tremor da rocha, e o "-N" de quantos cliques faltam sobre a
+              própria pedra. Texto empilhado no canto cobria o mapa.
+            */}
             {/*
               Em celular não existe Esc: se o jogo entra em tela cheia, o
               jogador precisa de um caminho visível para sair.
             */}
           </>
+        )}
+
+        {/*
+          Toast: não é log. Só aparece quando o jogador pediu uma ação que
+          não teria efeito (vida cheia, nenhuma bomba restante) e some
+          sozinha. Sem ele o clique seria um silêncio sem explicação.
+        */}
+        {toast && (
+          <div className="toast" role="status" key={toast.id}>
+            {toast.text}
+          </div>
         )}
 
         {/*

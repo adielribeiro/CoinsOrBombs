@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { generateMap } from '../src/game/systems/mapGenerator.js';
-import { getNeighbors4, isFrontierRock } from '../src/game/systems/helpers.js';
+import { findSafeRoute, getNeighbors4, isFrontierRock } from '../src/game/systems/helpers.js';
 import { BIOMES, getBiomeForCave, getBiomeProgress } from '../src/game/progression.js';
 
 const TOTAL_CAVES = BIOMES.at(-1).endCave;
@@ -43,6 +43,78 @@ test('toda cave gerada tem a saída quebrável a partir da entrada', () => {
       );
     }
   }
+});
+
+test('toda cave tem rota sem bomba até a saída (a Poção Caminho Seguro sempre funciona)', () => {
+  // Regressão: a busca exigia "não é rocha E não é bomba". No começo da cave
+  // o único tile aberto é a entrada, então a busca nunca saía dela e a poção
+  // falhava em 100% das caves (0 sucesso em 2.400 geradas).
+  for (let cave = 1; cave <= TOTAL_CAVES; cave += 1) {
+    for (let attempt = 0; attempt < SAMPLES_PER_CAVE; attempt += 1) {
+      const map = generateMap(cave, 1, 0);
+      const route = findSafeRoute(map);
+
+      assert.ok(
+        route,
+        `cave ${cave} (${getBiomeProgress(cave).label}) ficou sem rota sem bomba, entao a pocao nao faria nada`
+      );
+    }
+  }
+});
+
+test('a rota segura nunca atravessa uma bomba', () => {
+  for (let cave = 1; cave <= TOTAL_CAVES; cave += 1) {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const map = generateMap(cave, 1, 0);
+      const route = findSafeRoute(map);
+
+      for (const step of route) {
+        const tile = map.tiles[step.row][step.col];
+        assert.notEqual(
+          tile.hiddenContent,
+          'bomb',
+          `cave ${cave}: a rota passou por uma bomba em ${step.col},${step.row}`
+        );
+      }
+    }
+  }
+});
+
+test('a rota segura começa na entrada e termina na saída, em tiles vizinhos', () => {
+  for (let cave = 1; cave <= TOTAL_CAVES; cave += 1) {
+    const map = generateMap(cave, 1, 0);
+    const route = findSafeRoute(map);
+
+    assert.deepEqual(route[0], { col: map.entry.col, row: map.entry.row }, 'comeco na entrada');
+    assert.deepEqual(
+      route.at(-1),
+      { col: map.exit.col, row: map.exit.row },
+      'fim na saida'
+    );
+
+    for (let i = 1; i < route.length; i += 1) {
+      const distance =
+        Math.abs(route[i].col - route[i - 1].col) + Math.abs(route[i].row - route[i - 1].row);
+      assert.equal(distance, 1, `degrau ${i} da rota nao e ortogonal`);
+    }
+  }
+});
+
+test('a rota segura atravessa rocha, que e o que a torna util', () => {
+  // Se a rota so passasse por chao aberto ela seria inútil: no início da cave
+  // nao existe chao aberto nenhum além da entrada.
+  let comRocha = 0;
+
+  for (let cave = 1; cave <= 20; cave += 1) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const map = generateMap(cave, 1, 0);
+      const route = findSafeRoute(map);
+      const atravessaRocha = route.some((step) => map.tiles[step.row][step.col].type === 'rock');
+      if (atravessaRocha) comRocha += 1;
+    }
+  }
+
+  assert.ok(comRocha > 0, 'a rota precisa indicar quais rochas quebrar');
 });
 
 test('a entrada é sempre um tile aberto e único', () => {

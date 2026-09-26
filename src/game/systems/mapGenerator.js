@@ -1,5 +1,5 @@
 import { createRelicContent, getBiomeForCave, getBiomeProgress } from '../progression.js';
-import { getNeighbors4, getNeighbors8, isExitReachable } from './helpers.js';
+import { findSafeRoute, getNeighbors4, getNeighbors8 } from './helpers.js';
 
 const FLOOR_VARIANTS = ['floor_01', 'floor_02', 'floor_03'];
 // O boulder redondo entra com peso maior: as lajes com rachadura (rock_01..03)
@@ -259,6 +259,73 @@ function hasOpenNeighborAtExit(mapData) {
   return false;
 }
 
+/**
+ * Garante que exista ao menos uma rota da entrada até a saída sem passar por
+ * bomba, que é o que a Poção Caminho Seguro revela.
+ *
+ * Sem isto, ~1,5% das caves ficavam com a saída cercada por bombas e a poção
+ * respondia "não encontrei rota" — um utilitário comprado por 80 moedas que
+ * não fazia nada. Astrategy: pega o caminho mais curto ignorando bombas e
+ * limpa só as bombas que estiverem nele. Converter apenas as bombas vizinhas
+ * da saída não bastava, porque a bomba pode estar mais longe e isolar a
+ * saída do resto do mapa.
+ */
+function ensureSafeRoute(mapData) {
+  if (findSafeRoute(mapData)) return;
+
+  const route = shortestPathIgnoringBombs(mapData);
+  if (!route) return;
+
+  for (const step of route) {
+    const tile = mapData.tiles[step.row][step.col];
+
+    if (tile.hiddenContent === 'bomb') {
+      tile.hiddenContent = 'empty';
+    }
+  }
+}
+
+/** Caminho mais curto da entrada até a saída, sem se importar com bombas. */
+function shortestPathIgnoringBombs(mapData) {
+  const { width, height, entry, exit } = mapData;
+  const startKey = `${entry.col},${entry.row}`;
+  const cameFrom = new Map();
+  const visited = new Set([startKey]);
+  const queue = [entry];
+  let reached = false;
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (current.col === exit.col && current.row === exit.row) {
+      reached = true;
+      break;
+    }
+
+    for (const neighbor of getNeighbors4(current.col, current.row, width, height)) {
+      const key = `${neighbor.col},${neighbor.row}`;
+      if (visited.has(key)) continue;
+
+      visited.add(key);
+      cameFrom.set(key, `${current.col},${current.row}`);
+      queue.push(neighbor);
+    }
+  }
+
+  if (!reached) return null;
+
+  const route = [];
+  let key = `${exit.col},${exit.row}`;
+
+  while (key) {
+    const [col, row] = key.split(',').map(Number);
+    route.push({ col, row });
+    key = cameFrom.get(key);
+  }
+
+  return route.reverse();
+}
+
 function floodOpenTiles(mapData, start) {
   const visited = new Set([`${start.col},${start.row}`]);
   const queue = [start];
@@ -415,6 +482,7 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
   };
 
   ensureExitReachable(mapData);
+  ensureSafeRoute(mapData);
 
   return mapData;
 }
