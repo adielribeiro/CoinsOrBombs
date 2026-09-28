@@ -7,6 +7,25 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Fundos pintados da Galeria de Vento e da Câmara de Cristal.**
+
+  Os dois biomas novos entraram com o fundo gerado por
+  `scripts/generate-backdrops.mjs`, e foram substituídos por arte pintada, no
+  mesmo estilo dos outros quatro.
+
+  - `scripts/generate-backdrops.mjs` agora **recusa escrever** sem `--force`.
+    Um script que grava no mesmo caminho da arte é armadilha: uma execução
+    acidental apagaria dois PNGs que ninguém consegue regenerar. O script continua
+    versionado porque é ele que registra, em código, a construção que a arte
+    segue — e, mais importante, as medições do que deu errado: a parede branca
+    por falta de clamp no `smoothstep`, o chão que nunca aparecia porque
+    `pesoChao` estava invertido, o moiré do chão vindo da escala da textura
+    variar a cada linha, e a cúpula de neve de `chao[px]` repetindo a
+    perspectiva que `ombro` já fazia.
+  - Os arquivos são 1536×1024 contra 768×512 dos outros quatro, na mesma
+    proporção 3:2, então o `coverScale` do Phaser enquadra igual. O custo é o
+    peso: 2,8 MB contra 0,6 MB por fundo, e o BootScene baixa o do bioma atual.
+
 - **Dois biomas novos: Galeria de Vento e Câmara de Cristal**, e as faixas
   encolheram de 20 para 10 caves. São 6 biomas e 60 caves, era 4 e 80.
 
@@ -16,10 +35,10 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   de relíquia (0.24). Entre os dois há uma queda proposital de dificuldade, que
   é o que faz o sexto bioma parecer um degrau e não uma continuação.
 
-  - **Os fundos dos biomas novos são gerados**, por `scripts/generate-backdrops.mjs`.
-    Os quatro existentes são arte pintada; não havia como fazer isso à mão com
-    o mesmo resultado, e um retângulo liso ao lado dos outros denuncia o bioma
-    novo na hora.
+  - **Os fundos dos biomas novos chegaram gerados**, por
+    `scripts/generate-backdrops.mjs`, e foram depois substituídos por arte
+    pintada. Os quatro existentes são pintados, e um retângulo liso ao lado
+    deles denuncia o bioma novo na hora.
   - **A Galeria de Vento tem correntes de ar** cruzando a galeria, e a Câmara de
     Cristal tem facetas planas na parede. São as assinaturas que differentiate
     os dois de uma caverna genérica.
