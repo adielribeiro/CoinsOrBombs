@@ -5,7 +5,7 @@ import {
   GROUND_CELL_WIDTH,
   GROUND_TEXTURE_KEYS
 } from '../ground.js';
-import { ROCK_CELL_SIZE, getRockSheetKey } from '../rocks.js';
+import { ROCK_CELL_SIZE, getRockSheetKey, getRockVariantCount } from '../rocks.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -57,7 +57,12 @@ export class BootScene extends Phaser.Scene {
     for (const biomeId of Object.keys(GROUND_TEXTURE_KEYS)) {
       this.load.spritesheet(getRockSheetKey(biomeId), `assets/rocks_${biomeId}.png`, {
         frameWidth: ROCK_CELL_SIZE,
-        frameHeight: ROCK_CELL_SIZE
+        frameHeight: ROCK_CELL_SIZE,
+        // A folha tem 16 células e cada bioma usa entre 12 e 14. Sem o
+        // `endFrame`, o Phaser criaria frame também para a célula vazia, e ela é
+        // um retângulo transparente: qualquer índice que a pegasse seria uma
+        // rocha invisível, e ninguém veria o motivo.
+        endFrame: getRockVariantCount(biomeId) - 1
       });
     }
 

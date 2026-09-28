@@ -16,12 +16,46 @@
 /** Célula de saída do recorte. Tem de bater com `CELULA_SAIDA` do script. */
 export const ROCK_CELL_SIZE = 176;
 
-/** Colunas e linhas de cada folha. 4 x 3 = 12 modelos por bioma. */
+/**
+ * Grade das folhas: 4 x 4 células.
+ *
+ * A grade é a MESMA nos seis biomas, e tem dezesseis células de propósito. Os
+ * sprites variam de 12 a 14 por bioma, então duas ou três células ficam
+ * TRANSPARENTES — e é `endFrame` no BootScene que corta a folha no total real,
+ * de modo que a célula vazia nunca vira um frame usável.
+ *
+ * A versão anterior empacotava cada bioma numa grade do tamanho exato, e a
+ * folha saía com alturas diferentes. Com a grade do jogo sendo uma lista plana
+ * de células, isso a deixava errada para três dos seis biomas: a ROCK_VARIANT_COUNT
+ * de 12 apontava para fora da folha nos que tinham 8 ou 10 células por linha.
+ * Grade fixa, lista plana, e o índice não precisa de aritmética por bioma.
+ */
 export const ROCK_SHEET_COLUMNS = 4;
-export const ROCK_SHEET_ROWS = 3;
+export const ROCK_SHEET_ROWS = 4;
 
-/** Quantos modelos o jogo sorteia. Um por frame. */
-export const ROCK_VARIANT_COUNT = ROCK_SHEET_COLUMNS * ROCK_SHEET_ROWS;
+/**
+ * Quantos modelos cada bioma tem.
+ *
+ * Vem do `manifest.json` que acompanha os sprites individuais, e o
+ * `scripts/slice-rocks.mjs` escreve este arquivo. O jogo não pode ter um número
+ * só: frost tem 14 sprites e sunstone tem 12, e sortear 12 em cima dos 14
+ * deixaria dois modelos fora da rodagem toda.
+ *
+ * `min` é o piso, usado quando a folha ainda não foi gerada. É o menor número
+ * do jogo de propósito: com uma folha ausente, sortear acima da contagem daria
+ * índice fora de faixa, e índice fora de faixa é o placeholder de textura
+ * ausente, com 35 caixas pretas na tela.
+ */
+export const ROCK_VARIANT_COUNT = 12;
+
+export const ROCK_VARIANT_COUNTS = {
+  sunstone: 12,
+  frost: 14,
+  ember: 13,
+  ruins: 12,
+  wind: 12,
+  crystal: 12
+};
 
 /**
  * Chave da folha de um bioma.
@@ -40,16 +74,22 @@ export function getRockSheetKey(biomeId) {
   return `rocks_${biomeId}`;
 }
 
+/** Quantos modelos a folha de um bioma tem. Cai no piso se o bioma for desconhecido. */
+export function getRockVariantCount(biomeId) {
+  return ROCK_VARIANT_COUNTS[biomeId] ?? ROCK_VARIANT_COUNT;
+}
+
 /**
- * Índice do frame, sempre dentro da folha.
+ * Índice do frame, sempre dentro da folha do bioma.
  *
  * O `mod` duplo é proposital: um índice negativo viraria frame `-1` e um índice
  * acima da contagem viraria o placeholder de novo, e nenhum dos dois estouraria
  * exceção. Aqui os dois viram um modelo válido.
  */
-export function getRockFrameIndex(variant = 0) {
+export function getRockFrameIndex(biomeId, variant = 0) {
+  const total = getRockVariantCount(biomeId);
   const v = Number.isFinite(variant) ? Math.trunc(variant) : 0;
-  return ((v % ROCK_VARIANT_COUNT) + ROCK_VARIANT_COUNT) % ROCK_VARIANT_COUNT;
+  return ((v % total) + total) % total;
 }
 
 /**

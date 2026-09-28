@@ -7,9 +7,56 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Mudado
 
-- **Cada rocha ganha ângulo, escala e espelhamento próprios**, derivados de
-  (coluna, linha, variante). Antes cada rocha era desenhada exatamente igual,
-  e a folha de doze modelos não chegava a ler como variação.
+- **As rochas agora são doze ou quatorze assuntos diferentes por bioma**, e não
+  variações de pose do mesmo assunto. Vem dos sprites individuais entregues no
+  ZIP `rocks_biomas_png_individuais.zip`, com um PNG por modelo e um
+  `manifest.json` ao lado.
+
+  **Eu estava errado na leitura anterior, e o número prova.** Eu disse que o
+  jitter resolvia a variação, e chamei aquilo de remendo — mas o certo era dizer
+  que não resolvia. As folhas 4x3 que eu tinha partido eram Madeiras de Poses:
+  em **quatro das seis, as células 5 e 6 eram idênticas pixel a pixel**, e a
+  diferença de silhueta entre pares era de 9% a 13%. Ângulo e escala sobre a
+  mesma imagem continuam sendo a mesma imagem.
+
+  Medido no material novo, comparando os contornos com o eixo y normalizado
+  pela altura de cada sprite (é o que separa uma laje de uma torre):
+
+  | bioma | folha antiga, média | sprites novos, média | mínimo antigo | mínimo novo |
+  | --- | --- | --- | --- | --- |
+  | sunstone | 11,5% | **20,5%** | 1,0% | 6,8% |
+  | frost | 13,1% | **19,8%** | 0,0% | 9,1% |
+  | ember | 9,3% | **23,6%** | 0,0% | 11,2% |
+  | ruins | — | **24,8%** | — | 12,3% |
+  | wind | — | **29,5%** | — | 12,7% |
+  | crystal | — | **21,5%** | 0,0% | 11,2% |
+
+  Nenhum par duplicado, em nenhum dos seis.
+
+  - **A contagem de sprites varia por bioma**, e isso quebrou o número único.
+    Com 12 a 14 modelos, sortear de 0 a 11 num bioma de 14 funciona e ninguém
+    percebe: dois modelos simplesmente nunca aparecem. `ROCK_VARIANT_COUNTS`
+    guarda a contagem de cada um, e há teste garantindo que os doze a catorze
+    aparecem mesmo jogando o bioma inteiro.
+  - **A grade das folhas passou a 4x4, fixa nos seis biomas.** A versão anterior
+    empacotava cada bioma no tamanho exato, e a folha saía com alturas
+    diferentes — o que deixava a grade do jogo errada para os biomas que não
+    tinham 12. Grade fixa, lista plana, e nenhuma aritmética por bioma no
+    índice. As células sobrantes ficam transparentes, e o `endFrame` do
+    BootScene corta a folha na contagem real para elas nunca virarem frame.
+  - O jitter de ângulo, escala e espelhamento **continua**, mas agora como
+    acréscimo sobre assuntos de verdade, e não como substituto.
+
+  Custo: as folhas ficaram 456–641 KB, contra 331–464 KB da versão de células
+  cheias. É o preço de mais arte por folha, e o pacote de boot vai de 13,9 MB
+  para 14,6 MB.
+
+- **O jitter de ângulo, escala e espelhamento por rocha**, derivado de
+  (coluna, linha, variante). Continua valendo, mas agora como acréscimo sobre
+  assuntos de verdade.
+
+- **O jitter de ângulo, escala e espelhamento**, derivado de
+  (coluna, linha, variante).
 
   **O motivo está medido, e não é o código.** O jogo estava usando os onze ou
   doze frames certos, com regiões de recorte corretas — confirmado lendo o frame

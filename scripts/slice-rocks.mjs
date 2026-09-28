@@ -1,72 +1,96 @@
-// Recorta as folhas de rocha por bioma em um spritesheet pronto para o jogo.
+// Recorta os sprites de rocha por bioma em um spritesheet pronto para o jogo.
 //
-//   node scripts/slice-rocks.mjs               // todas as folhas da pasta titles
+//   node scripts/slice-rocks.mjs               // todas as folhas
 //   node scripts/slice-rocks.mjs frost         // so uma, para iterar rapido
+//
+// De onde vem a entrada
+// ---------------------
+// `rocks_individuais/<bioma>/*.png`, mais o `manifest.json` ao lado. São sprites
+// individuais, com tamanhos diferentes cada um, e a contagem DIVERGE por bioma:
+// crystal 12, ember 13, frost 14, ruins 12, sunstone 12, wind 12.
+//
+// A versão anterior desta fatia consumia uma folha 4x3 e fabricava doze modelos
+// por bioma. Era a entrada errada: naquela folha as células 5 e 6 eram
+// idênticas pixel a pixel em quatro dos seis biomas, e a diferença de silhueta
+// entre pares era de 9% a 13% — variação de pose, não de assunto. Com a arte
+// certa a média sobe para 20% a 29% e não sobra nenhum par duplicado.
 //
 // O que entra e o que sai
 // ----------------------
-// Entrada: `rocks_<bioma>.png`, 1448x1086, uma folha 4x3 de celulas de 362px,
-// com 12 modelos de rocha por bioma. Medido nas seis folhas: todas com a mesma
-// dimensao, todas as 12 celulas preenchidas, e nenhuma celula passa de 360px de
-// conteudo — sobra 1px de calha, entao nenhum modelo invade o vizinho.
+// Entrada: um PNG por modelo, com o fundo transparente.
 //
-// Saida: `public/assets/rocks_<bioma>.png`, um spritesheet 4x3 de celulas
-// QUADRADAS, que o BootScene carrega com `load.spritesheet`. E o mesmo caminho
-// que o atlas do chao ja usa, entao nao ha conceito novo no projeto.
+// Saída: `public/assets/rocks_<bioma>.png`, um spritesheet de células QUADRADAS,
+// empacotadas numa grade próxima da quadrada, todas com a mesma contagem de
+// células para os seis biomas. Ver `CELULAS`.
 //
-// Por que celula quadrada
+// Por que a mesma contagem de células
+// ----------------------------------
+// A contagem de sprites varia por bioma, e é por isso que a folha tem células
+// sobrando: 14sprites numa grade 4x4 são 16 células, e duas delas ficam
+// TRANSPARENTES.
+//
+// A primeira versão empacotava cada bioma numa grade do tamanho exato, 3x4 ou
+// 4x4 conforme a contagem. Aí a altura da folha mudava de bioma para bioma, e a
+// grade do jogo — que é uma lista só, com o total de células — passava a estar
+// errada para três dos seis. Ter a mesma grade em todos é o que mantém a grade
+// do jogo como uma lista plana, sem nenhuma aritmética por bioma.
+//
+// Por que célula quadrada
 // ----------------------
-// Porque e a unica forma de nao distorcer. A rocha hoje e desenhada com
-// `setDisplaySize(largura, altura)`, que esmaga o sprite para aquela caixa e
-// ignora a proporcao do desenho. Com os modelos antigos, de 82x80, isso ja
-// comprimia a arte na vertical para 56% do natural. Os modelos novos vao de
-// 274x100 (laje deitada) a 344x360 (formacao alta): esmagar para uma caixa
-// unica deformaria a laje para uma faixa e esticaria a formacao alta para um
-// cilindro.
+// Porque é a única forma de não distorcer. A célula inteira vai para um
+// quadrado na tela com escala uniforme, e a variedade de proporção fica DENTRO
+// da célula, que é onde ela pertence: a laje aparece baixa e larga, a torre
+// aparece alta, e nenhuma é esmagada. Ver `ROCK_DISPLAY` em `../src/game/rocks.js`.
 //
-// Em vez disso a celula de saida e quadrada e o conteudo e reduzido para caber
-// dentro dela, entalado na BASE e centralizado. Na hora de desenhar, a celula
-// inteira vai para um quadrado na tela com escala uniforme, e a variedade de
-// proporcao fica DENTRO da celula, que e onde ela pertence: a laje aparece
-// baixa e larga, a formacao aparece alta, e nenhuma das duas e distorcida.
-//
-// Por que reduzir para 176px
-// --------------------------
-// A rocha ocupa cerca de 72px na tela, entao 176 e um buffer de 2,4x: sobra
-// para tela de alta densidade sem sobrar imagem invisivel. As folhas de entrada
-// pesam 1,7 a 2,2 MB com celulas de 362px; na saida isso vira uma fração disso.
-// E o jogo baixa so a folha do bioma atual, como ja faz com o chao.
+// Por que 176px
+// -------------
+// A rocha ocupa cerca de 60px na tela, então 176 é um buffer de 2,9x: sobra para
+// tela de alta densidade sem sobrar imagem invisível. Com células vazias à
+// direita e abaixo, a compressão é quase nula, e a folha final fica entre 100 e
+// 200 KB em vez dos 331 a 464 KB da versão de células cheias.
 import { readFile, writeFile, access, mkdir } from 'node:fs/promises';
 import { readPng } from './png.mjs';
 import { encodePng } from './png-encode.mjs';
 
-// Grade das folhas de entrada.
-const GRADE_COLS = 4;
-const GRADE_ROWS = 3;
-const CELULA_ENTRADA = 362;
-
-/** Celula de saida. Quadrada: e o que impede a distorcao. */
-const CELULA_SAIDA = 176;
+/** Onde o ZIP foi descompactado. */
+const ORIGEM = 'C:/Users/adielvale/AppData/Local/Temp/opencode/rocks_zip/rocks_individuais';
 
 /**
- * Recorte do conteudo dentro da celula de entrada.
+ * Célula de saída, e a grade de empacotamento.
  *
- * A varredura e em passo de 1 porque o alfa importa: a base de uma rocha tem
- * borda suave, e um passo maior deixaria a borda serrilhada depois da reducao.
- * 362x362 por celula, 12 celulas por folha, 6 folhas: perto de 9,4 milhao de
- * pixels, o que e alguns segundos.
+ * 4x4 dá dezesseis células para o bioma com mais sprites (frost, com 14). A
+ * folha é 4*176 por 4*176, e o `endFrame` no BootScene corta no total real de
+ * cada bioma, de modo que a célula vazia nunca vira um frame usável.
  */
-function recorteDoConteudo(img, x0, y0) {
-  const { width: W, channels: C, data: D } = img;
-  let minX = CELULA_ENTRADA;
+const CELULA = 176;
+const COLUNAS = 4;
+const LINHAS = 4;
+
+const BIOMES = ['sunstone', 'frost', 'ember', 'ruins', 'wind', 'crystal'];
+const apenas = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+const alvos = apenas.length > 0 ? apenas : BIOMES;
+
+const temArquivo = (caminho) => access(caminho).then(() => true, () => false);
+
+/**
+ * Recorte do conteúdo, com a área de alfa.
+ *
+ * O limiar é 8 e não 2: a borda de uma arte pintada tem o alfa subindo
+ * lentamente, e um limiar baixo puxa para dentro um halo de pixels quase
+ * transparentes que, depois da redução, vira uma franja suja em volta da rocha.
+ * O conteúdo também é aparado até aqui, e é esse recorte que impede as células
+ * de carregarem a moldura vazia do PNG de entrada.
+ */
+function recorteDoConteudo(img) {
+  const { width: W, height: H, channels: C, data: D } = img;
+  let minX = W;
   let maxX = -1;
-  let minY = CELULA_ENTRADA;
+  let minY = H;
   let maxY = -1;
 
-  for (let y = 0; y < CELULA_ENTRADA; y += 1) {
-    for (let x = 0; x < CELULA_ENTRADA; x += 1) {
-      const i = ((y0 + y) * W + (x0 + x)) * C;
-      if (D[i + 3] > 2) {
+  for (let y = 0; y < H; y += 1) {
+    for (let x = 0; x < W; x += 1) {
+      if (D[(y * W + x) * C + 3] > 8) {
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
@@ -80,34 +104,34 @@ function recorteDoConteudo(img, x0, y0) {
 }
 
 /**
- * Reduz o conteudo para dentro da celula de saida.
+ * Reduz o recorte para dentro da célula, encaixando na base.
  *
- * A escala e a menor entre "caber na largura" e "caber na altura", entao o
- * detalhe nunca e esticado para preencher. E bilinear com amostra em area
- * ponderada: o PNG de entrada tem borda alpha suave, e nearest deixaria
- * serrilhado depois de 362-&gt;176.
+ * Bilinear com alfa na média e desmultiplicação na escrita. As duas etapas
+ * importam: sem o alfa na média, a borda semi-transparente é puxada para o
+ * preto e a rocha ganha um contorno escuro; sem desmultiplicar, a cor gravada é
+ * a cor escurecida pela mistura com o fundo.
  */
-function reduzComBilinear(img, origem, escala, destinoX, destinoY, larguraDestino, alturaDestino) {
+function reduzParaCelula(img, recorte, destinoX, destinoY) {
   const { width: W, channels: C, data: D } = img;
-  const saida = new Uint8ClampedArray(CELULA_SAIDA * CELULA_SAIDA * 4);
+  const saida = new Uint8ClampedArray(CELULA * CELULA * 4);
+
+  const escala = Math.min(CELULA / recorte.largura, CELULA / recorte.altura);
+  const larguraDestino = Math.max(1, Math.round(recorte.largura * escala));
+  const alturaDestino = Math.max(1, Math.round(recorte.altura * escala));
 
   for (let y = 0; y < alturaDestino; y += 1) {
-    // Centro do pixel de destino, mapeado de volta para a origem.
-    const sy = (y + 0.5) / escala - 0.5 + origem.y;
+    const sy = (y + 0.5) / escala - 0.5 + recorte.y;
     const y0 = Math.floor(sy);
     const fy = sy - y0;
-    const y1 = Math.min(CELULA_ENTRADA - 1, Math.max(0, y0 + 1));
-    const y0c = Math.min(CELULA_ENTRADA - 1, Math.max(0, y0));
+    const y0c = Math.min(img.height - 1, Math.max(0, y0));
+    const y1 = Math.min(img.height - 1, Math.max(0, y0 + 1));
 
     for (let x = 0; x < larguraDestino; x += 1) {
-      const sx = (x + 0.5) / escala - 0.5 + origem.x;
+      const sx = (x + 0.5) / escala - 0.5 + recorte.x;
       const x0 = Math.floor(sx);
       const fx = sx - x0;
-      const x1 = Math.min(CELULA_ENTRADA - 1, Math.max(0, x0 + 1));
-      const x0c = Math.min(CELULA_ENTRADA - 1, Math.max(0, x0));
-
-      const o = (destinoY + y) * CELULA_SAIDA + (destinoX + x);
-      if (o < 0 || o >= CELULA_SAIDA * CELULA_SAIDA) continue;
+      const x0c = Math.min(img.width - 1, Math.max(0, x0));
+      const x1 = Math.min(img.width - 1, Math.max(0, x0 + 1));
 
       let r = 0;
       let g = 0;
@@ -119,19 +143,17 @@ function reduzComBilinear(img, origem, escala, destinoX, destinoY, larguraDestin
           const peso = wy * wx;
           if (peso <= 0) continue;
           const i = (yy * W + xx) * C;
-          // O alfa entra na media: sem isso, o RGB da borda transparente
-          // (preto) escureceria a borda da rocha, e apareceria um halo escuro.
-          const alfa = D[i + 3] / 255;
           r += D[i] * peso;
           g += D[i + 1] * peso;
           b += D[i + 2] * peso;
-          a += alfa * peso;
+          a += (D[i + 3] / 255) * peso;
         }
       }
 
+      const o = (destinoY + y) * CELULA + (destinoX + x);
+      if (o < 0 || o >= CELULA * CELULA) continue;
+
       if (a > 0.0001) {
-        // Despremultiplica: o RGB gravado e a cor real da rocha, e nao a cor
-        // escurecida pela mistura com o fundo.
         saida[o * 4] = r / a;
         saida[o * 4 + 1] = g / a;
         saida[o * 4 + 2] = b / a;
@@ -140,111 +162,176 @@ function reduzComBilinear(img, origem, escala, destinoX, destinoY, larguraDestin
     }
   }
 
-  return saida;
+  return { saida, larguraDestino, alturaDestino };
 }
 
-function recortaFolha(img) {
-  const largura = GRADE_COLS * CELULA_SAIDA;
-  const altura = GRADE_ROWS * CELULA_SAIDA;
-  const saida = new Uint8ClampedArray(largura * altura * 4);
-  const medidas = [];
+/** Converte um matiz em duas metades, para comparar contornos de verdade. */
+function halvesDoContorno(img) {
+  const recorte = recorteDoConteudo(img);
+  if (!recorte) return null;
 
-  for (let r = 0; r < GRADE_ROWS; r += 1) {
-    for (let c = 0; c < GRADE_COLS; c += 1) {
-      const x0 = c * CELULA_ENTRADA;
-      const y0 = r * CELULA_ENTRADA;
-      const recorte = recorteDoConteudo(img, x0, y0);
+  const { width: W, channels: C, data: D } = img;
+  const largura = recorte.largura;
+  const altura = recorte.altura;
+  const cima = new Uint8Array(largura * Math.max(1, altura >> 1));
+  const baixo = new Uint8Array(largura * Math.max(1, altura >> 1));
+  const meio = altura >> 1;
 
-      if (!recorte) {
-        medidas.push({ indice: r * GRADE_COLS + c, vazia: true });
-        continue;
-      }
-
-      const escala = Math.min(
-        CELULA_SAIDA / recorte.largura,
-        CELULA_SAIDA / recorte.altura
-      );
-      const larguraDestino = Math.max(1, Math.round(recorte.largura * escala));
-      const alturaDestino = Math.max(1, Math.round(recorte.altura * escala));
-
-      // Base encostada embaixo e centro no meio: e o que faz todas as rochas
-      // assentarem no mesmo chao, em vez de cada uma flutuar na sua altura.
-      const destinoX = Math.round((CELULA_SAIDA - larguraDestino) / 2);
-      const destinoY = CELULA_SAIDA - alturaDestino;
-
-      const celula = reduzComBilinear(
-        img,
-        recorte,
-        escala,
-        destinoX,
-        destinoY,
-        larguraDestino,
-        alturaDestino
-      );
-
-      for (let y = 0; y < CELULA_SAIDA; y += 1) {
-        for (let x = 0; x < CELULA_SAIDA; x += 1) {
-          const de = (y * CELULA_SAIDA + x) * 4;
-          const para = ((r * CELULA_SAIDA + y) * largura + (c * CELULA_SAIDA + x)) * 4;
-          saida[para] = celula[de];
-          saida[para + 1] = celula[de + 1];
-          saida[para + 2] = celula[de + 2];
-          saida[para + 3] = celula[de + 3];
-        }
-      }
-
-      medidas.push({
-        indice: r * GRADE_COLS + c,
-        origem: `${recorte.largura}x${recorte.altura}`,
-        saida: `${larguraDestino}x${alturaDestino}`,
-        // Altura final em relacao a celula: e a medida que diz se a rocha vai
-        // ler como laje deitada ou como formacao alta.
-        alturaRelativa: alturaDestino / CELULA_SAIDA
-      });
+  for (let y = 0; y < altura; y += 1) {
+    for (let x = 0; x < largura; x += 1) {
+      const a = D[((recorte.y + y) * W + (recorte.x + x)) * C + 3] > 24 ? 1 : 0;
+      if (y < meio) cima[y * largura + x] = a;
+      else baixo[(y - meio) * largura + x] = a;
     }
   }
 
-  return { saida, largura, altura, medidas };
+  return { cima, baixo, largura, altura, meio };
 }
 
-const BIOMES = ['sunstone', 'frost', 'ember', 'ruins', 'wind', 'crystal'];
-const apenas = process.argv.slice(2).filter((a) => !a.startsWith('-'));
-const alvos = apenas.length > 0 ? apenas : BIOMES;
+/** Distância entre dois contornos, com o eixo y normalizado pela própria altura. */
+function distanciaDeContorno(a, b) {
+  const lado = 64;
+  const amostra = (buffer, largura, altura, destino) => {
+    for (let y = 0; y < lado; y += 1) {
+      for (let x = 0; x < lado; x += 1) {
+        const sx = Math.min(largura - 1, Math.floor((x / lado) * largura));
+        const sy = Math.min(altura - 1, Math.floor((y / lado) * altura));
+        destino[y * lado + x] = buffer[sy * largura + sx];
+      }
+    }
+  };
+
+  const ac = new Uint8Array(lado * lado);
+  const bc = new Uint8Array(lado * lado);
+  amostra(a.cima, a.largura, a.meio, ac);
+  amostra(b.cima, b.largura, b.meio, bc);
+  let dCima = 0;
+  for (let p = 0; p < lado * lado; p += 1) if (ac[p] !== bc[p]) dCima += 1;
+
+  const ad = new Uint8Array(lado * lado);
+  const bd = new Uint8Array(lado * lado);
+  amostra(a.baixo, a.largura, a.altura - a.meio, ad);
+  amostra(b.baixo, b.largura, b.altura - b.meio, bd);
+  let dBaixo = 0;
+  for (let p = 0; p < lado * lado; p += 1) if (ad[p] !== bd[p]) dBaixo += 1;
+
+  return (dCima + dBaixo) / (2 * lado * lado) * 100;
+}
 
 await mkdir('public/assets', { recursive: true });
 
-for (const biome of alvos) {
-  const entrada = `C:/Users/adielvale/Desktop/titles/rocks_${biome}.png`;
-  const temEntrada = await access(entrada).then(() => true, () => false);
+const temManifest = await temArquivo(`${ORIGEM}/manifest.json`);
 
-  if (!temEntrada) {
-    console.log(`rocks_${biome}.png nao encontrado em titles/ — pulando`);
+for (const biome of alvos) {
+  const destino = `public/assets/rocks_${biome}.png`;
+
+  if (!temManifest) {
+    console.log(
+      `manifest.json nao encontrado em ${ORIGEM}. Descompacte o ZIP de sprites `
+        + `individuais e rode de novo. Nada foi escrito.`
+    );
+    process.exit(1);
+  }
+
+  const manifesto = JSON.parse(await readFile(`${ORIGEM}/manifest.json`, 'utf8'));
+  const lista = manifesto[biome];
+
+  if (!Array.isArray(lista) || lista.length === 0) {
+    console.log(`${biome}: o manifest.json nao lista sprites. Nada foi escrito.`);
     continue;
   }
 
-  const img = await readPng(entrada);
-  if (img.width !== GRADE_COLS * CELULA_ENTRADA || img.height !== GRADE_ROWS * CELULA_ENTRADA) {
+  if (lista.length > COLUNAS * LINHAS) {
     console.log(
-      `rocks_${biome}.png tem ${img.width}x${img.height}, e a grade `
-        + `esperada e ${GRADE_COLS * CELULA_ENTRADA}x${GRADE_ROWS * CELULA_ENTRADA}. `
-        + `Nada foi escrito.`
+      `${biome}: ${lista.length} sprites, e a grade comporta ${COLUNAS * LINHAS}. `
+        + `Aumente COLUNAS/LINHAS em slice-rocks.mjs. Nada foi escrito.`
     );
     continue;
   }
 
-  const { saida, largura, altura, medidas } = recortaFolha(img);
-  const destino = `public/assets/rocks_${biome}.png`;
+  const largura = COLUNAS * CELULA;
+  const altura = LINHAS * CELULA;
+  const saida = new Uint8ClampedArray(largura * altura * 4);
+  const contornos = [];
+  const medidas = [];
+
+  for (let i = 0; i < lista.length; i += 1) {
+    const item = lista[i];
+    const entrada = `${ORIGEM}/${biome}/${item.file}`;
+
+    if (!(await temArquivo(entrada))) {
+      console.log(`  ${item.file}: o manifest lista, e o arquivo nao esta la. Pulando.`);
+      continue;
+    }
+
+    const img = await readPng(entrada);
+    const recorte = recorteDoConteudo(img);
+
+    if (!recorte) {
+      console.log(`  ${item.file}: totalmente transparente. Pulando.`);
+      continue;
+    }
+
+    contornos.push(halvesDoContorno(img));
+
+    // Empacota em ordem de leitura: linha a linha, da esquerda para a direita.
+    const coluna = i % COLUNAS;
+    const linha = Math.floor(i / COLUNAS);
+
+    const celula = reduzParaCelula(img, recorte, 0, 0);
+    const baseX = coluna * CELULA + Math.round((CELULA - celula.larguraDestino) / 2);
+    const baseY = linha * CELULA + (CELULA - celula.alturaDestino);
+
+    for (let y = 0; y < CELULA; y += 1) {
+      for (let x = 0; x < CELULA; x += 1) {
+        const de = (y * CELULA + x) * 4;
+        const para = ((linha * CELULA + y) * largura + coluna * CELULA + x) * 4;
+        saida[para] = celula.saida[de];
+        saida[para + 1] = celula.saida[de + 1];
+        saida[para + 2] = celula.saida[de + 2];
+        saida[para + 3] = celula.saida[de + 3];
+      }
+    }
+
+    medidas.push({
+      arquivo: item.file,
+      origem: `${recorte.largura}x${recorte.altura}`,
+      celula: `${celula.larguraDestino}x${celula.alturaDestino}`,
+      alturaRelativa: celula.alturaDestino / CELULA
+    });
+  }
+
   const png = encodePng(largura, altura, saida);
   await writeFile(destino, png);
 
-  const entradaKB = (await readFile(entrada)).length / 1024;
-  const alturas = medidas.filter((m) => !m.vazia).map((m) => m.alturaRelativa);
-  const maisBaixa = Math.min(...alturas);
-  const maisAlta = Math.max(...alturas);
+  // O menor e o maior par: o que decide se a variacao vai LER na tela.
+  let min = 100;
+  let max = 0;
+  let soma = 0;
+  let pares = 0;
+  let duplicados = 0;
+  for (let i = 0; i < contornos.length; i += 1) {
+    for (let j = i + 1; j < contornos.length; j += 1) {
+      const d = distanciaDeContorno(contornos[i], contornos[j]);
+      if (d < 0.5) duplicados += 1;
+      if (d < min) min = d;
+      if (d > max) max = d;
+      soma += d;
+      pares += 1;
+    }
+  }
+
+  const alturaMax = Math.max(...medidas.map((m) => m.alturaRelativa));
+  const alturaMin = Math.min(...medidas.map((m) => m.alturaRelativa));
 
   console.log(
-    `rocks_${biome}.png  ${img.width}x${img.height} -> ${largura}x${altura}  `
-      + `${Math.round(entradaKB)} KB -> ${Math.round(png.length / 1024)} KB  `
-      + `| altura na celula: ${(maisBaixa * 100).toFixed(0)}% a ${(maisAlta * 100).toFixed(0)}%`
+    `${destino}  ${largura}x${altura}  ${medidas.length} sprites  `
+      + `${Math.round(png.length / 1024)} KB`
+  );
+  console.log(
+    `   altura na celula: ${(alturaMin * 100).toFixed(0)}% a ${(alturaMax * 100).toFixed(0)}%  |  `
+      + `contorno entre pares: min ${min.toFixed(1)}%  media ${(soma / pares).toFixed(1)}%  `
+      + `max ${max.toFixed(1)}%`
+    + (duplicados ? `  [${duplicados} pares IGUAIS]` : '  [nenhum par igual]')
   );
 }

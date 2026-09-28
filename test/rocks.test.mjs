@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, access } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
 
 import { BIOMES } from '../src/game/progression.js';
 import {
@@ -8,10 +9,12 @@ import {
   ROCK_SHEET_COLUMNS,
   ROCK_SHEET_ROWS,
   ROCK_VARIANT_COUNT,
+  ROCK_VARIANT_COUNTS,
   ROCK_DISPLAY,
   getRockFrameIndex,
   getRockJitter,
-  getRockSheetKey
+  getRockSheetKey,
+  getRockVariantCount
 } from '../src/game/rocks.js';
 import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH } from '../src/game/config.js';
 
@@ -62,30 +65,67 @@ test('toda folha de rocha tem o tamanho que o recorte produziu', async () => {
   }
 });
 
-test('a folha tem os doze modelos que o gerador pode sortear', () => {
-  assert.equal(ROCK_VARIANT_COUNT, 12, `a folha tem ${ROCK_VARIANT_COUNT} modelos`);
-  assert.equal(ROCK_SHEET_COLUMNS * ROCK_SHEET_ROWS, ROCK_VARIANT_COUNT);
+test('a grade comporta todos os sprites de todos os biomas', () => {
+  // A grade é fixa (4x4) e a contagem varia por bioma, então a pergunta aqui é
+  // se ela COMPORTA. A versão anterior fixava a grade no tamanho exato da
+  // contagem, e a folha saía com alturas diferentes — o que deixava a grade do
+  // jogo errada para os biomas que não tinham 12.
+  const capacidade = ROCK_SHEET_COLUMNS * ROCK_SHEET_ROWS;
+  const maior = Math.max(...Object.values(ROCK_VARIANT_COUNTS));
+
+  assert.ok(
+    maior <= capacidade,
+    `o bioma com mais sprites tem ${maior}, e a grade comporta ${capacidade}`
+  );
+  assert.ok(ROCK_VARIANT_COUNT <= maior, 'o piso de segurança esta acima da contagem real');
 });
 
-test('o indice de frame nunca sai da folha', () => {
-  // Um indice fora da faixa vira o placeholder de textura ausente, e nenhum dos
-  // dois estoura excecao. E por isso que o mod e duplo e normalizado.
-  for (const entrada of [-100, -13, -12, -1, 0, 11, 12, 13, 100]) {
-    const indice = getRockFrameIndex(entrada);
+test('a contagem de sprites bate com o manifest dos arquivos', () => {
+  // É o teste que pega sprite novo chegando na pasta sem entrar na lista: o
+  // jogo continuaria funcionando, e o modelo novo simplesmente nunca sairia.
+  const pasta = 'C:/Users/adielvale/AppData/Local/Temp/opencode/rocks_zip/rocks_individuais';
 
-    assert.ok(
-      Number.isInteger(indice) && indice >= 0 && indice < ROCK_VARIANT_COUNT,
-      `variante ${entrada} virou o indice ${indice}, fora de 0..${ROCK_VARIANT_COUNT - 1}`
-    );
+  if (!existsSync(`${pasta}/manifest.json`)) {
+    // Sem o ZIP descompactado não há o que comparar, e falhar aqui seria
+    // depender de um caminho que não viaja com o repositório.
+    return;
   }
 
-  // Valores que nao sao numero usam o primeiro modelo, em vez de virar NaN.
-  for (const entrada of [NaN, undefined, null, 'x', 1.7, -0.5]) {
-    const indice = getRockFrameIndex(entrada);
-    assert.ok(
-      Number.isInteger(indice) && indice >= 0 && indice < ROCK_VARIANT_COUNT,
-      `variante ${String(entrada)} virou o indice ${indice}`
+  const manifesto = JSON.parse(readFileSync(`${pasta}/manifest.json`, 'utf8'));
+
+  for (const [biome, lista] of Object.entries(manifesto)) {
+    assert.equal(
+      getRockVariantCount(biome),
+      lista.length,
+      `${biome}: o manifest lista ${lista.length} sprites, e o codigo diz `
+        + `${getRockVariantCount(biome)}`
     );
+  }
+});
+
+test('o indice de frame nunca sai da folha do bioma', () => {
+  // Um indice fora da faixa vira o placeholder de textura ausente, e nenhum dos
+  // dois estoura excecao. E por isso que o mod e duplo e normalizado.
+  for (const biome of Object.keys(ROCK_VARIANT_COUNTS)) {
+    const total = getRockVariantCount(biome);
+
+    for (const entrada of [-100, -total, -total - 1, -1, 0, total - 1, total, total + 1, 100]) {
+      const indice = getRockFrameIndex(biome, entrada);
+
+      assert.ok(
+        Number.isInteger(indice) && indice >= 0 && indice < total,
+        `${biome}: variante ${entrada} virou o indice ${indice}, fora de 0..${total - 1}`
+      );
+    }
+
+    // Valores que nao sao numero usam o primeiro modelo, em vez de virar NaN.
+    for (const entrada of [NaN, undefined, null, 'x', 1.7, -0.5]) {
+      const indice = getRockFrameIndex(biome, entrada);
+      assert.ok(
+        Number.isInteger(indice) && indice >= 0 && indice < total,
+        `${biome}: variante ${String(entrada)} virou o indice ${indice}`
+      );
+    }
   }
 });
 
@@ -94,27 +134,67 @@ test('cada bioma tem folha com nome proprio', () => {
 
   assert.equal(chaves.size, BIOMES.length, 'dois biomas apontando para a mesma folha de rocha');
   assert.ok(getRockSheetKey('frost').includes('frost'), 'a chave deveria conter o id do bioma');
+
+  // Todo bioma do jogo precisa de uma contagem declarada. Sem ela, o sorteio cai
+  // no piso de 12 e uma folha de 14 fica com dois modelos fora da rodagem.
+  for (const biome of BIOMES) {
+    assert.ok(
+      Number.isInteger(ROCK_VARIANT_COUNTS[biome.id]),
+      `${biome.id} sem contagem de sprites declarada`
+    );
+  }
 });
 
-test('o gerador sorteia indice de rocha dentro da faixa', async () => {
+test('o gerador sorteia indice de rocha dentro da folha do bioma', async () => {
   const { generateMap } = await import('../src/game/systems/mapGenerator.js');
 
-  // Sem isto, um bioma novo com folha de tamanho diferente receberia um indice
-  // que o Phaser nao acha, e o sintoma seria a tela inteira de caixas pretas.
+  // Sem isto, um bioma com folha de tamanho diferente receberia um índice que o
+  // Phaser não acha, e o sintoma seria a tela inteira de caixas pretas.
   for (let cave = 1; cave <= 60; cave += 1) {
     const mapa = generateMap(cave, 1, 0);
+    const total = getRockVariantCount(mapa.biome.id);
 
     for (const linha of mapa.tiles) {
       for (const tile of linha) {
         if (tile.type !== 'rock') continue;
 
-        const indice = getRockFrameIndex(tile.rockVariant);
+        const indice = getRockFrameIndex(mapa.biome.id, tile.rockVariant);
         assert.ok(
-          Number.isInteger(indice) && indice >= 0 && indice < ROCK_VARIANT_COUNT,
-          `cave ${cave}: variante ${tile.rockVariant} virou o indice ${indice}`
+          Number.isInteger(indice) && indice >= 0 && indice < total,
+          `cave ${cave} (${mapa.biome.id}): variante ${tile.rockVariant} virou o `
+            + `indice ${indice}, fora de 0..${total - 1}`
         );
       }
     }
+  }
+});
+
+test('o gerador usa todos os sprites do bioma, nao so os doze primeiros', async () => {
+  // O defeito de onde isto nasceu: um número único de variantes, sorteado do
+  // mesmo jeito em todo bioma. Num bioma com 14 sprites, sortear de 0 a 11
+  // funciona e ninguém percebe — dois modelos simplesmente nunca aparecem.
+  const { generateMap } = await import('../src/game/systems/mapGenerator.js');
+
+  for (const biome of BIOMES) {
+    const esperado = getRockVariantCount(biome.id);
+    const vistos = new Set();
+
+    // Várias caves do bioma, para a chance de aparecer todos os modelos.
+    for (let cave = biome.startCave; cave <= biome.endCave; cave += 1) {
+      const mapa = generateMap(cave, 1, 0);
+      for (const linha of mapa.tiles) {
+        for (const tile of linha) {
+          if (tile.type === 'rock') vistos.add(tile.rockVariant);
+        }
+      }
+    }
+
+    assert.equal(
+      vistos.size,
+      esperado,
+      `${biome.id}: apareceram ${vistos.size} de ${esperado} sprites em `
+        + `${biome.endCave - biome.startCave + 1} caves`
+    );
   }
 });
 

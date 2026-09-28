@@ -795,13 +795,17 @@ export class CaveScene extends Phaser.Scene {
 
     const dados = new Set();
     const sprites = new Set();
+    // O bioma vem do MAPA, e não do metaState: o metaState carrega o bioma de
+    // uma cave anterior, e contar a variação com o bioma errado daria um número
+    // que não corresponde ao que está na tela.
+    const biomeId = this.mapData.biome?.id ?? 'sunstone';
 
     for (const linha of this.mapData.tiles) {
       for (const tile of linha) {
         if (tile.type !== 'rock') continue;
 
         if (Number.isInteger(tile.rockVariant)) {
-          dados.add(getRockFrameIndex(tile.rockVariant));
+          dados.add(getRockFrameIndex(biomeId, tile.rockVariant));
         }
 
         const frame = tile.rockSprite?.frame;
@@ -952,7 +956,7 @@ export class CaveScene extends Phaser.Scene {
         // para 80x45, e os doze modelos novos têm proporções muito diferentes
         // entre si. Ver `ROCK_DISPLAY` em rocks.js.
         const rockSize = Math.round(tileWidth * ROCK_DISPLAY * (revealedBomb ? 0.5 : 1));
-        const frameIndex = revealedBomb ? 0 : getRockFrameIndex(tile.rockVariant);
+        const frameIndex = revealedBomb ? 0 : getRockFrameIndex(biome.id, tile.rockVariant);
         // A bomba revelada é uma imagem solta e não entra no jitter: ela é um
         // marcador de jogo, e um marcador que gira e muda de tamanho deixa de
         // ser um marcador.

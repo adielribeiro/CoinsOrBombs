@@ -1,20 +1,23 @@
 import { BIOMES, createRelicContent, getBiomeForCave, getBiomeProgress } from '../progression.js';
-import { ROCK_VARIANT_COUNT } from '../rocks.js';
+import { getRockVariantCount } from '../rocks.js';
 import { findSafeRoute, getNeighbors4, getNeighbors8 } from './helpers.js';
 
 /**
- * Índice do modelo de rocha.
+ * Índice do modelo de rocha, escolhido dentro da folha do bioma.
  *
- * Antes isto era uma lista de CHAVES de textura, com `rock` repetido para
- * pesar o boulder redondo. Agora é um índice de frame, porque cada bioma tem
- * doze modelos na própria folha, e repetir uma chave não pesa mais nada: todos
- * os doze entram com a mesma chance.
+ * Antes isto era uma lista de CHAVES de textura, com `rock` repetido para pesar
+ * o boulder redondo. Depois disso virou um número solto sorteado de 0 a 11, e
+ * esse é o defeito: o número tem de ser escolhido DENTRO da folha do bioma, e
+ * cada bioma tem uma contagem própria. Com os sprites individuais, frost tem 14
+ * modelos e sunstone tem 12 — sortear de 0 a 13 num bioma de 12 dá um índice
+ * fora da folha, e índice fora da folha é o placeholder de textura ausente.
  *
- * O índice é puro número justamente para não carregar a folha aqui. Se a cena
- * recebese a chave, o gerador passaria a depender do nome do arquivo, e uma
- * troca de nome quebraria as duas pontas sem erro de build.
+ * Por isso o sorteio mora aqui e o tile guarda só o número. O gerador não
+ * conhece nome de arquivo nem folha: o `rockVariant` continua sendo dado puro.
  */
-const ROCK_VARIANTS = Array.from({ length: ROCK_VARIANT_COUNT }, (_, i) => i);
+function sorteiaVarianteDeRocha(biomeId) {
+  return Math.floor(Math.random() * getRockVariantCount(biomeId));
+}
 
 /**
  * Dimensões da cave. Exportado porque `GROUND_COLUMNS`/`GROUND_ROWS` no atlas
@@ -119,7 +122,7 @@ function pickRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-function createBaseTile(col, row, rockHp) {
+function createBaseTile(col, row, rockHp, biomeId = 'sunstone') {
   return {
     col,
     row,
@@ -134,7 +137,7 @@ function createBaseTile(col, row, rockHp) {
     // recriava a mesma grade como degrau de luminância. A variação de tom mora
     // na textura e a cor vem do bioma.
     grit: pickGrit(col, row),
-    rockVariant: pickRandom(ROCK_VARIANTS),
+    rockVariant: sorteiaVarianteDeRocha(biomeId),
     deco: null,
     isHiddenExit: false
   };
@@ -499,13 +502,13 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
   for (let row = 0; row < height; row += 1) {
     const currentRow = [];
     for (let col = 0; col < width; col += 1) {
-      currentRow.push(createBaseTile(col, row, rockHp));
+      currentRow.push(createBaseTile(col, row, rockHp, biome.id));
     }
     tiles.push(currentRow);
   }
 
   tiles[entry.row][entry.col] = {
-    ...createBaseTile(entry.col, entry.row, rockHp),
+    ...createBaseTile(entry.col, entry.row, rockHp, biome.id),
     type: 'entrance',
     hiddenContent: 'empty',
     revealed: true,
@@ -516,7 +519,7 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
   };
 
   tiles[exit.row][exit.col] = {
-    ...createBaseTile(exit.col, exit.row, rockHp),
+    ...createBaseTile(exit.col, exit.row, rockHp, biome.id),
     type: 'rock',
     hiddenContent: 'empty',
     revealed: false,
