@@ -54,8 +54,25 @@ export const GROUND_ROWS = 12;
 export const GROUND_CELL_WIDTH = 112;
 export const GROUND_CELL_HEIGHT = 57;
 
-/** Chave da textura do atlas no Phaser. */
-export const GROUND_TEXTURE_KEY = 'ground';
+/**
+ * Chave da textura do atlas no Phaser.
+ *
+ * São DOIS atlas, não um: `ground` para a Mina Solar e `ground_frost` para a
+ * Gruta de Gelo. O motivo está em SOIL_MATERIALS — o tint do Phaser só
+ * multiplica, então um único atlas de terra marrom tingido de azul dá lama
+ * escura, e não gelo. Cada bioma precisa da SUA cor na textura.
+ *
+ * Um atlas por bioma dobraria o download, então a escolha foi manter a
+ * textura por bioma e baixar só a do bioma atual.
+ */
+export const GROUND_TEXTURE_KEYS = {
+  sunstone: 'ground_sunstone',
+  frost: 'ground_frost',
+  ember: 'ground_ember',
+  ruins: 'ground_ruins'
+};
+
+export const GROUND_TEXTURE_KEY = GROUND_TEXTURE_KEYS.sunstone;
 
 /**
  * Rotação do domínio de ruído, em radianos (~20°). Fora de qualquer múltiplo
@@ -447,30 +464,122 @@ const SOIL_DARK = [66, 40, 21];
 const SOIL_MID = [136, 84, 39];
 const SOIL_LIGHT = [196, 156, 110];
 
-function soilRamp(t) {
+/**
+ * Materiais do chão, um por bioma.
+ *
+ * Existe porque o tint do Phaser SÓ MULTIPLICA. Com um atlas de terra marrom
+ * tingido de azul, o resultado é lama escura: o multiplicador nunca clareia, e
+ * qualquer matiz frio afunda a luminância. Foi o que aconteceu com a Gruta de
+ * Gelo — o chão ficava marrom escuro, sem parecer gelo.
+ *
+ * Então cada bioma recebe a SUA cor no atlas, gerada com o mesmo relevo e a
+ * mesma estrutura, e o tint do bioma sobra como ajuste fino. A cor vem de
+ * `dark`/`mid`/`light`, e os multiplicadores controlam quanto o material
+ * reage: a rocha das ruínas tem torrão mais duro (menos fissura) e seixo mais
+ * saliente que a terra solta da mina.
+ *
+ * As luminâncias são deliberadamente diferentes entre si. Gelo é claro, ember é
+ * escuro: um chão com a mesma luminância nos quatro biomas não daria a
+ * sensação de ambiente diferente.
+ */
+export const SOIL_MATERIALS = {
+  // Mina Solar: terra batida dourada, a referência medida.
+  earth: {
+    id: 'earth',
+    dark: SOIL_DARK,
+    mid: SOIL_MID,
+    light: SOIL_LIGHT,
+    crack: 0.42,
+    pebbleGain: 1.14,
+    pebbleLift: 1,
+    warmth: 30
+  },
+  // Gelo: neve compactada. O mais claro dos quatro, e o mais azul.
+  frost: {
+    id: 'frost',
+    dark: [96, 116, 138],
+    mid: [176, 196, 214],
+    light: [226, 238, 248],
+    // Fissura mais fraca: no gelo ela seria uma rachadura profunda, e
+    // repetir a intensidade da terra deixa o piso com marcas de solha.
+    crack: 0.3,
+    // Seixo quase não levanta: o que se vê no gelo é a superfície, e não
+    // pedregulho solto.
+    pebbleGain: 1.08,
+    pebbleLift: 1.2,
+    warmth: 22
+  },
+  // Brasa: rocha vulcânica. O mais escuro, com veios quentes.
+  ember: {
+    id: 'ember',
+    dark: [42, 20, 16],
+    mid: [96, 44, 30],
+    light: [156, 84, 48],
+    // Fissura forte: é rocha quebrada por calor, e a fresta guarda brasa.
+    crack: 0.5,
+    pebbleGain: 1.16,
+    pebbleLift: 0.9,
+    warmth: 38
+  },
+  // Ruínas: pedra lavrada. Torrão mais quadrado e seixo mais marcado.
+  ruins: {
+    id: 'ruins',
+    dark: [50, 42, 62],
+    mid: [92, 82, 108],
+    light: [142, 132, 158],
+    // Menos fissura que a terra: pedra trabalhada quebra menos.
+    crack: 0.26,
+    pebbleGain: 1.2,
+    pebbleLift: 1.1,
+    warmth: 20
+  }
+};
+
+/** Material padrão: terra. O jogo sempre passa o do bioma. */
+export const DEFAULT_SOIL_MATERIAL = SOIL_MATERIALS.earth;
+
+/**
+ * Material de solo de cada bioma.
+ *
+ * Fica AQUI, e não junto das chaves de textura no topo, porque o topo é
+ * executado antes de `SOIL_MATERIALS` existir. A versão anterior declarava este
+ * mapa no topo do arquivo e o gerador quebrava com "Cannot access
+ * 'SOIL_MATERIALS' before initialization" — a mesma armadilha de zona morta
+ * temporal do `pauseOpen` no App.jsx.
+ */
+export const SOIL_BY_BIOME = {
+  sunstone: SOIL_MATERIALS.earth,
+  frost: SOIL_MATERIALS.frost,
+  ember: SOIL_MATERIALS.ember,
+  ruins: SOIL_MATERIALS.ruins
+};
+
+function soilRamp(t, material) {
+  const { dark, mid, light } = material;
+
   if (t <= 0.5) {
     const k = t / 0.5;
     return [
-      Math.round(mix(SOIL_DARK[0], SOIL_MID[0], k)),
-      Math.round(mix(SOIL_DARK[1], SOIL_MID[1], k)),
-      Math.round(mix(SOIL_DARK[2], SOIL_MID[2], k))
+      Math.round(mix(dark[0], mid[0], k)),
+      Math.round(mix(dark[1], mid[1], k)),
+      Math.round(mix(dark[2], mid[2], k))
     ];
   }
 
   const k = (t - 0.5) / 0.5;
   return [
-    Math.round(mix(SOIL_MID[0], SOIL_LIGHT[0], k)),
-    Math.round(mix(SOIL_MID[1], SOIL_LIGHT[1], k)),
-    Math.round(mix(SOIL_MID[2], SOIL_LIGHT[2], k))
+    Math.round(mix(mid[0], light[0], k)),
+    Math.round(mix(mid[1], light[1], k)),
+    Math.round(mix(mid[2], light[2], k))
   ];
 }
 
 /** Converte a amostra num RGB de solo, com a sombra da fissura e o desvio de temperatura. */
-export function groundColorAt(colf, rowf) {
+export function groundColorAt(colf, rowf, material = SOIL_MATERIALS.earth) {
   const { light, crack, stone, chip, warm, clods } = sampleGround(colf, rowf);
   // `clods` entra aqui, como tom, e não como luz. Ver o comentário em
   // sampleGround: misturar os dois dobrava o contraste por escala.
-  let [r, g, b] = soilRamp(clamp01(light + (clods - 0.5) * CLOOD_TONE));
+  let [r, g, b] = soilRamp(clamp01(light + (clods - 0.5) * CLOOD_TONE), material);
 
   // Fissura: escurece, sem tocar na cor do solo ao redor. A fresta é oclusão —
   // a mesma terra, com menos luz chegando. Se escurecesse e também mudasse o
@@ -481,7 +590,7 @@ export function groundColorAt(colf, rowf) {
   // resolve, mas um teto explícito no uso impede que o mesmo tipo de erro
   // volte a pintar a aresta.
   if (crack > 0) {
-    const k = 1 - clamp01(crack) * 0.42;
+    const k = 1 - clamp01(crack) * material.crack;
     r *= k;
     g *= k;
     b *= k;
@@ -491,13 +600,13 @@ export function groundColorAt(colf, rowf) {
   // o cascalho do lamaço — sem isso tudo vira uma massa só.
   const mineral = Math.max(stone, chip * 0.7);
   if (mineral > 0) {
-    r = mix(r, r * 1.14 + 16, mineral);
-    g = mix(g, g * 1.12 + 14, mineral);
-    b = mix(b, b * 1.05 + 10, mineral);
+    r = mix(r, r * material.pebbleGain + 16 * material.pebbleLift, mineral);
+    g = mix(g, g * (material.pebbleGain - 0.02) + 14 * material.pebbleLift, mineral);
+    b = mix(b, b * (material.pebbleGain - 0.09) + 10 * material.pebbleLift, mineral);
   }
 
   // Frio tira verde, quente tira azul. Preserva a luminância: é pigmento, não luz.
-  const chroma = (warm - 0.5) * 30;
+  const chroma = (warm - 0.5) * material.warmth;
 
   return [
     Math.max(0, Math.min(255, Math.round(r + chroma))),
@@ -552,7 +661,8 @@ export function renderGroundCell(
   col,
   row,
   cellWidth = GROUND_CELL_WIDTH,
-  cellHeight = GROUND_CELL_HEIGHT
+  cellHeight = GROUND_CELL_HEIGHT,
+  material = DEFAULT_SOIL_MATERIAL
 ) {
   const data = new Uint8ClampedArray(cellWidth * cellHeight * 4);
 
@@ -563,7 +673,7 @@ export function renderGroundCell(
 
       if (Math.abs(sx) + Math.abs(sy) > 1) continue;
 
-      const [r, g, b] = groundColorAt(colf, rowf);
+      const [r, g, b] = groundColorAt(colf, rowf, material);
       const i = (py * cellWidth + px) * 4;
 
       data[i] = r;

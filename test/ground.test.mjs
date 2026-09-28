@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import {
   GROUND_CELL_HEIGHT,
   GROUND_CELL_WIDTH,
   GROUND_COLUMNS,
   GROUND_ROWS,
+  GROUND_TEXTURE_KEYS,
+  SOIL_BY_BIOME,
   getGroundAtlasSize,
   groundColorAt,
   groundFrameIndex,
@@ -13,9 +16,19 @@ import {
   renderGroundCell,
   sampleGround
 } from '../src/game/ground.js';
+import { BIOMES } from '../src/game/progression.js';
 import { generateMap, getMapSize } from '../src/game/systems/mapGenerator.js';
 
 const MAX_CAVES = 20;
+
+/**
+ * Fontes lidas no topo do arquivo, e não dentro dos testes.
+ *
+ * `await` dentro do callback de um `test()` não compila em Módulo ESM: o
+ * callback não é `async`, e o erro aparece como "Unexpected reserved word" sem
+ * apontar a linha do problema. Foi o que aconteceu duas vezes neste arquivo.
+ */
+const bootSceneSource = await readFile(new URL('../src/game/scenes/BootScene.js', import.meta.url), 'utf8');
 
 /**
  * Cor de um pixel da célula, ou null se estiver fora do recorte ou num canto
@@ -377,7 +390,7 @@ test('a fissura é rara, e não uma rede desenhada sobre o chão', () => {
   assert.ok(cobertura > 0.01, `fissura cobre só ${(cobertura * 100).toFixed(1)}%: chão sem fresta nenhuma`);
 });
 
-test('o chão é marrom de terra, e não a rampa de cinza anterior', () => {
+test('o chão da Mina Solar é marrom de terra, e não a rampa de cinza anterior', () => {
   // A referência mede cor média rgb(136, 84, 39). O atlas precisa ficar perto
   // disso, senão o chão volta a ler como pedra de calçada, que era o defeito
   // original. O tint do bioma multiplica por baixo, então a verificação é sobre
@@ -393,7 +406,7 @@ test('o chão é marrom de terra, e não a rampa de cinza anterior', () => {
         for (let px = 0; px < GROUND_CELL_WIDTH; px += 3) {
           const p = groundPixelToMap(col, row, px + 0.5, py + 0.5);
           if (Math.abs(p.sx) + Math.abs(p.sy) > 1) continue;
-          const [pr, pg, pb] = groundColorAt(p.colf, p.rowf);
+          const [pr, pg, pb] = groundColorAt(p.colf, p.rowf, SOIL_BY_BIOME.sunstone);
           r += pr; g += pg; b += pb; n += 1;
         }
       }
@@ -413,6 +426,128 @@ test('o chão é marrom de terra, e não a rampa de cinza anterior', () => {
 
   // Terra é quente: vermelho bem acima do azul. Cinza teria os três juntos.
   assert.ok(media[0] > media[2] * 2.2, `vermelho ${media[0].toFixed(0)} contra azul ${media[2].toFixed(0)}: chão acinzentado`);
+});
+
+/**
+ * Cor média do chão de um bioma, sobre a textura antes do tint.
+ */
+function meanGroundColor(material) {
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let n = 0;
+
+  for (let row = 0; row < GROUND_ROWS; row += 1) {
+    for (let col = 0; col < GROUND_COLUMNS; col += 1) {
+      for (let py = 0; py < GROUND_CELL_HEIGHT; py += 4) {
+        for (let px = 0; px < GROUND_CELL_WIDTH; px += 4) {
+          const p = groundPixelToMap(col, row, px + 0.5, py + 0.5);
+          if (Math.abs(p.sx) + Math.abs(p.sy) > 1) continue;
+          const [pr, pg, pb] = groundColorAt(p.colf, p.rowf, material);
+          r += pr; g += pg; b += pb; n += 1;
+        }
+      }
+    }
+  }
+
+  return [r / n, g / n, b / n];
+}
+
+test('cada bioma tem chão com a sua cor, e não a mesma terra tingida', () => {
+  // O tint do Phaser só multiplica, então a cor precisa estar na textura.
+  // Sem um atlas por bioma, a Gruta de Gelo seria terra marrom escurecida.
+  const cores = Object.fromEntries(
+    Object.entries(SOIL_BY_BIOME).map(([id, material]) => [id, meanGroundColor(material)])
+  );
+
+  // Gelo é claro e azulado: azul acima do vermelho.
+  assert.ok(
+    cores.frost[2] > cores.frost[0],
+    `frost rgb(${cores.frost.map((v) => v.toFixed(0)).join(',')}) não é azulado`
+  );
+  // Brasa é escura e quente: vermelho muito acima do azul, e no geral escura.
+  assert.ok(
+    cores.ember[0] > cores.ember[2] * 1.8,
+    `ember rgb(${cores.ember.map((v) => v.toFixed(0)).join(',')}) não parece brasa`
+  );
+  // Ruínas é pedra lavrada: violeta, azul acima do vermelho, sem ser gelo.
+  assert.ok(
+    cores.ruins[2] > cores.ruins[0] && cores.ruins[0] < 200,
+    `ruins rgb(${cores.ruins.map((v) => v.toFixed(0)).join(',')}) não parece pedra`
+  );
+
+  // Nenhum par de biomas pode sair com a mesma cor, senão o tema não muda.
+  const pares = [
+    ['sunstone', 'frost'],
+    ['sunstone', 'ember'],
+    ['sunstone', 'ruins'],
+    ['frost', 'ember'],
+    ['frost', 'ruins'],
+    ['ember', 'ruins']
+  ];
+
+  for (const [a, b] of pares) {
+    const distancia = Math.hypot(
+      cores[a][0] - cores[b][0],
+      cores[a][1] - cores[b][1],
+      cores[a][2] - cores[b][2]
+    );
+    assert.ok(distancia > 25, `${a} e ${b} saem quase iguais (distância ${distancia.toFixed(1)})`);
+  }
+});
+
+test('a luminância do chão varia entre os biomas, para o ambiente mudar de verdade', () => {
+  // Gelo claro e brasa escura é o que dá a sensação de bioma diferente. Com a
+  // mesma luminância nos quatro, o chão só mudaria de matiz.
+  const luma = ([r, g, b]) => 0.299 * r + 0.587 * g + 0.114 * b;
+  const valores = Object.fromEntries(
+    Object.entries(SOIL_BY_BIOME).map(([id, m]) => [id, luma(meanGroundColor(m))])
+  );
+
+  assert.ok(
+    valores.frost > valores.ember + 30,
+    `frost (${valores.frost.toFixed(0)}) e ember (${valores.ember.toFixed(0)}) com luminância parecida`
+  );
+  assert.ok(
+    valores.sunstone > valores.ember,
+    `a Mina Solar deveria ser mais clara que a brasa`
+  );
+});
+
+test('o tint do bioma é quase branco, senão a cor da textura escurece duas vezes', () => {
+  // A cor do chão está no atlas. O tint multiplica por cima, então um valor
+  // escuro escureceria o mesmo pixel duas vezes — e era o que fazia a Gruta de
+  // Gelo virar lama.
+
+  for (const biome of BIOMES) {
+    const tint = biome.palette.ground;
+    const canais = [(tint >> 16) & 0xff, (tint >> 8) & 0xff, tint & 0xff];
+
+    for (const canal of canais) {
+      assert.ok(
+        canal > 0xe0,
+        `palette.ground de ${biome.id} tem canal ${canal} (0x${canal.toString(16)}): `
+          + 'escurece o chão que já tem a cor na textura'
+      );
+    }
+  }
+});
+
+test('cada bioma tem uma textura de chão própria, e o BootScene carrega todas', () => {
+  const chaves = Object.values(GROUND_TEXTURE_KEYS);
+
+  assert.equal(chaves.length, BIOMES.length, 'falta textura para algum bioma');
+  assert.equal(new Set(chaves).size, chaves.length, 'dois biomas compartilham a mesma chave de textura');
+
+  for (const biome of BIOMES) {
+    const chave = GROUND_TEXTURE_KEYS[biome.id];
+    assert.ok(chave, `bioma ${biome.id} sem chave de textura`);
+    assert.ok(SOIL_BY_BIOME[biome.id], `bioma ${biome.id} sem material de solo`);
+  }
+
+  const boot = bootSceneSource;
+  assert.match(boot, /Object\.entries\(GROUND_TEXTURE_KEYS\)/, 'o BootScene deveria carregar por bioma');
+  assert.match(boot, /ground_\$\{biomeId\}/, 'o BootScene deveria montar o caminho por bioma');
 });
 
 test('o chão não é arte repetida: o centro de cada célula é distinto', () => {

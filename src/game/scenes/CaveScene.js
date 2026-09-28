@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH, getTileMetrics, toIso } from '../config.js';
-import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEY, groundFrameIndex } from '../ground.js';
+import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrameIndex } from '../ground.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { generateMap } from '../systems/mapGenerator.js';
 import { findSafeRoute, getNeighbors4, isFrontierRock } from '../systems/helpers.js';
@@ -16,14 +16,29 @@ import { findSafeRoute, getNeighbors4, isFrontierRock } from '../systems/helpers
  * células vizinhas caem em posições fracionárias (a meia-altura é 24,5px), e
  * sem essa sobreposição o filtro bilinear do sprite deixa um fio de fundo
  * aparecer ao longo de cada aresta — que é a grade de novo, agora fininha.
+ *
+ * A textura vem do bioma da cave. Há um atlas por bioma porque o tint do Phaser
+ * SÓ MULTIPLICA: um atlas de terra marrom tingido de azul daria lama escura em
+ * vez de gelo. A cor precisa estar na textura, não na tinta.
  */
-function drawGroundCell(scene, col, row, point, tileWidth, tileHeight) {
+function drawGroundCell(scene, col, row, point, tileWidth, tileHeight, textureKey) {
   const cell = scene.add
-    .image(point.x, point.y, GROUND_TEXTURE_KEY)
+    .image(point.x, point.y, textureKey)
     .setFrame(groundFrameIndex(col, row))
     .setDisplaySize(tileWidth + 1, tileHeight + 1);
 
   return cell;
+}
+
+/**
+ * Chave da textura do chão para um bioma.
+ *
+ * O BootScene carrega os quatro atlas de uma vez, então sempre existe uma
+ * textura para o bioma atual. O segundo piso é para o caso de um bioma novo
+ * entrar em jogo sem passar pelo BootScene.
+ */
+export function getGroundTextureKey(biomeId) {
+  return GROUND_TEXTURE_KEYS[biomeId] ?? GROUND_TEXTURE_KEYS.sunstone;
 }
 
 export class CaveScene extends Phaser.Scene {
@@ -77,6 +92,7 @@ export class CaveScene extends Phaser.Scene {
     this.showGrid = false;
     this.hudInset = 0;
     this.attractMode = false;
+    this.paused = false;
 
     this.renderMetrics = {
       ...getTileMetrics(1),
@@ -205,6 +221,45 @@ export class CaveScene extends Phaser.Scene {
       }
     };
 
+    /**
+     * Pausa e retoma a cena.
+     *
+     * O overlay de pausa é React, então a cena do Phaser não sabe que ele
+     * existe. Este é o canal: o React avisa, e a cena congela de verdade.
+     *
+     * `scene.pause()` para o `update` e o input, que é o que a pausa precisa. A
+     * alternativa seria um `if (this.paused) return` no meio de cada handler, e
+     * isso não cobre o que o Phaser despacha direto, como o timer de uma
+     * armadilha ou uma animação em curso.
+     */
+    this.onPauseChange = (event) => {
+      const shouldPause = Boolean(event?.detail?.paused);
+
+      if (this.paused === shouldPause) return;
+
+      this.paused = shouldPause;
+      this.hoveredRockTile = null;
+      this.hoverIndicator?.clear();
+      this.hoverIndicator?.setVisible(false);
+
+      if (shouldPause) {
+        this.scene.pause();
+      } else {
+        this.scene.resume();
+      }
+
+      // Espelho em `window` só para o estado ser observável de fora. Sem isso a
+      // pausa é um efeito interno sem jeito de verificar: o Phaser 3.90 não
+      // expõe a lista de jogos, e ler o canvas não prova nada porque o WebGL é
+      // criado sem `preserveDrawingBuffer` e o readback volta vazio.
+      window.__cobSceneState = {
+        paused: this.paused,
+        cave: this.metaState?.cave ?? null,
+        hp: this.metaState?.hp ?? null,
+        inLobby: this.metaState?.inLobby ?? null
+      };
+    };
+
     this.onSettingsChange = (event) => {
       const next = event?.detail ?? {};
 
@@ -245,6 +300,7 @@ export class CaveScene extends Phaser.Scene {
     window.addEventListener('cob-attract-mode', this.onAttractMode);
     window.addEventListener('cob-hud-inset', this.onHudInset);
     window.addEventListener('cob-force-resize', this.onForcedResize);
+    window.addEventListener('cob-pause', this.onPauseChange);
     this.scale.on('resize', this.onResize);
 
     this.events.on('shutdown', () => {
@@ -257,9 +313,18 @@ export class CaveScene extends Phaser.Scene {
       window.removeEventListener('cob-attract-mode', this.onAttractMode);
       window.removeEventListener('cob-hud-inset', this.onHudInset);
       window.removeEventListener('cob-force-resize', this.onForcedResize);
+      window.removeEventListener('cob-pause', this.onPauseChange);
       this.scale.off('resize', this.onResize);
       this.clearResponsiveRefreshQueue();
       this.flushPendingEffects();
+
+      // Se a cena morrer pausada, o overlay de pausa do React fica esperando um
+      // `resume` que nunca vem. Retomar aqui garante que o estado do Phaser e o
+      // do React não fiquem discordando quando o jogador voltar ao menu.
+      if (this.paused) {
+        this.paused = false;
+        this.scene.resume();
+      }
     });
 
     if (this.metaState.inLobby) {
@@ -734,6 +799,7 @@ export class CaveScene extends Phaser.Scene {
 
     this.renderCaveBackdrop(originX, originY);
     const biome = this.mapData.biome ?? getBiomeForCave(this.metaState.cave);
+    const groundTexture = getGroundTextureKey(biome.id);
 
     if (this.showGrid) {
       this.renderIsoGrid(originX, originY, tileWidth, tileHeight);
@@ -763,12 +829,15 @@ export class CaveScene extends Phaser.Scene {
       // a arte inteira. Ver FLOOR_ART em config.js — desenhar o bloco inteiro
       // fazia as faces laterais invadir o tile vizinho e o piso virar uma
       // pilha de blocos em vez de chão contínuo.
-      const floor = drawGroundCell(this, col, row, point, tileWidth, tileHeight);
+      const floor = drawGroundCell(this, col, row, point, tileWidth, tileHeight, groundTexture);
 
       floor.setData('tile', tile);
       tile.floorSprite = floor;
 
-      // A cor do bioma entra como tint, e é a MESMA para todas as células.
+      // A cor do bioma JÁ está na textura: cada bioma tem o seu atlas, com a
+      // sua cor de solo. O tint aqui é só um ajuste fino, e é a MESMA cor para
+      // todas as células.
+      //
       // Pode parecer que estamos tingindo tile por tile, que era exatamente o
       // que criava grade: não é. Grade vem de valor VARIADO por tile, que
       // produz degrau de luminância na fronteira. Uma cor só é aritmeticamente
@@ -1381,7 +1450,8 @@ export class CaveScene extends Phaser.Scene {
         tile.row,
         rewardPos,
         this.renderMetrics.tileWidth,
-        this.renderMetrics.tileHeight
+        this.renderMetrics.tileHeight,
+        getGroundTextureKey(getBiomeForCave(this.metaState.cave).id)
       );
 
       fallbackFloor.setData('tile', tile);

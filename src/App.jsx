@@ -379,17 +379,31 @@ export default function App() {
   const [entryPhase, setEntryPhase] = useState(ENTRY_PHASE.MENU);
   const [showSettings, setShowSettings] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showPause, setShowPause] = useState(false);
   const [showBiomeSelect, setShowBiomeSelect] = useState(false);
   const [biomeSelectContext, setBiomeSelectContext] = useState('menu');
   const [selectedBiomeId, setSelectedBiomeId] = useState(firstBiome.id);
   const [pendingBiomeState, setPendingBiomeState] = useState(null);
-  const [settings, setSettings] = useState(() => readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS));
-  const [hudHeight, setHudHeight] = useState(0);
+  const [settings, setSettings] = useState(() => readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS));  const [hudHeight, setHudHeight] = useState(0);
   const [profile, setProfile] = useState(() => readStorage(PROFILE_STORAGE_KEY, { bestCave: 1 }));
   const [isFullscreen, setIsFullscreen] = useState(() => isFullscreenActive());
   const [fullscreenNotice, setFullscreenNotice] = useState(null);
   const [toast, setToast] = useState(null);
   const [pulsingPill, setPulsingPill] = useState(null);
+
+  /**
+   * A pausa só faz sentido com uma run em andamento. No lobby a cena já está
+   * congelada atrás de uma tela de decisão, e no menu não há jogo para pausar.
+   *
+   * Isto fica aqui, logo abaixo dos `useState`, e não junto dos outros valores
+   * derivados mais abaixo. Os efeitos que dependem de `pauseOpen` são declarados
+   * ANTES deste ponto no arquivo, e um `const` lido antes da sua inicialização
+   * cai na zona morta temporal: a versão anterior declarava isto na linha 1069 e
+   * o efeito na 531, o que derrubava o app inteiro com "Cannot access 'pauseOpen'
+   * before initialization". O sintoma era um `#root` vazio e zero botões na tela.
+   */
+  const pauseAvailable = entryPhase === ENTRY_PHASE.PLAYING && !gameState.inLobby;
+  const pauseOpen = showPause && pauseAvailable;
 
   const fullscreenAvailable = isFullscreenSupported() || isStandaloneDisplay();
   const needsPwaHint = isIosLike() && !isStandaloneDisplay();
@@ -466,9 +480,12 @@ export default function App() {
   }, []);
 
   /**
-   * Esc fecha o que estiver aberto, da camada mais alta para a mais baixa.
+   * Esc fecha o que estiver aberto, da camada mais alta para a mais baixa, e
+   * na falta de qualquer modal abre a pausa.
+   *
    * Em tela cheia o Esc pertence ao navegador, então é ignorado aqui — do
-   * contrário o modal fecharia junto com a tela cheia.
+   * contrário o modal fecharia junto com a tela cheia. Quem entra em tela cheia
+   * e aperta Esc antes continua sem pausa; o botão na tela faz esse papel.
    */
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -479,11 +496,21 @@ export default function App() {
       else if (showSettings) setShowSettings(false);
       else if (showInfoModal) setShowInfoModal(false);
       else if (showExitDecision) setShowExitDecision(false);
+      else if (showPause) setShowPause(false);
+      else if (pauseAvailable) setShowPause(true);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showUtilityShopModal, showBiomeSelect, showSettings, showInfoModal, showExitDecision]);
+  }, [
+    showUtilityShopModal,
+    showBiomeSelect,
+    showSettings,
+    showInfoModal,
+    showExitDecision,
+    showPause,
+    pauseAvailable
+  ]);
 
   useEffect(() => {
     stateRef.current = gameState;
@@ -504,6 +531,25 @@ export default function App() {
         : { ...current, bestCave: Math.max(current.bestCave ?? 1, gameState.bestCave ?? 1) }
     );
   }, [settings.persistProgress, gameState.bestCave]);
+
+  /**
+   * Avisa a cena do Phaser sobre a pausa.
+   *
+   * O overlay é React e a cena é Phaser, então o congelamento real acontece
+   * aqui: `cob-pause` é o único canal entre os dois. O efeito depende de
+   * `pauseOpen` e não de `showPause`, para que sair do menu com a pausa aberta
+   * (por exemplo, morrendo) não deixe a cena parada para sempre.
+   */
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('cob-pause', { detail: { paused: pauseOpen } }));
+  }, [pauseOpen]);
+
+  /** Nunca deixa a pausa aberta sem run para pausar. */
+  useEffect(() => {
+    if (!showPause || pauseAvailable) return;
+
+    setShowPause(false);
+  }, [showPause, pauseAvailable]);
 
   useEffect(() => {
     writeStorage(PROFILE_STORAGE_KEY, profile);
@@ -1446,6 +1492,43 @@ export default function App() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        )}
+
+        {pauseOpen && (
+          <div className="pause-overlay" role="dialog" aria-modal="true" aria-label="Jogo pausado">
+            <div className="pause-panel">
+              <span className="pause-kicker">Pausado</span>
+
+              <h2 className="pause-title">
+                {activeBiome.name} · {activeProgress.label}
+              </h2>
+
+              <p className="pause-message">
+                A cave está congelada. Suas moedas, melhorias e relíquias ficam guardadas.
+              </p>
+
+              <div className="pause-actions">
+                <button className="menu-primary-btn compact" type="button" onClick={() => setShowPause(false)}>
+                  Continuar
+                </button>
+
+                <button
+                  className="menu-secondary-btn compact"
+                  type="button"
+                  onClick={() => {
+                    setShowPause(false);
+                    backToMainMenu();
+                  }}
+                >
+                  Ir para o menu
+                </button>
+              </div>
+
+              <span className="pause-hint">
+                <kbd>Esc</kbd> continua · voltar ao menu reinicia a cave no início do bioma
+              </span>
             </div>
           </div>
         )}

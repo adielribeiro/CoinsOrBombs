@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 
-import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEY } from '../ground.js';
+import {
+  GROUND_CELL_HEIGHT,
+  GROUND_CELL_WIDTH,
+  GROUND_TEXTURE_KEYS
+} from '../ground.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -12,14 +16,24 @@ export class BootScene extends Phaser.Scene {
     this.load.image('bomb', 'assets/bomb.png');
     this.load.image('pickaxe', 'assets/pickaxe_lvl1.png');
 
-    // Chão. Um atlas, não uma arte por tile: a antiga `floor_*.png` era uma
-    // grelha 3x3 e a grade aparecia em cada célula. Cada frame deste atlas é
-    // um recorte de UMA superfície contínua. Gerado por
-    // `node scripts/generate-ground.mjs`.
-    this.load.spritesheet(GROUND_TEXTURE_KEY, 'assets/ground_atlas.png', {
-      frameWidth: GROUND_CELL_WIDTH,
-      frameHeight: GROUND_CELL_HEIGHT
-    });
+    /**
+     * Chão. Um atlas por bioma, e não uma arte por tile.
+     *
+     * A antiga `floor_*.png` era uma grelha 3x3 e a grade aparecia em cada
+     * célula; cada frame destes atlas é um recorte de UMA superfície contínua,
+     * gerado por `node scripts/generate-ground.mjs`.
+     *
+     * São quatro porque o tint do Phaser só multiplica: um atlas de terra
+     * marrom tingido de azul daria lama escura em vez de gelo. Cada bioma tem a
+     * própria cor na textura. Só o atlas do bioma atual é baixado, então o custo
+     * por jogador é o de um atlas.
+     */
+    for (const [biomeId, textureKey] of Object.entries(GROUND_TEXTURE_KEYS)) {
+      this.load.spritesheet(textureKey, `assets/ground_${biomeId}.png`, {
+        frameWidth: GROUND_CELL_WIDTH,
+        frameHeight: GROUND_CELL_HEIGHT
+      });
+    }
 
     // Rocks
     this.load.image('rock_01', 'assets/rock_01.png');

@@ -16,6 +16,7 @@ import {
   GROUND_CELL_WIDTH,
   GROUND_COLUMNS,
   GROUND_ROWS,
+  SOIL_BY_BIOME,
   getGroundAtlasSize,
   renderGroundCell
 } from '../src/game/ground.js';
@@ -98,28 +99,62 @@ function encodePng(width, height, rgba) {
 }
 
 const { width, height } = getGroundAtlasSize();
-const atlas = new Uint8ClampedArray(width * height * 4);
 
-for (let row = 0; row < GROUND_ROWS; row += 1) {
-  for (let col = 0; col < GROUND_COLUMNS; col += 1) {
-    const cell = renderGroundCell(col, row);
-    const originX = col * GROUND_CELL_WIDTH;
-    const originY = row * GROUND_CELL_HEIGHT;
+/**
+ * Um atlas por bioma.
+ *
+ * O mesmo relevo e a mesma estrutura de altura, mudando só o material: cor,
+ * intensidade da fissura e quanto o seixo levanta. Assim a Mina Solar é terra
+ * batida, a Gruta de Gelo é neve e as Ruínas são pedra lavrada, todas com a
+ * mesma costura contínua entre células.
+ *
+ * São 4 arquivos porque o tint do Phaser só multiplica — um atlas marrom
+ * tingido de azul vira lama escura, não gelo. O jogo baixa só o do bioma atual.
+ */
+let total = 0;
 
-    for (let py = 0; py < GROUND_CELL_HEIGHT; py += 1) {
-      const from = py * GROUND_CELL_WIDTH * 4;
-      const to = ((originY + py) * width + originX) * 4;
+for (const [biomeId, material] of Object.entries(SOIL_BY_BIOME)) {
+  const atlas = new Uint8ClampedArray(width * height * 4);
 
-      atlas.set(cell.subarray(from, from + GROUND_CELL_WIDTH * 4), to);
+  for (let row = 0; row < GROUND_ROWS; row += 1) {
+    for (let col = 0; col < GROUND_COLUMNS; col += 1) {
+      const cell = renderGroundCell(col, row, GROUND_CELL_WIDTH, GROUND_CELL_HEIGHT, material);
+      const originX = col * GROUND_CELL_WIDTH;
+      const originY = row * GROUND_CELL_HEIGHT;
+
+      for (let py = 0; py < GROUND_CELL_HEIGHT; py += 1) {
+        const from = py * GROUND_CELL_WIDTH * 4;
+        const to = ((originY + py) * width + originX) * 4;
+
+        atlas.set(cell.subarray(from, from + GROUND_CELL_WIDTH * 4), to);
+      }
     }
   }
+
+  const png = encodePng(width, height, atlas);
+  const path = `public/assets/ground_${biomeId}.png`;
+  await writeFile(path, png);
+  total += png.length;
+
+  // Cor média, para conferir que o material entrou mesmo.
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let n = 0;
+  for (let i = 0; i < atlas.length; i += 4) {
+    if (atlas[i + 3] === 0) continue;
+    r += atlas[i];
+    g += atlas[i + 1];
+    b += atlas[i + 2];
+    n += 1;
+  }
+
+  console.log(
+    `ground_${biomeId}.png  ${width}x${height}  ${(png.length / 1024).toFixed(0)} KB  `
+      + `cor media rgb(${(r / n).toFixed(0)},${(g / n).toFixed(0)},${(b / n).toFixed(0)})  `
+      + `${((n / (width * height)) * 100).toFixed(0)}% opaco`
+  );
 }
 
-const png = encodePng(width, height, atlas);
-await writeFile('public/assets/ground_atlas.png', png);
-
-const pixels = width * height;
-const opaque = atlas.reduce((total, value, index) => (index % 4 === 3 ? total + (value > 0 ? 1 : 0) : total), 0);
-
-console.log(`ground_atlas.png  ${width}x${height}  ${GROUND_COLUMNS}x${GROUND_ROWS} celas de ${GROUND_CELL_WIDTH}x${GROUND_CELL_HEIGHT}`);
-console.log(`  ${(png.length / 1024).toFixed(0)} KB, ${((opaque / pixels) * 100).toFixed(0)}% opaco (metade e a area dos cantos transparentes)`);
+console.log(`\n${GROUND_COLUMNS}x${GROUND_ROWS} celas de ${GROUND_CELL_WIDTH}x${GROUND_CELL_HEIGHT} por bioma`);
+console.log(`total no repositorio: ${(total / 1024 / 1024).toFixed(2)} MB — o jogo baixa so o do bioma atual`);

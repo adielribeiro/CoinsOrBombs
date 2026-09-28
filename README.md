@@ -155,7 +155,8 @@ npm run dev      # http://localhost:5173
 | `npm run preview` | Serve o build na porta 3000 |
 | `npm run pages` | Build + copia para `docs/game` (o que o Pages serve) |
 | `node scripts/fetch-fonts.mjs` | Rebaixa as fontes do Google Fonts para `public/assets/fonts` |
-| `node scripts/generate-ground.mjs` | Gera `public/assets/ground_atlas.png`, o chão contínuo |
+| `node scripts/generate-ground.mjs` | Gera os atlas do chão, um por bioma |
+| `node scripts/preview-biomes.mjs` | Monta o chão dos quatro biomas lado a lado |
 | `node scripts/preview-ground.mjs` | Reproduz a camada de chão em Node e mede a costura |
 | `node scripts/measure-reference.mjs <img>` | Mede uma imagem de referência: contraste por escala, seixos, bordas |
 | `node scripts/measure-floor-scales.mjs` | Compara o perfil do chão com a referência |
@@ -235,7 +236,7 @@ rowf = -dx / tileWidth  + dy / tileHeight
 Como a função não depende da célula, duas células que compartilham uma aresta
 amostram a mesma curva. A emenda é contínua **por construção**: não há costura
 para fechar nem ajuste para acertar. `scripts/generate-ground.mjs` recorta essa
-superfície num atlas de 14x12 células.
+superfície num atlas de 14x12 células, **um por bioma**.
 
 **Estrutura, não amplitude.** A primeira versão contínua ainda lia como chão
 liso, e a causa não era contraste baixo: era falta de estrutura. Ruído alto não
@@ -271,6 +272,14 @@ Duas descobertas que mudaram a direção do trabalho:
 
 Detalhes que não são óbvios:
 
+- **O chão é um atlas por bioma.** O tint do Phaser só multiplica, então um
+  atlas de terra marrom tingido de azul daria lama escura em vez de gelo. Cada
+  bioma tem a própria cor na textura, gerada com o mesmo relevo e material
+  diferente — Mina Solar é terra batida, Gruta de Gelo é neve, Profundezas Rubras
+  é rocha vulcânica e Ruínas é pedra lavrada. As luminâncias são
+  deliberadamente diferentes (gelo 187, brasa 60), senão o chão só mudaria de
+  matiz. O BootScene carrega os quatro atlas e o jogo baixa só o do bioma atual,
+  então o custo por jogador é o de um.
 - **O domínio do ruído é girado ~20°.** Os eixos de (colf, rowf) são os eixos da
   célula, então qualquer octave de frequência inteira produziria um desenho que
   se repete a cada célula.

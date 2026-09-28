@@ -874,6 +874,81 @@ button {
   z-index: 80;
 }
 
+/* Pausa. Fica acima do lobby (80) porque a pausa nunca aparece junto dele, mas
+   acima do HUD para que nenhum pill continue parecendo clicável. */
+.pause-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 28px);
+  background: rgba(4, 6, 10, 0.78);
+  animation: pause-fade 140ms ease-out;
+}
+
+@keyframes pause-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.pause-panel {
+  width: min(520px, 100%);
+  padding: clamp(20px, 4vw, 34px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+.pause-kicker {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.pause-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 4.2vw, 30px);
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.pause-message {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.pause-hint {
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+.pause-hint kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 5px;
+  border: 1px solid var(--line-strong);
+  color: var(--ink-dim);
+}
+
 .lobby-modal-modern,
 .exit-decision-modal,
 .menu-settings-modal,

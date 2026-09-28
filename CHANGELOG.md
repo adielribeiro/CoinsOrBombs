@@ -7,6 +7,66 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Pausa com Esc**, com Continuar e Ir para o menu.
+
+  A tecla Esc já fechava modais, e continuava fazendo isso: a pausa é o último
+  caso da cadeia, depois de loja, seleção de bioma, configurações, informações e
+  decisão de saída. No lobby e no menu ela não abre, porque não há jogo para
+  pausar.
+
+  - O overlay é React e a cena é Phaser, então o congelamento real acontece por
+    um evento `cob-pause`: a cena chama `scene.pause()`, que para o `update` e o
+    input. A alternativa seria um `if (this.paused) return` no fim de cada
+    handler, e isso não cobre o que o Phaser despacha direto, como o timer de
+    uma armadilha.
+  - **"Ir para o menu" reaproveita `backToMainMenu`**, que já existia e é usado
+    pelo lobby de derrota. Ela preserva moedas, melhorias e relíquias, então
+    escrever um segundo caminho seria duas regras para a mesma coisa. O texto da
+    dica diz o que acontece: a cave recomeça no início do bioma.
+  - Se a cena morrer pausada, o `shutdown` retoma. Sem isso o overlay ficaria
+    esperando um `resume` que nunca viria, e o estado do Phaser e o do React
+    discordariam ao voltar ao menu.
+
+  Um bug meu aqui valeu mais que o recurso: o `useEffect` que dispara a pausa
+  lia `pauseOpen`, declarado **depois** dele no arquivo. É zona morta temporal e
+  derrubava o app inteiro — `#root` vazio, zero botões, build passando e os 55
+  testes passando. O sintoma era "o jogo não carregou", o mesmo do `setTint` em
+  Container. Só apareceu no console do navegador. A correção foi mover a
+  derivação para logo abaixo dos `useState`, antes de qualquer efeito que a
+  leia.
+
+### Mudado
+
+- **O chão passou a acompanhar o tema de cada bioma.**
+
+  Antes os quatro biomas usavam o mesmo atlas de terra, e a diferença vinha só
+  do tint. Isso não funciona: **o tint do Phaser só multiplica**, então tingir
+  terra marrom de azul dava lama escura, e a Gruta de Gelo ficava com chão de
+  marrom escuro em vez de neve. Medido: o chão de gelo saía com luminância 66
+  contra 91 da Mina Solar.
+
+  Agora há um atlas por bioma, com o **mesmo relevo e a mesma estrutura** e
+  material diferente: cor, intensidade da fissura e quanto o seixo levanta. A
+  Mina Solar é terra batida, a Gruta de Gelo é neve compactada, as Profundezas
+  Rubras são rocha vulcânica e as Ruínas são pedra lavrada.
+
+  - As luminâncias são deliberadamente diferentes: gelo tem 187 e brasa tem 60.
+    Com a mesma luminância nos quatro, o chão só mudaria de matiz e não passaria
+    a sensação de ambiente diferente.
+  - `palette.ground` virou quase branco em todos os biomas. Ele continua sendo
+    o ajuste fino, mas a cor mora na textura — e um tint escuro escureceria o
+    mesmo pixel duas vezes.
+  - O custo por jogador é o de **um** atlas, porque o BootScene carrega os quatro
+    e o jogo baixa só o do bioma atual. No repositório são 2,26 MB.
+  - `scripts/preview-biomes.mjs` monta os quatro lado a lado, e
+    `scripts/png-encode.mjs` foi extraído para os scripts pararem de duplicar o
+    codificador de PNG.
+  - 4 testes novos: cada bioma tem cor própria, nenhum par de biomas sai
+    parecido, a luminância varia, o tint é quase branco, e cada bioma tem
+    textura e material.
+
+### Adicionado
+
 - **Modo desenvolvedor nas configurações.** Um interruptor que libera todos os
   biomas de uma vez, para pular direto para qualquer ambiente.
 
