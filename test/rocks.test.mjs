@@ -8,9 +8,12 @@ import {
   ROCK_SHEET_COLUMNS,
   ROCK_SHEET_ROWS,
   ROCK_VARIANT_COUNT,
+  ROCK_DISPLAY,
   getRockFrameIndex,
+  getRockJitter,
   getRockSheetKey
 } from '../src/game/rocks.js';
+import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH } from '../src/game/config.js';
 
 const raiz = new URL('../public/assets/', import.meta.url);
 
@@ -115,7 +118,74 @@ test('o gerador sorteia indice de rocha dentro da faixa', async () => {
   }
 });
 
-test('a rocha nao cobre mais que tres linhas de fundo', async () => {
+test('o jitter da rocha e deterministico', () => {
+  // O mapa e redesenhado a cada rocha quebrada e a cada redimensionamento. Um
+  // jitter sorteado a cada desenho faria as rochas pularem de lugar a cada
+  // repintura, o que e pior do que nenhuma variacao: parece bug.
+  for (let col = 0; col < 9; col += 1) {
+    for (let row = 0; row < 9; row += 1) {
+      for (let v = 0; v < 12; v += 1) {
+        const a = getRockJitter(col, row, v);
+        const b = getRockJitter(col, row, v);
+
+        assert.equal(a.angulo, b.angulo, `angulo mudou para (${col},${row},${v})`);
+        assert.equal(a.escala, b.escala, `escala mudou para (${col},${row},${v})`);
+        assert.equal(a.espelhar, b.espelhar, `espelhamento mudou para (${col},${row},${v})`);
+      }
+    }
+  }
+});
+
+test('o jitter fica dentro dos limites que a cena assume', () => {
+  for (let col = 0; col < 9; col += 1) {
+    for (let row = 0; row < 9; row += 1) {
+      for (let v = 0; v < 12; v += 1) {
+        const j = getRockJitter(col, row, v);
+
+        // Angulo: a rocha e ancorada na base, entao pivotar muito tira o pe
+        // do losango do tile.
+        assert.ok(
+          Math.abs(j.angulo) <= 5,
+          `angulo de ${j.angulo} graus em (${col},${row},${v}) passa dos 5`
+        );
+        // Escala: acima de 1,1 a rocha invade o tile vizinho de cima e o mapa
+        // deixa de se ler; abaixo de 0,9 some.
+        assert.ok(
+          j.escala >= 0.9 && j.escala <= 1.1,
+          `escala de ${j.escala.toFixed(3)} em (${col},${row},${v}) fora de 0,9 a 1,1`
+        );
+        assert.equal(typeof j.espelhar, 'boolean');
+      }
+    }
+  }
+});
+
+test('o jitter realmente varia entre tiles vizinhos', () => {
+  // Se o jitter devolvesse quase sempre o mesmo valor, ele estaria presente no
+  // código e não na tela. Contar quantos valores distintos aparecem num mapa
+  // inteiro é a checagem que pega isso.
+  const angulos = new Set();
+  const escalas = new Set();
+  let espelhados = 0;
+
+  for (let col = 0; col < 9; col += 1) {
+    for (let row = 0; row < 9; row += 1) {
+      const j = getRockJitter(col, row, (col + row) % 12);
+      angulos.add(j.angulo.toFixed(3));
+      escalas.add(j.escala.toFixed(3));
+      if (j.espelhar) espelhados += 1;
+    }
+  }
+
+  assert.ok(angulos.size >= 40, `so ${angulos.size} angulos distintos em 81 tiles`);
+  assert.ok(escalas.size >= 40, `so ${escalas.size} escalas distintas em 81 tiles`);
+  assert.ok(
+    espelhados > 15 && espelhados < 66,
+    `${espelhados} de 81 espelhadas: o espelhamento esta tendendo para um lado`
+  );
+});
+
+test('a rocha nao cobre mais que tres linhas de fundo', () => {
   // Este numero veio de olhar a tela, nao de um calculo. A primeira integracao
   // usou `ROCK_DISPLAY` em 0.78, e o resultado foi um campo de 40 formacoes em
   // que o chao sumia e o mapa deixava de se ler. Nenhum teste pegaria aquilo:
@@ -125,9 +195,6 @@ test('a rocha nao cobre mais que tres linhas de fundo', async () => {
   // cada linha do mapa avanca `tileHeight / 2` na tela. Com 84% dos tiles
   // sendo rocha, uma formacao alta cobre varias linhas ao mesmo tempo, e o
   // que fica entre elas e o chao.
-  const { BASE_TILE_HEIGHT, BASE_TILE_WIDTH } = await import('../src/game/config.js');
-  const { ROCK_DISPLAY } = await import('../src/game/rocks.js');
-
   const lado = BASE_TILE_WIDTH * ROCK_DISPLAY;
   const avancoPorLinha = BASE_TILE_HEIGHT / 2;
   const linhasCobertas = lado / avancoPorLinha;

@@ -5,6 +5,65 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Mudado
+
+- **Cada rocha ganha ângulo, escala e espelhamento próprios**, derivados de
+  (coluna, linha, variante). Antes cada rocha era desenhada exatamente igual,
+  e a folha de doze modelos não chegava a ler como variação.
+
+  **O motivo está medido, e não é o código.** O jogo estava usando os onze ou
+  doze frames certos, com regiões de recorte corretas — confirmado lendo o frame
+  que cada sprite recebeu, não o que o mapa pediu. A variação não aparecia
+  porque as folhas são variações do MESMO assunto. Diferença de silhueta entre
+  pares de células:
+
+  | bioma | mínimo | média | máximo |
+  | --- | --- | --- | --- |
+  | sunstone | 1,0% | 11,5% | 23,5% |
+  | ember | 0,0% | 9,3% | 19,7% |
+  | frost | 0,0% | 13,1% | 37,1% |
+
+  E em **quatro das seis folhas as células 5 e 6 são idênticas pixel a pixel**
+  (frost, ember, wind e crystal). As células 1, 4, 5, 6 e 7 ficam todas dentro
+  de 3% umas das outras em toda folha. Ou seja: de doze modelos, uns sete são de
+  fato diferentes, e o resto é a mesma rocha com pose ligeiramente diferente.
+
+  Onze por cento de diferença de contorno, num sprite de 60px, é um borrão de
+  6px que o olho junta com o vizinho. Ângulo, escala e espelhamento resolvem sem
+  depender da arte, e é o truque padrão para tile que se repete: espelhar dobra
+  a variedade de contorno de graça.
+
+  - **O jitter é determinístico.** O mapa é redesenhado a cada rocha quebrada e
+    a cada redimensionamento, então jitter sorteado a cada desenho faria as
+    rochas pularem de lugar a cada repintura — pior do que nenhuma variação,
+    porque parece bug. Há teste de determinismo e de distribuição.
+  - **A escala multiplica, não troca.** Trocar a escala tiraria a rocha do
+    losango do tile, e a grade do mapa é a única coisa que mantém a leitura.
+    Há teste travando o teto de três linhas de fundo coberta.
+  - A bomba revelada fica **fora** do jitter. É um marcador de jogo, e um
+    marcador que gira e muda de tamanho deixa de ser um marcador.
+
+### Corrigido
+
+- **Zona morta temporal ao desenhar a rocha, pela segunda vez neste projeto.**
+
+  O jitter foi escrito como `.setScale(rock.scaleX * ...)` dentro da cadeia que
+  ainda estava produzindo `const rock`. Ler `rock` antes da atribuição completa
+  é `ReferenceError` na primeira rocha; a exceção sobe do `renderMap` e a cena
+  morre — **canvas preto com o HUD de React por cima**, sem erro de console e
+  com build e 72 testes verdes.
+
+  É a mesma classe do bug da pausa, que lia `pauseOpen` declarado depois do
+  `useEffect` que o usava. O sintoma é idêntico e o custo de diagnóstico é alto,
+  porque nada no build ou nos testes diz que a tela está preta.
+
+  `publishSceneState` ganhou `rockFrames`, que separa **o que o mapa pediu** de
+  **o que o sprite recebeu**. Foi essa leitura que mostrou `dados=11,
+  sprites=11` — o mapa estava perfeito e ainda assim as 35 rochas eram a mesma
+  imagem, porque a variação não estava no caminho do índice. Sem essa
+  separação, "os frames estão certos" e "as rochas parecem diferentes" parecem
+  a mesma afirmação, e não são.
+
 ### Adicionado
 
 - **Rochas por bioma, doze modelos em cada uma.** As seis folhas

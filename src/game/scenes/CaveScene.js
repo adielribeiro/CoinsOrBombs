@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH, getTileMetrics, toIso } from '../config.js';
 import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrameIndex } from '../ground.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
-import { ROCK_DISPLAY, getRockFrameIndex, getRockSheetKey } from '../rocks.js';
+import { ROCK_DISPLAY, getRockFrameIndex, getRockJitter, getRockSheetKey } from '../rocks.js';
 import { generateMap } from '../systems/mapGenerator.js';
 import { findSafeRoute, getNeighbors4, isFrontierRock } from '../systems/helpers.js';
 
@@ -768,7 +768,52 @@ export class CaveScene extends Phaser.Scene {
         background: this.backgroundLayer?.length ?? 0,
         floor: this.floorLayer?.length ?? 0,
         objects: this.objectLayer?.length ?? 0
+      },
+      // Quantos modelos de rocha diferentes estão em uso agora, e quais.
+      //
+      // Existe por um motivo concreto: houve uma versão em que as 35 rochas da
+      // Cave 1 apareciam todas com o mesmo modelo, e nada no build, nos testes
+      // ou no console dizia por quê. Contar os frames em uso é o que responde
+      // "a variação está no mapa ou só na folha de arte" em uma leitura.
+      rockFrames: this.countRockFramesInUse()
+    };
+  }
+
+  /**
+   * Modelos de rocha em uso, medidos de dois jeitos.
+   *
+   * `dados` é o que o mapa pediu: os índices de `tile.rockVariant`. `sprites` é
+   * o que o Phaser realmente entregou, lido de cada `rockSprite.frame`.
+   *
+   * Os dois juntos são o que separa "o mapa mandou o índice certo" de "o sprite
+   * recebeu o frame certo". Houve uma versão em que `dados` contava 12 e
+   * `sprites` contava 1 — o mapa estava perfeito e as 35 rochas eram a mesma
+   * imagem, e nenhum aviso dizia por quê.
+   */
+  countRockFramesInUse() {
+    if (!this.mapData || this.metaState.inLobby) return null;
+
+    const dados = new Set();
+    const sprites = new Set();
+
+    for (const linha of this.mapData.tiles) {
+      for (const tile of linha) {
+        if (tile.type !== 'rock') continue;
+
+        if (Number.isInteger(tile.rockVariant)) {
+          dados.add(getRockFrameIndex(tile.rockVariant));
+        }
+
+        const frame = tile.rockSprite?.frame;
+        if (frame) sprites.add(`${frame.name}@${frame.cutX},${frame.cutY}`);
       }
+    }
+
+    return {
+      dadosDistintos: dados.size,
+      dadosIndices: [...dados].sort((a, b) => a - b),
+      spritesDistintos: sprites.size,
+      sprites: [...sprites].sort()
     };
   }
 
@@ -907,6 +952,14 @@ export class CaveScene extends Phaser.Scene {
         // para 80x45, e os doze modelos novos têm proporções muito diferentes
         // entre si. Ver `ROCK_DISPLAY` em rocks.js.
         const rockSize = Math.round(tileWidth * ROCK_DISPLAY * (revealedBomb ? 0.5 : 1));
+        const frameIndex = revealedBomb ? 0 : getRockFrameIndex(tile.rockVariant);
+        // A bomba revelada é uma imagem solta e não entra no jitter: ela é um
+        // marcador de jogo, e um marcador que gira e muda de tamanho deixa de
+        // ser um marcador.
+        const jitter = revealedBomb
+          ? { angulo: 0, escala: 1, espelhar: false }
+          : getRockJitter(tile.col, tile.row, frameIndex);
+
         const rock = this.add
           // Textura e frame são separados: a bomba revelada é uma imagem
           // solta, com um frame só, e por isso precisa de `setFrame(0)`. Passar
@@ -917,8 +970,22 @@ export class CaveScene extends Phaser.Scene {
           // mesmo chão em vez de cada uma flutuar na sua altura.
           .setOrigin(0.5, 1)
           .setDisplaySize(rockSize, rockSize)
-          .setFrame(revealedBomb ? 0 : getRockFrameIndex(tile.rockVariant))
+          .setFrame(frameIndex)
           .setInteractive({ cursor: 'pointer' });
+
+        // O jitter vem DEPOIS, e multiplica a escala em vez de trocar. Se a
+        // escala fosse trocada, a rocha deixaria de caber no losango do tile —
+        // que é a única coisa que faz a grade do mapa continuar legível.
+        //
+        // Estas três linhas NÃO podem entrar na cadeia de cima. Ler
+        // `rock.scaleX` de dentro da expressão que ainda está produzindo `rock`
+        // é zona morta temporal: `ReferenceError` na primeira rocha, a exceção
+        // sobe do `renderMap` e a cena morre — canvas preto com o HUD de React
+        // por cima. Foi exatamente o que aconteceu, e é a segunda vez que este
+        // projeto cai nesse buraco.
+        rock.setScale(rock.scaleX * jitter.escala, rock.scaleY * jitter.escala);
+        rock.setAngle(jitter.angulo);
+        rock.setFlipX(jitter.espelhar);
 
         rock.setData('tile', tile);
 
