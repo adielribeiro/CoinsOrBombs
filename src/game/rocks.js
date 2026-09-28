@@ -36,24 +36,27 @@ export const ROCK_SHEET_ROWS = 4;
 /**
  * Quantos modelos cada bioma tem.
  *
- * Vem do `manifest.json` que acompanha os sprites individuais, e o
- * `scripts/slice-rocks.mjs` escreve este arquivo. O jogo não pode ter um número
- * só: frost tem 14 sprites e sunstone tem 12, e sortear 12 em cima dos 14
- * deixaria dois modelos fora da rodagem toda.
+ * Vem do `manifest.json` que acompanha os sprites individuais, MENOS os que o
+ * `slice-rocks.mjs` recusa por serem arte levitante. A Galeria de Vento tem 12
+ * no manifest e 8 aqui: `wind_01`, `wind_04`, `wind_05` e `wind_10` são
+ * aglomerados e plataformas que flutuam de propósito, e rocha que flutua
+ * numa grade de tiles lê como bug.
  *
- * `min` é o piso, usado quando a folha ainda não foi gerada. É o menor número
- * do jogo de propósito: com uma folha ausente, sortear acima da contagem daria
- * índice fora de faixa, e índice fora de faixa é o placeholder de textura
- * ausente, com 35 caixas pretas na tela.
+ * O jogo não pode ter um número só: frost tem 14 e wind tem 8, e sortear o
+ * maior em cima do menor deixaria modelos fora da folha — que é o placeholder
+ * de textura ausente, com dezenas de caixas pretas na tela.
+ *
+ * `ROCK_VARIANT_COUNT` é o piso, usado quando a folha ainda não foi gerada. É o
+ * menor número do jogo de propósito, pelo mesmo motivo.
  */
-export const ROCK_VARIANT_COUNT = 12;
+export const ROCK_VARIANT_COUNT = 8;
 
 export const ROCK_VARIANT_COUNTS = {
   sunstone: 12,
   frost: 14,
   ember: 13,
   ruins: 12,
-  wind: 12,
+  wind: 8,
   crystal: 12
 };
 

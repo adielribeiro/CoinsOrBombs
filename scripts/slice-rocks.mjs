@@ -165,6 +165,104 @@ function reduzParaCelula(img, recorte, destinoX, destinoY) {
   return { saida, larguraDestino, alturaDestino };
 }
 
+/**
+ * Quantas peças soltas o sprite tem, em vez de um corpo só.
+ *
+ * Existe porque quatro sprites da Galeria de Vento são ARTE LEVITANTE, e não
+ * rocha: `wind_01`, `wind_05` e `wind_10` são aglomerados flutuando com vento
+ * ao redor, e `wind_04` é uma plataforma com pedrinhas penduradas embaixo.
+ * Numa grade isométrica, onde cada rocha assenta num tile, uma plataforma
+ * flutuante não lê como arte — lê como bug, e o jogador não tem como
+ * distinguir "a arte está assim" de "o jogo está quebrado".
+ *
+ * O critério é objetivo e não é o meu olho: uma rocha que senta no chão é UM
+ * corpo conexo. Estilhaço que paira em volta é um segundo. Medido nos 75 sprites,
+ * a regra descarta exatamente os 4 da Vento e NENHUM dos outros 71 — os cinco
+ * biomas restantes têm zero peças soltas.
+ *
+ * A base estreita, que parecia a culpada, é o critério ERRADO: `crystal_05` e
+ * `ember_13` têm base de 10% e 12% da largura e são arte válida — um
+ * afloramento com cristais e uma plataforma de lava vista de cima. Descartá-los
+ * por causa disso teria custado dois sprites bons para ganhar uma lista
+ * limpa.
+ */
+function pecasSoltas(img) {
+  const recorte = recorteDoConteudoAlto(img);
+  if (!recorte) return 0;
+
+  const { width: W, channels: C, data: D } = img;
+  const w = recorte.largura;
+  const h = recorte.altura;
+  const mask = new Uint8Array(w * h);
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      mask[y * w + x] = D[((recorte.y + y) * W + (recorte.x + x)) * C + 3] > 40 ? 1 : 0;
+    }
+  }
+
+  const vistos = new Uint8Array(w * h);
+  const pilha = [];
+  const tamanhos = [];
+
+  for (let i = 0; i < w * h; i += 1) {
+    if (!mask[i] || vistos[i]) continue;
+
+    let n = 0;
+    pilha.push(i);
+    vistos[i] = 1;
+
+    while (pilha.length > 0) {
+      const p = pilha.pop();
+      n += 1;
+      const x = p % w;
+      const y = (p / w) | 0;
+
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const q = ny * w + nx;
+        if (mask[q] && !vistos[q]) {
+          vistos[q] = 1;
+          pilha.push(q);
+        }
+      }
+    }
+
+    if (n > 0) tamanhos.push(n);
+  }
+
+  const total = tamanhos.reduce((a, b) => a + b, 0);
+  if (total === 0) return 0;
+
+  // A peça principal é a maior. As outras só contam acima de 0,8% do alfa
+  // total, para não transformar a borda suave da pintura em "estilhaço".
+  return tamanhos.slice(1).filter((t) => t > total * 0.008).length;
+}
+
+/** Recorte com limiar de alfa alto, para a análise de peças. */
+function recorteDoConteudoAlto(img) {
+  const { width: W, height: H, channels: C, data: D } = img;
+  let minX = W;
+  let maxX = -1;
+  let minY = H;
+  let maxY = -1;
+
+  for (let y = 0; y < H; y += 1) {
+    for (let x = 0; x < W; x += 1) {
+      if (D[(y * W + x) * C + 3] > 40) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  if (maxX < 0) return null;
+  return { x: minX, y: minY, largura: maxX - minX + 1, altura: maxY - minY + 1 };
+}
+
 /** Converte um matiz em duas metades, para comparar contornos de verdade. */
 function halvesDoContorno(img) {
   const recorte = recorteDoConteudo(img);
@@ -254,6 +352,7 @@ for (const biome of alvos) {
   const saida = new Uint8ClampedArray(largura * altura * 4);
   const contornos = [];
   const medidas = [];
+  const descartados = [];
 
   for (let i = 0; i < lista.length; i += 1) {
     const item = lista[i];
@@ -269,6 +368,17 @@ for (const biome of alvos) {
 
     if (!recorte) {
       console.log(`  ${item.file}: totalmente transparente. Pulando.`);
+      continue;
+    }
+
+    // Arte levitante não vira rocha quebrável. Ver `pecasSoltas`.
+    const soltos = pecasSoltas(img);
+    if (soltos >= 2) {
+      descartados.push({ arquivo: item.file, pecas: soltos });
+      console.log(
+        `  ${item.file}: arte levitante (${soltos} peças soltas) — fora, `
+          + `uma peça flutuando numa grade de tiles lê como bug.`
+      );
       continue;
     }
 
@@ -325,8 +435,9 @@ for (const biome of alvos) {
   const alturaMin = Math.min(...medidas.map((m) => m.alturaRelativa));
 
   console.log(
-    `${destino}  ${largura}x${altura}  ${medidas.length} sprites  `
-      + `${Math.round(png.length / 1024)} KB`
+    `${destino}  ${largura}x${altura}  ${medidas.length} sprites`
+      + (descartados.length ? `  (${lista.length - descartados.length} de ${lista.length})` : '')
+      + `  ${Math.round(png.length / 1024)} KB`
   );
   console.log(
     `   altura na celula: ${(alturaMin * 100).toFixed(0)}% a ${(alturaMax * 100).toFixed(0)}%  |  `

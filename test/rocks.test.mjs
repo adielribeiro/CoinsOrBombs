@@ -72,17 +72,28 @@ test('a grade comporta todos os sprites de todos os biomas', () => {
   // jogo errada para os biomas que não tinham 12.
   const capacidade = ROCK_SHEET_COLUMNS * ROCK_SHEET_ROWS;
   const maior = Math.max(...Object.values(ROCK_VARIANT_COUNTS));
+  const menor = Math.min(...Object.values(ROCK_VARIANT_COUNTS));
 
   assert.ok(
     maior <= capacidade,
     `o bioma com mais sprites tem ${maior}, e a grade comporta ${capacidade}`
   );
-  assert.ok(ROCK_VARIANT_COUNT <= maior, 'o piso de segurança esta acima da contagem real');
+  assert.equal(
+    ROCK_VARIANT_COUNT,
+    menor,
+    `o piso de seguranca e ${ROCK_VARIANT_COUNT}, e o menor bioma tem ${menor}. `
+      + `Com o piso acima do menor, um indice sorteado cairia no piso em vez de `
+      + `dar modulo, e o bioma perderia os ultimos sprites.`
+  );
 });
 
-test('a contagem de sprites bate com o manifest dos arquivos', () => {
-  // É o teste que pega sprite novo chegando na pasta sem entrar na lista: o
-  // jogo continuaria funcionando, e o modelo novo simplesmente nunca sairia.
+test('a contagem de sprites bate com o manifest, menos a arte levitante', () => {
+  // O manifest lista tudo que veio no ZIP, inclusive a arte levitante que o
+  // fatiador recusa. Então a contagem do código tem de ser MENOR ou igual à do
+  // manifest — e nunca maior, que é o que colocaria um índice fora da folha.
+  //
+  // A Galeria de Vento é o caso: 12 no manifest, 8 no jogo, e a diferença são
+  // os quatro sprites que flutuam de propósito.
   const pasta = 'C:/Users/adielvale/AppData/Local/Temp/opencode/rocks_zip/rocks_individuais';
 
   if (!existsSync(`${pasta}/manifest.json`)) {
@@ -94,13 +105,27 @@ test('a contagem de sprites bate com o manifest dos arquivos', () => {
   const manifesto = JSON.parse(readFileSync(`${pasta}/manifest.json`, 'utf8'));
 
   for (const [biome, lista] of Object.entries(manifesto)) {
-    assert.equal(
-      getRockVariantCount(biome),
-      lista.length,
-      `${biome}: o manifest lista ${lista.length} sprites, e o codigo diz `
-        + `${getRockVariantCount(biome)}`
+    const declarado = getRockVariantCount(biome);
+
+    assert.ok(
+      declarado <= lista.length,
+      `${biome}: o codigo declara ${declarado} sprites, e o manifest tem `
+        + `${lista.length}. Declarar mais que o manifest sempre dá índice fora `
+        + `da folha, que é o placeholder de textura ausente.`
     );
   }
+
+  // A diferença tem que ser o descarte de levitantes, e nada mais. Se um bioma
+  // perdesse sprites por outro motivo, esta contagem acusaria.
+  const totalManifest = Object.values(manifesto).reduce((a, l) => a + l.length, 0);
+  const totalCodigo = Object.values(ROCK_VARIANT_COUNTS).reduce((a, n) => a + n, 0);
+
+  assert.equal(
+    totalManifest - totalCodigo,
+    4,
+    `${totalManifest - totalCodigo} sprites descartados, e o esperado são 4 `
+      + `levitantes da Galeria de Vento`
+  );
 });
 
 test('o indice de frame nunca sai da folha do bioma', () => {

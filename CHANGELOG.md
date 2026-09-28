@@ -5,7 +5,34 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Removido
+
+- **Quatro sprites de arte levitante da Galeria de Vento**: `wind_01`, `wind_04`,
+  `wind_05` e `wind_10`.
+
+  `wind_01`, `wind_05` e `wind_10` são aglomerados de rocha flutuando com vento
+  ao redor. `wind_04` é uma plataforma com pedrinhas penduradas embaixo. São
+  peças feitas para pairar, e numa grade isométrica — onde cada rocha assenta num
+  tile e é quebrada com a picareta — uma peça flutuando não lê como arte. Lê
+  como bug, e o jogador não tem como distinguir "a arte é assim" de "o jogo
+  quebrou".
+
+  A detecção é automática e está no `slice-rocks.mjs`, não foi o meu olho: uma
+  rocha que senta no chão é **um** corpo conexo, e estilhaço que paira em volta é
+  um segundo. Medido nos 75 sprites, a regra descarta exatamente estes 4 e
+  **nenhum** dos outros 71 — crystal, ember, frost, ruins e sunstone têm zero
+  peças soltas.
+
+  **A base estreita era o critério errado, e quase custou dois sprites bons.**
+  `crystal_05` (afloramento com cristais) e `ember_13` (plataforma de lava vista
+  de cima) têm base de 10% e 12% da largura, e as duas são arte válida. A
+  primeira hipótese foi "afunila demais na base, então equilibra numa ponta" —
+  plausível na tela, e errada nos dados.
+
 ### Mudado
+
+- **A Galeria de Vento passa a ter 8 sprites**, de 12. A contagem por bioma já
+  era necessária (frost tem 14), e agora o Vento é o outro extremo.
 
 - **As rochas agora são doze ou quatorze assuntos diferentes por bioma**, e não
   variações de pose do mesmo assunto. Vem dos sprites individuais entregues no
@@ -34,10 +61,10 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   Nenhum par duplicado, em nenhum dos seis.
 
   - **A contagem de sprites varia por bioma**, e isso quebrou o número único.
-    Com 12 a 14 modelos, sortear de 0 a 11 num bioma de 14 funciona e ninguém
+    Com 8 a 14 modelos, sortear de 0 a 11 num bioma de 14 funciona e ninguém
     percebe: dois modelos simplesmente nunca aparecem. `ROCK_VARIANT_COUNTS`
-    guarda a contagem de cada um, e há teste garantindo que os doze a catorze
-    aparecem mesmo jogando o bioma inteiro.
+    guarda a contagem de cada um, e há teste garantindo que todos aparecem
+    mesmo jogando o bioma inteiro.
   - **A grade das folhas passou a 4x4, fixa nos seis biomas.** A versão anterior
     empacotava cada bioma no tamanho exato, e a folha saía com alturas
     diferentes — o que deixava a grade do jogo errada para os biomas que não
