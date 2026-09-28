@@ -216,8 +216,28 @@ export function getBiomeProgress(cave = 1) {
   };
 }
 
-export function getUnlockedBiomes(bestCave = 1) {
+/**
+ * Biomas liberados.
+ *
+ * `developerMode` ignora o `unlockCave` e devolve todos. Existe porque testar
+ * o chão e a paleta de um bioma exigiria jogar a run inteira até lá: a Gruta de
+ * Gelo só abre na Cave 20, e são 20 caves para ver uma cor.
+ *
+ * O parâmetro é explícito e não vem de um global: quem chama decide, e o
+ * default segue sendo o caminho normal do jogo.
+ */
+export function getUnlockedBiomes(bestCave = 1, developerMode = false) {
+  if (developerMode) return [...BIOMES];
+
   return BIOMES.filter((biome) => bestCave >= biome.unlockCave);
+}
+
+/** Um bioma está liberado? Mesma regra de `getUnlockedBiomes`. */
+export function isBiomeUnlocked(biome, bestCave = 1, developerMode = false) {
+  if (!biome) return false;
+  if (developerMode) return true;
+
+  return bestCave >= biome.unlockCave;
 }
 
 export function getRelicById(relicId) {

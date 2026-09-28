@@ -1353,6 +1353,36 @@ button {
   color: var(--ink-faint);
 }
 
+/* Modo desenvolvedor. Fica separado das preferências de verdade: é uma
+   ferramenta de teste, e a diferença é dita na própria caixa. */
+
+.settings-toggle-dev {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-strong);
+  background: var(--bg-raise);
+}
+
+.settings-toggle-dev:has(input:checked) {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-raise));
+}
+
+.settings-toggle-dev strong {
+  color: var(--accent);
+}
+
+.settings-dev-note {
+  margin: -2px 0 4px;
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+  border-left: 2px solid var(--accent);
+}
+
 /* Seleção de bioma */
 
 .biome-select-backdrop {
@@ -1414,6 +1444,13 @@ button {
 .biome-card.locked {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Bioma liberado pelo modo desenvolvedor, sem ter sido concluído de verdade.
+   Entra com a mesma opacidade de um bioma normal — está clicável — mas com a
+   borda tracejada, para não passar por progresso real. */
+.biome-card.dev-unlocked {
+  border-style: dashed;
 }
 
 .biome-card:disabled {

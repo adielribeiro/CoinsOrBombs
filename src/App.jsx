@@ -127,7 +127,8 @@ const DEFAULT_SETTINGS = {
   reducedMotion: false,
   showGrid: false,
   persistProgress: true,
-  autoFullscreen: true
+  autoFullscreen: true,
+  developerMode: false
 };
 
 function readStorage(key, fallback) {
@@ -1028,7 +1029,7 @@ export default function App() {
   const isCoarsePointer = isCoarsePointerDevice();
 
   const currentObjectives = getObjectiveProgressList(gameState);
-  const unlockedBiomes = getUnlockedBiomes(gameState.bestCave ?? 1);
+  const unlockedBiomes = getUnlockedBiomes(gameState.bestCave ?? 1, settings.developerMode);
   const unlockedBiomeIds = new Set(unlockedBiomes.map((biome) => biome.id));
   const relicEntries = Object.values(RELIC_CATALOG);
   const totalRelics = getTotalRelics(gameState.collection);
@@ -1535,7 +1536,9 @@ export default function App() {
                   </p>
                 </div>
 
-                <span className="biome-select-subtle">Melhor cave {gameState.bestCave}</span>
+                <span className="biome-select-subtle">
+                  {settings.developerMode ? 'Modo desenvolvedor' : `Melhor cave ${gameState.bestCave}`}
+                </span>
               </div>
 
               <div className="biome-select-grid">
@@ -1544,18 +1547,27 @@ export default function App() {
                   const completed = isBiomeCompleted(biome, gameState.bestCave ?? 1);
                   const selected = selectedBiomeId === biome.id;
                   const selectable = biomeSelectContext === 'menu' ? unlocked : pendingBiome?.id === biome.id;
+                  // No modo desenvolvedor um bioma pode estar liberado sem ter
+                  // sido concluído de verdade. O rótulo precisa dizer isso,
+                  // senão a tela mente sobre o estado da progressão.
+                  const unlockedByDev = settings.developerMode && !isBiomeCompleted(biome, gameState.bestCave ?? 1)
+                    && (gameState.bestCave ?? 1) < biome.unlockCave;
                   const statusLabel = !unlocked
                     ? 'Bloqueado'
-                    : completed
-                      ? 'Concluído'
-                      : selectable
-                        ? 'Disponível'
-                        : 'Visitado';
+                    : unlockedByDev
+                      ? 'Dev'
+                      : completed
+                        ? 'Concluído'
+                        : selectable
+                          ? 'Disponível'
+                          : 'Visitado';
 
                   let description = 'Ambiente disponível para exploração.';
 
                   if (!unlocked) {
                     description = `Conclua a Cave ${getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave} para liberar.`;
+                  } else if (unlockedByDev) {
+                    description = `Liberado pelo modo desenvolvedor. Conclui na Cave ${getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave}.`;
                   } else if (biome.id === activeBiome.id) {
                     description = 'Bioma atual da sua run.';
                   } else if (completed) {
@@ -1566,7 +1578,7 @@ export default function App() {
                     <button
                       key={biome.id}
                       type="button"
-                      className={`biome-card ${completed ? 'completed' : ''} ${!unlocked ? 'locked' : ''} ${selected ? 'selected' : ''}`}
+                      className={`biome-card ${completed ? 'completed' : ''} ${!unlocked ? 'locked' : ''} ${unlockedByDev ? 'dev-unlocked' : ''} ${selected ? 'selected' : ''}`}
                       style={{ '--biome-accent': getBiomeAccentColor(biome.id) }}
                       onClick={() => selectable && setSelectedBiomeId(biome.id)}
                       disabled={!selectable}
@@ -1661,11 +1673,34 @@ export default function App() {
                 </span>
               </label>
 
+              <label className="settings-toggle settings-toggle-dev">
+                <input
+                  type="checkbox"
+                  checked={settings.developerMode}
+                  onChange={(event) =>
+                    setSettings((current) => ({ ...current, developerMode: event.target.checked }))
+                  }
+                />
+                <span>
+                  <strong>Modo desenvolvedor</strong>
+                  <small>
+                    Libera todos os biomas para pular direto para qualquer ambiente, sem precisar
+                    completar as caves anteriores. Não altera o progresso salvo.
+                  </small>
+                </span>
+              </label>
+
+              {settings.developerMode && (
+                <p className="settings-dev-note">
+                  {unlockedBiomes.length} de {BIOMES.length} biomas liberados · caves 1–
+                  {BIOMES[BIOMES.length - 1].endCave} acessíveis agora.
+                </p>
+              )}
+
               <div className="settings-line">
                 <span>Entrada</span>
                 <strong>{settings.reducedMotion ? 'Reduzida' : 'Animada'}</strong>
               </div>
-
               <div className="settings-line">
                 <span>Orientação recomendada</span>
                 <strong>{isCoarsePointer ? 'Paisagem' : 'Paisagem (desktop)'}</strong>
@@ -1688,7 +1723,10 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setProfile({ bestCave: 1 });
-                    setSettings(DEFAULT_SETTINGS);
+                    // O modo desenvolvedor sobrevive ao reset: o botão se
+                    // chama "Reiniciar progresso", e desligar a ferramenta de
+                    // teste no meio de uma sessão seria surpresa.
+                    setSettings((current) => ({ ...DEFAULT_SETTINGS, developerMode: current.developerMode }));
                   }}
                 >
                   Reiniciar progresso
@@ -1707,7 +1745,11 @@ export default function App() {
               <section className="menu-info-card">
                 <div className="menu-info-head">
                   <h2>Biomas desbloqueados</h2>
-                  <span>Melhor cave {gameState.bestCave}</span>
+                  <span>
+                    {settings.developerMode
+                      ? `Modo desenvolvedor · melhor cave ${gameState.bestCave}`
+                      : `Melhor cave ${gameState.bestCave}`}
+                  </span>
                 </div>
 
                 <div className="menu-chip-row">

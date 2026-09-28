@@ -5,6 +5,40 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- **Modo desenvolvedor nas configurações.** Um interruptor que libera todos os
+  biomas de uma vez, para pular direto para qualquer ambiente.
+
+  Existia um problema concreto por trás: ver o chão e a paleta da Gruta de Gelo
+  exigia jogar a run inteira até a Cave 20, que é exatamente o que se quer
+  evitar ao testar uma textura. O caminho normal de progressão continua intacto
+  — a flag só afeta `getUnlockedBiomes`.
+
+  - A tela de seleção marca os biomas liberados assim com badge **Dev** e borda
+    tracejada, e diz qual cave os libera de verdade. Um bioma que só está
+    liberado pelo modo dev não pode aparecer como "Concluído", senão a tela
+    mente sobre o estado da progressão.
+  - O cabeçalho da seleção e o painel de informações dizem "Modo desenvolvedor"
+    em vez de "Melhor cave N", porque nesse estado a melhor cave não explica
+    por que os quatro estão na lista.
+  - **O "Reiniciar progresso" preserva a flag.** O botão se chama
+    *reiniciar progresso*, e desligar a ferramenta de teste no meio de uma
+    sessão seria surpresa. As demais preferências continuam voltando ao padrão.
+  - `getUnlockedBiomes` devolve uma cópia no modo dev, não o array `BIOMES`
+    direto: um `sort` ou `reverse` na tela quebraria a ordem dos biomas para
+    sempre.
+  - `isBiomeUnlocked` foi extraído para responder à mesma pergunta em um só
+    lugar, e há teste garantindo que as duas funções concordam — se divergissem,
+    a tela de seleção e a de informações discordariam entre si.
+  - 6 testes novos (`test/devmode.test.mjs`): o caminho normal segue o
+    `unlockCave`, nenhum atalho abre bioma futuro, o modo dev libera tudo em
+    qualquer cave, e as duas funções concordam.
+
+  Verificado no navegador: ligar a flag mostra a nota com os valores derivados
+  dos dados, os quatro biomas ficam clicáveis, e entrar na Gruta de Gelo na
+  Cave 1 funciona com `bestCave` preservado em 1.
+
 ### Mudado
 
 - **O chão deixou de ser liso: agora é terra de caverna, com relevo.**
