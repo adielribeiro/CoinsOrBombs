@@ -155,6 +155,7 @@ npm run dev      # http://localhost:5173
 | `npm run preview` | Serve o build na porta 3000 |
 | `npm run pages` | Build + copia para `docs/game` (o que o Pages serve) |
 | `node scripts/fetch-fonts.mjs` | Rebaixa as fontes do Google Fonts para `public/assets/fonts` |
+| `node scripts/measure-floor.mjs` | Mede a geometria da arte de chão (losango e faces laterais) |
 
 O `vite.config.js` usa `base: './'`, então o mesmo build roda na raiz, em
 `/CoinsOrBombs/` e em qualquer subpasta.
@@ -210,6 +211,21 @@ No menu principal o mapa entra em **modo attract**: os marcadores `IN` e
 defeito em vez de arte.
 
 `Esc` fecha modais e sai da tela cheia (nessa ordem, cada um por vez).
+
+### O chão
+
+A arte de piso é desenhada como um bloco (losango em cima, faces laterais
+embaixo), mas só o **losango** é encaixado na célula da grade. As faces
+laterais ficam embaixo do tile vizinho, desenhado depois na ordem de
+profundidade — por isso o piso é contínuo, sem junta entre tiles.
+
+Cada tile ainda recebe um tom levemente diferente e, em ~40% deles, um pouco
+de entulho. Tudo derivado de hash da posição: o chão não muda quando a tela é
+redimensionada.
+
+A medição que embasa isso está em `FLOOR_ART` (`src/game/config.js`) e pode
+ser refeita com `node scripts/measure-floor.mjs`, que lê o PNG e reporta onde
+estão o losango e as faces laterais.
 
 ## Stack
 

@@ -7,6 +7,43 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Mudado
 
+- **O chão da cave virou chão de caverna, e não mais uma pilha de blocos.**
+  Esta era a maior contribute visual do projeto e o defeito era geométrico, não
+  de estilo.
+
+  A arte de piso é um bloco: losango da superfície em cima, moldura clara ao
+  redor e faces laterais escuras embaixo. Desenhada no tamanho cheio da célula,
+  as faces laterais avançavam para dentro do tile vizinho e viravam uma junta
+  escura grossa em cada um — o piso lia como blocos empilhados, e era a
+  "genericidade" que aparecia.
+
+  Medindo a arte (`node scripts/measure-floor.mjs`, idêntico nas três
+  variantes): canvas 160x100, área opaca de y=19 a y=95, losango de cima em
+  y=19..83 com 121px de largura, e 12px de faces laterais. O losango tem razão
+  1,89 — praticamente o 2:1 da grade, então a arte é geometricamente
+  compatível e só estava sendo desenhada no tamanho errado.
+
+  Agora só o losango cai na célula, alinhado pelos vértices, e as faces
+  laterais ficam embaixo do vizinho, que é desenhado depois na ordem de
+  profundidade. O espaço entre tiles deixou de existir.
+
+  - **Variação de tom por tile** (0.88 a 1.0, por hash da posição). Três
+    variantes repetidas em grade faziam o olho achar o mesmo bloco a cada dois
+    tiles. O teto é 1.0 porque o tint do Phaser multiplica a textura, e
+    `GetColor` acima de 255 estoura o byte e renderiza o tile quase preto —
+    foi exatamente o que aconteceu na primeira tentativa.
+  - **Entulho** em ~40% dos tiles, com posição e tamanho derivados de hash:
+    cascalho estável, que some ao redimensionar em vez de piscar.
+  - Teto de escala do mapa de 1.16 para 1.35, porque com o chão ocupando a
+    célula inteira a cave ficava pequena no meio da tela.
+
+- 7 testes novos (`test/floor.test.mjs`) travando a geometria do piso em
+  quatro escalas de render: o losango fecha a célula, não deixa fresta, não
+  avança demais, as faces laterais passam do fundo da célula, o tom nunca
+  estoura o byte, e tom e entulho são estáveis entre gerações.
+
+### Mudado
+
 - **Identidade visual inteira refeita** no sentido de tela de título de console,
   no lugar de painel de web.
 

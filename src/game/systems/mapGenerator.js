@@ -40,10 +40,41 @@ function createBaseTile(col, row, rockHp) {
     walkable: false,
     hp: rockHp,
     floorVariant: pickRandom(FLOOR_VARIANTS),
+    // Hash da posição: a mesma pedra volta sempre no mesmo lugar, então o
+    // mapa não "pisca" a cada redesenho, e o padrão fica estável em vez de
+    // aleatório a cada chamada.
+    floorTone: pickFloorTone(col, row),
+    grit: pickGrit(col, row),
     rockVariant: pickRandom(ROCK_VARIANTS),
     deco: null,
     isHiddenExit: false
   };
+}
+
+/**
+ * Brilho por tile, entre 0.88 e 1.0.
+ *
+ * Sem isso, três variantes repetidas em grade denunciam o tile: o olho
+ * encontra o mesmo bloco a cada dois tiles. Uma variação de até 12% quebra a
+ * repetição sem parecer pintado.
+ *
+ * O teto é 1.0 de propósito. O tint do Phaser MULTIPLICA a textura, então
+ * acima de 1.0 seria "clarear" — e `GetColor` estouraria o byte de cor,
+ * produzindo uma tinta inválida que renderiza o tile quase preto.
+ */
+function pickFloorTone(col, row) {
+  const hash = Math.sin(col * 12.9898 + row * 78.233) * 43758.5453;
+  const noise = hash - Math.floor(hash);
+
+  return 0.88 + noise * 0.12;
+}
+
+/** ~40% dos tiles ganham um pouco de entulho, para o piso não ficar liso. */
+function pickGrit(col, row) {
+  const hash = Math.sin(col * 39.3468 + row * 11.135) * 24634.6345;
+  const noise = hash - Math.floor(hash);
+
+  return noise < 0.4 ? 1 + Math.floor(noise * 9) : 0;
 }
 
 function getDistance(a, b) {

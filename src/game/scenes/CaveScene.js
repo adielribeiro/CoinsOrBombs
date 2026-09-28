@@ -1,9 +1,39 @@
 import Phaser from 'phaser';
-import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH, getTileMetrics, toIso } from '../config.js';
+import {
+  BASE_TILE_HEIGHT,
+  BASE_TILE_WIDTH,
+  FLOOR_ART,
+  getFloorDisplaySize,
+  getTileMetrics,
+  toIso
+} from '../config.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { generateMap } from '../systems/mapGenerator.js';
 import { findSafeRoute, getNeighbors4, isFrontierRock } from '../systems/helpers.js';
 
+/**
+ * Encaixa a arte de chão na célula isométrica.
+ *
+ * A arte é um bloco: losango da superfície superior em cima, faces laterais
+ * embaixo. Só o losango de cima deve cair na célula; as faces laterais ficam
+ * sob o tile vizinho, que é desenhado depois na ordem de profundidade.
+ */
+function applyFloorPlacement(floor, point, tileWidth, tileHeight) {
+  const { displayWidth, displayHeight } = getFloorDisplaySize(tileWidth);
+
+  floor.setDisplaySize(displayWidth, displayHeight);
+
+  // A arte é desenhada um pouco maior que a célula, porque a célula só
+  // recebe o losango de cima e as faces laterais precisam ir parar embaixo
+  // do vizinho. Centralizar a imagem no ponto do tile já coloca o losango
+  // exatamente entre os vértices superior e inferior da célula: o topo do
+  // losango fica a displayHeight/2 - displayHeight*topOffsetY do centro, que
+  // é a metade da altura da célula.
+  const cellHalf = tileHeight / 2;
+  const topShift = displayHeight / 2 - displayHeight * FLOOR_ART.topOffsetY;
+
+  floor.setPosition(point.x, point.y - (cellHalf - topShift));
+}
 
 export class CaveScene extends Phaser.Scene {
   constructor() {
@@ -405,7 +435,12 @@ export class CaveScene extends Phaser.Scene {
       fitScale *= 0.94;
     }
 
-    const renderScale = Phaser.Math.Clamp(fitScale, 0.54, 1.16);
+    // O teto subiu de 1.16 para 1.35: com o chão agora ocupando a célula
+    // inteira (antes sobrava padding transparente na arte), a cave ficava
+    // pequena no meio da tela em vez de contínua. Teto, não mínimo, para não
+    // inflar o mapa em telas grandes.
+    const renderScale = Phaser.Math.Clamp(fitScale, 0.54, 1.35);
+
 
     this.renderMetrics = {
       ...profile,
@@ -733,15 +768,25 @@ export class CaveScene extends Phaser.Scene {
       const point = toIso(col, row, originX, originY, tileWidth, tileHeight);
       const isRock = tile.type === 'rock';
 
-      // Chão: preserva a proporção do losango isométrico (2:1). O código
-      // antigo esticava para tileWidth+4 x tileHeight+18, o que achatava o
-      // bloco de pedra e fazia os tiles se sobreporem verticalmente.
+      // Chão: o losango da superfície superior é alinhado na célula, e não
+      // a arte inteira. Ver FLOOR_ART em config.js — desenhar o bloco inteiro
+      // fazia as faces laterais invadir o tile vizinho e o piso virar uma
+      // pilha de blocos em vez de chão contínuo.
       const floor = this.add
         .image(point.x, point.y, tile.floorVariant || 'floor_01')
-        .setDisplaySize(tileWidth * 1.02, tileHeight * 1.04);
+        .setOrigin(0.5, 0.5);
+
+      applyFloorPlacement(floor, point, tileWidth, tileHeight);
 
       floor.setData('tile', tile);
       tile.floorSprite = floor;
+
+      if (tile.floorTone && tile.floorTone !== 1) {
+        // Clamp: GetColor empacota em bytes, e um valor acima de 255 vaza
+        // para o canal vizinho e produz uma tinta que renderiza preto.
+        const tone = Math.max(0, Math.min(255, Math.round(tile.floorTone * 255)));
+        floor.setTint(Phaser.Display.Color.GetColor(tone, tone, tone));
+      }
 
       if (tile.type === 'exit') {
         floor.setTint(biome.palette.exit);
@@ -753,6 +798,10 @@ export class CaveScene extends Phaser.Scene {
       }
 
       this.floorLayer.add(floor);
+
+      if (!isRock) {
+        this.renderGrit(tile, point, tileWidth, tileHeight);
+      }
 
       if (isRock) {
         const revealedBomb = tile.utilityRevealBomb === true;
@@ -876,6 +925,37 @@ export class CaveScene extends Phaser.Scene {
     }
 
     this.floorLayer.add(grid);
+  }
+
+  /**
+   * Entulho espalhado no chão. Chão liso demais é o que mais denuncia um
+   * tile genérico: uma caverna tem cascalho, pedriscos e terra. Cada tile
+   * sorteado recebe 1-3 pieces pequenos, com tom puxado para a cor da
+   * caverna, então a textura aparece sem virar poluição.
+   */
+  renderGrit(tile, point, tileWidth, tileHeight) {
+    const count = tile.grit ?? 0;
+
+    if (count === 0) return;
+
+    for (let i = 0; i < count; i += 1) {
+      // Distribuição estável a partir do tile: redesenhar dá o mesmo chão.
+      const seed = Math.sin((tile.col + 1) * 31.7 + (tile.row + 1) * 17.3 + i * 5.1) * 10000;
+      const n = seed - Math.floor(seed);
+
+      const offsetX = (n - 0.5) * tileWidth * 0.52;
+      const offsetY = (n * 7 % 1 - 0.5) * tileHeight * 0.5;
+      const size = tileWidth * (0.05 + (n % 0.3) * 0.05);
+
+      const pebble = this.add
+        .image(point.x + offsetX, point.y + offsetY, 'deco_rubble')
+        .setDisplaySize(size, size * 0.72)
+        .setAngle(Math.round(n * 90) - 45)
+        .setAlpha(0.34 + (n % 0.3))
+        .setTint(0x6b5a45);
+
+      this.objectLayer.add(pebble);
+    }
   }
 
   renderExitStructure(point, depth) {
