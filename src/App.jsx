@@ -94,7 +94,6 @@ const utilityCatalog = [
     name: 'Poção de Vida',
     description: 'Recupera 1 ponto de vida durante a run.',
     cost: 10,
-    shortName: 'Vida',
     tone: '#ff5f7e'
   },
   {
@@ -103,7 +102,6 @@ const utilityCatalog = [
     name: 'Poção Dedo-Duro',
     description: 'Revela uma bomba escondida no mapa atual.',
     cost: 35,
-    shortName: 'Duro',
     tone: '#ffb23c'
   },
   {
@@ -112,7 +110,6 @@ const utilityCatalog = [
     name: 'Poção Caminho Seguro',
     description: 'Mostra a rota segura até a saída da cave atual.',
     cost: 80,
-    shortName: 'Seguro',
     tone: '#3ddcff'
   }
 ];
@@ -1225,10 +1222,6 @@ export default function App() {
                         </span>
                         <span className="utility-count">x{count}</span>
                       </button>
-
-                      <span className="utility-label" aria-hidden="true">
-                        {utility.shortName}
-                      </span>
 
                       {isSelected && count > 0 && (
                         <button className="utility-use-btn" type="button" onClick={() => useUtility(utility.id)}>

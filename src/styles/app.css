@@ -619,9 +619,15 @@ button {
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--line);
-  /* Um pouco mais opaco que antes: a barra precisa se destacar da arte do
-     bioma, que é saturada e clara. */
-  background: rgba(6, 9, 14, 0.86);
+  /* 0,45. A primeira versão estava em 0,86 e a arte quase não passava: lia
+     como painel colado na tela, e não como HUD flutuando por cima do mapa.
+     A camada é a mais alta da tela, então precisa parecer que está SOBRE o
+     mapa.
+     Baixar a opacidade sozinho quebraria a leitura do texto — medido, a 0,42 a
+     contagem caía de 4,0 para 1,4 de contraste sobre a arte clara. Por isso o
+     fundo desceu e a legibilidade foi resolvida no próprio texto, com o halo
+     escuro de `.utility-count`. */
+  background: rgba(6, 9, 14, 0.45);
   justify-self: end;
 }
 
@@ -646,30 +652,30 @@ button {
      descarta a declaração seguinte e fica com esta, que é mais fraca mas
      presente. Sem o fallback a barra perderia o preenchimento inteiro. */
   background: rgba(255, 255, 255, 0.06);
-  background: color-mix(in srgb, var(--util-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--util-accent) 7%, transparent);
   border: 1px solid var(--line);
-  border-color: color-mix(in srgb, var(--util-accent) 40%, transparent);
+  border-color: color-mix(in srgb, var(--util-accent) 34%, transparent);
   color: var(--ink);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .utility-icon-btn:hover:not(:disabled) {
   border-color: var(--util-accent);
-  background: color-mix(in srgb, var(--util-accent) 24%, transparent);
+  background: color-mix(in srgb, var(--util-accent) 18%, transparent);
 }
 
 /* Vazio: some o preenchimento e o alfa do TOM, nunca o do botão inteiro.
-   O emoji e o rótulo continuam na cor viva, só que mais apagados. */
+   O emoji continua na cor viva, só que mais apagado. */
 .utility-slot.is-empty .utility-icon-btn {
   background: rgba(255, 255, 255, 0.02);
-  background: color-mix(in srgb, var(--util-accent) 5%, transparent);
+  background: color-mix(in srgb, var(--util-accent) 3%, transparent);
   border-color: var(--line-soft);
-  border-color: color-mix(in srgb, var(--util-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--util-accent) 14%, transparent);
   cursor: not-allowed;
 }
 
-.utility-slot.is-empty .utility-icon,
-.utility-slot.is-empty .utility-label {
+/* Vazio: some o preenchimento e o alfa do TOM, nunca o do botão inteiro. */
+.utility-slot.is-empty .utility-icon {
   opacity: 0.34;
 }
 
@@ -678,47 +684,50 @@ button {
 }
 
 /* Com item: o tom fica cheio e o ícone ganha um brilho curto, que é o que
-   faz o olho achar a barra sem precisar ler. */
+   faz o olho achar a barra sem precisar ler. A borda é que carrega o estado
+   agora — o preenchimento é fraco de propósito, para a arte continuar
+   passando por trás. */
 .utility-slot.has-item .utility-icon-btn {
-  background: color-mix(in srgb, var(--util-accent) 20%, transparent);
+  background: color-mix(in srgb, var(--util-accent) 11%, transparent);
   border-color: color-mix(in srgb, var(--util-accent) 72%, transparent);
 }
 
+/* O ícone leva duas sombras: o halo escuro que sustenta a leitura, e o brilho
+   na cor do tom que faz o olho achar a barra. A ordem importa — a sombra
+   escura primeiro, senão o brilho briga com ela. */
 .utility-slot.has-item .utility-icon {
-  text-shadow: 0 0 8px color-mix(in srgb, var(--util-accent) 70%, transparent);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 8px color-mix(in srgb, var(--util-accent) 70%, transparent);
 }
 
 .utility-slot.selected .utility-icon-btn {
   border-color: var(--util-accent);
-  background: color-mix(in srgb, var(--util-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--util-accent) 26%, transparent);
 }
 
 .utility-icon {
-  font-size: 17px;
+  font-size: 20px;
   line-height: 1;
   transition: opacity 0.15s ease;
 }
 
-/* A contagem vira um quadradinho com o fundo no tom, em vez de um número solto
-   em cinza. O quadrado é o que dá a leitura de "quanto eu tenho". */
+/* A contagem é texto solto na cor do tom, sem quadradinho. O quadrado era
+   parte do mesmo problema de opacidade: mais uma camada de preenchimento
+   empilhada sobre o slot e a barra.
+ *
+ * O halo escuro é o que permite a barra ser transparente sem o texto sumir.
+ * Medido: sem ele, a contagem sobre a arte clara do Cristal fica em 2,6 de
+ * contraste; com ele, volta ao contraste do tom contra quase-preto, que é 5,5
+ * ou mais. O contorno vai ATRÁS do glifo, então ele escurece o fundo local em
+ * vez de clarear o texto.
+ */
 .utility-count {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
   color: var(--util-accent);
-  padding: 1px 4px;
-  background: color-mix(in srgb, var(--util-accent) 16%, transparent);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.8);
   transition: opacity 0.15s ease;
 }
-.utility-label {
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--util-accent);
-  transition: opacity 0.15s ease;
-}
-
 .utility-use-btn {
   position: absolute;
   top: calc(100% + 6px);
@@ -1842,16 +1851,11 @@ button {
   }
 
   .utility-icon {
-    font-size: 15px;
+    font-size: 18px;
   }
 
   .utility-count {
     font-size: 9px;
-    padding: 1px 3px;
-  }
-
-  .utility-label {
-    font-size: 7.5px;
   }
 
   .toast {

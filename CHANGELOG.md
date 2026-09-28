@@ -7,7 +7,33 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Mudado
 
-- **A barra de utilitários ficou destacada, com uma cor por item.**
+- **A barra de utilitários ficou transparente, e sem os rótulos de texto.**
+
+  Os textos `VIDA`, `DURO` e `SEGURO` saíram. O ícone já carrega o tom e a
+  função — e o nome completo continua no `aria-label` e no `title` do botão,
+  então nada de acessibilidade foi perdido. `shortName` foi junto, porque só
+  existia para alimentar o rótulo.
+
+  A opacidade do fundo caiu de 0,86 para 0,45, e o preenchimento dos slots
+  também. A 0,86 a barra lia como painel colado na tela; a camada é a mais alta
+  da tela e precisa parecer que está **sobre** o mapa, não no lugar dele.
+
+  - **Baixar a opacidade sozinho quebrava a leitura, e isso foi medido.** Com a
+    barra em 0,42, a contagem caía de 4,0 para 1,4 de contraste sobre a arte
+    clara do Cristal — os três itens ficavam abaixo de AA para texto pequeno.
+    Transparência e legibilidade estavam em conflito direto.
+  - A saída foi resolver a legibilidade **no texto**, e não no fundo: a
+    contagem e o ícone ganharam um halo escuro atrás do glifo. O halo escurece o
+    fundo local em vez de clarear o texto, então o contraste volta ao do tom
+    contra quase-preto — **6,7 ou mais em qualquer cenário**, contra 1,6 sem o
+    halo. A barra pôde descer para 0,45 sem custo de leitura.
+  - O quadradinho de fundo da contagem também saiu. Era mais uma camada de
+    preenchimento empilhada sobre a barra e o slot, e é o mesmo defeito que a
+    barra opaca tinha.
+
+### Adicionado
+
+- **A barra de utilitários ganhou uma cor por item.**
 
   A barra somava três reduções de uma vez: `opacity: 0.3` no botão inteiro,
   `--ink-faint` no rótulo e `--ink-dim` na contagem. O resultado era um borrão
@@ -31,7 +57,8 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
   Não entrou gradiente preenchido nem `box-shadow` no botão: as duas coisas estão
   de fora de propósito no cabeçalho deste arquivo, porque denunciam "web".
-  A cor vem de matiz e saturação, com a moldura continuando de 1px.
+  A cor vem de matiz e saturação, com a moldura continuando de 1px. (A
+  transparência e a remoção dos rótulos são a entrada seguinte.)
 
 ### Adicionado
 
