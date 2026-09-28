@@ -5,6 +5,7 @@ import {
   GROUND_CELL_WIDTH,
   GROUND_TEXTURE_KEYS
 } from '../ground.js';
+import { ROCK_CELL_SIZE, getRockSheetKey } from '../rocks.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -23,10 +24,15 @@ export class BootScene extends Phaser.Scene {
      * célula; cada frame destes atlas é um recorte de UMA superfície contínua,
      * gerado por `node scripts/generate-ground.mjs`.
      *
-     * São quatro porque o tint do Phaser só multiplica: um atlas de terra
-     * marrom tingido de azul daria lama escura em vez de gelo. Cada bioma tem a
-     * própria cor na textura. Só o atlas do bioma atual é baixado, então o custo
-     * por jogador é o de um atlas.
+     * São seis porque o tint do Phaser só multiplica: um atlas de terra marrom
+     * tingido de azul daria lama escura em vez de gelo. Cada bioma tem a própria
+     * cor na textura.
+     *
+     * O custo NÃO é o de um atlas. Este laço carrega os seis no boot, e o
+     * comentário dizia o contrário — o que escondia o número que importa: o
+     * pacote de boot todo, chão e fundo juntos, é de 11,5 MB. Carregar por
+     * bioma na entrada seria a correção, e é um trabalho de carga assíncrona no
+     * meio da partida, não uma troca de linha aqui.
      */
     for (const [biomeId, textureKey] of Object.entries(GROUND_TEXTURE_KEYS)) {
       this.load.spritesheet(textureKey, `assets/ground_${biomeId}.png`, {
@@ -35,11 +41,25 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
-    // Rocks
-    this.load.image('rock_01', 'assets/rock_01.png');
-    this.load.image('rock_02', 'assets/rock_02.png');
-    this.load.image('rock_03', 'assets/rock_03.png');
-    this.load.image('rock', 'assets/rock.png');
+    /**
+     * Rochas. Uma folha por bioma, doze modelos em cada uma.
+     *
+     * Antes eram quatro imagens pequenas, compartilhadas por todos os biomas e
+     * tingidas por `palette.rockHighlight`. O tint do Phaser só multiplica, e
+     * isso funciona mal sobre arte que já tem cor: tingir uma rocha azul de um
+     * azul claro não muda o matiz, só lava o contraste. É o mesmo motivo do
+     * atlas de chão por bioma.
+     *
+     * A folha é recortada por `node scripts/slice-rocks.mjs`, que põe cada
+     * modelo numa célula quadrada encaixada na base. O quadrado é o que impede
+     * a distorção; ver `ROCK_DISPLAY` em `../rocks.js`.
+     */
+    for (const biomeId of Object.keys(GROUND_TEXTURE_KEYS)) {
+      this.load.spritesheet(getRockSheetKey(biomeId), `assets/rocks_${biomeId}.png`, {
+        frameWidth: ROCK_CELL_SIZE,
+        frameHeight: ROCK_CELL_SIZE
+      });
+    }
 
     // Decorations
     this.load.image('deco_rubble', 'assets/deco_rubble.png');

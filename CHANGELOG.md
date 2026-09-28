@@ -5,6 +5,59 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- **Rochas por bioma, doze modelos em cada uma.** As seis folhas
+  `rocks_<bioma>.png` são recortadas por `node scripts/slice-rocks.mjs`.
+
+  Medido nas seis folhas de entrada: todas com 1448×1086, ou seja uma grade 4×3
+  de células de 362px. As 72 células estão preenchidas e nenhuma passa de 360px
+  de conteúdo, sobra 1px de calha e nenhum modelo invade o vizinho. As doze
+  medidas por bioma variam de 31% a 100% da altura da célula: há laje deitada e
+  formação alta, e essa variedade é o que dá a variação no cenário.
+
+  - **A célula de saída é quadrada, e é isso que impede a distorção.** A rocha
+    antiga era desenhada com `setDisplaySize(largura, altura)`, que esmaga o
+    sprite para aquela caixa e ignora a proporção: o conteúdo de 82×80 aparecia
+    em 80×45, comprimido para 56% do natural, e isso já era um defeito. Os
+    modelos novos vão de 274×100 a 344×360, e uma caixa única deformaria a laje
+    para uma faixa e esticaria a formação para um cilindro. Com a célula
+    quadrada e escala uniforme na tela, a variedade de proporção fica dentro da
+    célula, que é onde ela pertence.
+  - **O tint saiu.** Antes as quatro rochas eram compartilhadas e tingidas por
+    `palette.rockHighlight`. O tint do Phaser só multiplica, e isso funciona mal
+    sobre arte que já tem cor: tingir uma rocha azul de um azul claro não muda o
+    matiz, só lava o contraste. É o mesmo motivo que fez o chão ganhar um atlas
+    por bioma.
+  - O recorte reduz de 362px para 176px por célula. A rocha ocupa cerca de 60px
+    na tela, então 176 é um buffer de 2,9x: sobra para tela de alta densidade sem
+    sobrar imagem invisível. Uma folha sai de 1,7–2,2 MB para 331–464 KB.
+  - `ROCK_VARIANTS` deixou de ser uma lista de chaves e passou a ser um índice de
+    frame. Antes `rock` aparecia duas vezes para pesar o boulder redondo; agora
+    os doze modelos entram com a mesma chance, e o índice é número puro para o
+    gerador não depender do nome do arquivo.
+  - `rock.png` e `rock_01..03.png` saíram. Nenhuma referência ficou.
+
+  **Um bug que só apareceu na tela.** A primeira integração passou o build e os
+  66 testes e mostrou 39 caixas pretas com um X verde, que é o placeholder de
+  textura ausente do Phaser. A causa foi passar o NOME do frame para
+  `add.image`; `load.spritesheet` não recebe `frameNames`, então nome de frame
+  não existe. O caminho certo é `setFrame` com índice, que é o que o atlas do
+  chão já fazia. Nenhum erro de console, nenhum aviso, build verde.
+
+### Corrigido
+
+- **A afirmação de que só o atlas do bioma atual é baixado era falsa.** O
+  comentário do BootScene e o CHANGELOG diziam que o laço carregava um atlas por
+  jogador. O laço carrega os seis, e o mesmo vale para os seis fundos. Medido: o
+  pacote de boot é de **11,5 MB** antes desta mudança e **13,9 MB** depois, com
+  as folhas de rocha entrando.
+
+  A afirmação não era inocente: ela é o que faria alguém acreditar que adicionar
+  assets por bioma é de graça. Carregar por bioma na entrada é a correção de
+  verdade, e é trabalho de carga assíncrona no meio da partida — não uma troca
+  de linha no BootScene. Fica para decidir.
+
 ### Removido
 
 - **Os interruptores "Reduzir animações" e "Grade isométrica"** das

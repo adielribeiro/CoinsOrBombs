@@ -1,10 +1,20 @@
 import { BIOMES, createRelicContent, getBiomeForCave, getBiomeProgress } from '../progression.js';
+import { ROCK_VARIANT_COUNT } from '../rocks.js';
 import { findSafeRoute, getNeighbors4, getNeighbors8 } from './helpers.js';
 
-// O boulder redondo entra com peso maior: as lajes com rachadura (rock_01..03)
-// são ambíguas em silhueta pequena, enquanto o boulder lê imediatamente como
-// "isto aqui é uma rocha".
-const ROCK_VARIANTS = ['rock', 'rock', 'rock_01', 'rock_02', 'rock_03'];
+/**
+ * Índice do modelo de rocha.
+ *
+ * Antes isto era uma lista de CHAVES de textura, com `rock` repetido para
+ * pesar o boulder redondo. Agora é um índice de frame, porque cada bioma tem
+ * doze modelos na própria folha, e repetir uma chave não pesa mais nada: todos
+ * os doze entram com a mesma chance.
+ *
+ * O índice é puro número justamente para não carregar a folha aqui. Se a cena
+ * recebese a chave, o gerador passaria a depender do nome do arquivo, e uma
+ * troca de nome quebraria as duas pontas sem erro de build.
+ */
+const ROCK_VARIANTS = Array.from({ length: ROCK_VARIANT_COUNT }, (_, i) => i);
 
 /**
  * Dimensões da cave. Exportado porque `GROUND_COLUMNS`/`GROUND_ROWS` no atlas

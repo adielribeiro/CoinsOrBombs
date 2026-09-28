@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH, getTileMetrics, toIso } from '../config.js';
 import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrameIndex } from '../ground.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
+import { ROCK_DISPLAY, getRockFrameIndex, getRockSheetKey } from '../rocks.js';
 import { generateMap } from '../systems/mapGenerator.js';
 import { findSafeRoute, getNeighbors4, isFrontierRock } from '../systems/helpers.js';
 
@@ -899,30 +900,30 @@ export class CaveScene extends Phaser.Scene {
 
       if (isRock) {
         const revealedBomb = tile.utilityRevealBomb === true;
-        const rockKey = revealedBomb ? 'bomb' : tile.rockVariant || 'rock_01';
 
-        // rock_01..03 são lajes largas dentro de um canvas quadrado.
-        // Forçá-las para 0.75w x 1.72h transformava a laje numa "cúpula"
-        // espremida; agora respeitamos a proporção do desenho.
-        const rockWidth = tileWidth * 0.84;
+        // A célula da folha é quadrada, e ela inteira vai para um quadrado na
+        // tela. Escala uniforme, sem `setDisplaySize` com dois valores: foi
+        // exatamente o `setDisplaySize` que achatava a rocha antiga de 82x80
+        // para 80x45, e os doze modelos novos têm proporções muito diferentes
+        // entre si. Ver `ROCK_DISPLAY` em rocks.js.
+        const rockSize = Math.round(tileWidth * ROCK_DISPLAY * (revealedBomb ? 0.5 : 1));
         const rock = this.add
-          .image(
-            point.x,
-            point.y - tileHeight * (revealedBomb ? 0.36 : 0.34),
-            rockKey
-          )
-          .setDisplaySize(
-            Math.round(revealedBomb ? rockWidth * 0.46 : rockWidth),
-            Math.round(revealedBomb ? rockWidth * 0.46 : tileHeight * 0.92)
-          )
+          // Textura e frame são separados: a bomba revelada é uma imagem
+          // solta, com um frame só, e por isso precisa de `setFrame(0)`. Passar
+          // um índice de folha nela daria o placeholder de textura ausente.
+          .image(point.x, point.y + tileHeight * 0.3, revealedBomb ? 'bomb' : getRockSheetKey(biome.id))
+          // Origem na base: o recorte encaixa cada modelo no rodapé da célula,
+          // então ancorar embaixo é o que faz todas as rochas assentarem no
+          // mesmo chão em vez de cada uma flutuar na sua altura.
+          .setOrigin(0.5, 1)
+          .setDisplaySize(rockSize, rockSize)
+          .setFrame(revealedBomb ? 0 : getRockFrameIndex(tile.rockVariant))
           .setInteractive({ cursor: 'pointer' });
 
         rock.setData('tile', tile);
 
         if (revealedBomb) {
           rock.setTint(0xffb0b0);
-        } else if (biome.id !== 'sunstone') {
-          rock.setTint(biome.palette.rockHighlight);
         }
 
         this.attachRockHover(rock, tile);
