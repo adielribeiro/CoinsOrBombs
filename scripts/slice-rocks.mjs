@@ -5,15 +5,25 @@
 //
 // De onde vem a entrada
 // ---------------------
-// `rocks_individuais/<bioma>/*.png`, mais o `manifest.json` ao lado. São sprites
-// individuais, com tamanhos diferentes cada um, e a contagem DIVERGE por bioma:
-// crystal 12, ember 13, frost 14, ruins 12, sunstone 12, wind 12.
+// `sprites_168x168/<bioma>/*.png`. São sprites individuais, todos com o canvas
+// em 168x168, e a contagem DIVERGE por bioma: crystal 12, ember 13, frost 14,
+// ruins 12, sunstone 12, wind 12.
 //
 // A versão anterior desta fatia consumia uma folha 4x3 e fabricava doze modelos
 // por bioma. Era a entrada errada: naquela folha as células 5 e 6 eram
 // idênticas pixel a pixel em quatro dos seis biomas, e a diferença de silhueta
 // entre pares era de 9% a 13% — variação de pose, não de assunto. Com a arte
 // certa a média sobe para 20% a 29% e não sobra nenhum par duplicado.
+//
+// O canvas padronizado NÃO resolve rocha flutuando, e é importante por que.
+// Medido nos 75 sprites: a folga transparente é SIMÉTRICA — de 4px a 48px em
+// cima e embaixo — ou seja, cada sprite está CENTRALIZADO no seu canvas, e não
+// apoiado numa base comum. A dispersão entre a base mais alta e a mais baixa é
+// de 44px. Usar o canvas como veio faria um sprite curto afundar 46px no chão.
+//
+// É por isso que este script sempre recortou pelo conteúdo e reassentou na base
+// da célula: o padding é de descarte, e é o que converte a padronização em
+// algo utilizável em vez de um problema novo.
 //
 // O que entra e o que sai
 // ----------------------
@@ -48,21 +58,22 @@
 // tela de alta densidade sem sobrar imagem invisível. Com células vazias à
 // direita e abaixo, a compressão é quase nula, e a folha final fica entre 100 e
 // 200 KB em vez dos 331 a 464 KB da versão de células cheias.
-import { readFile, writeFile, access, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, access, mkdir, readdir } from 'node:fs/promises';
 import { readPng } from './png.mjs';
 import { encodePng } from './png-encode.mjs';
 
 /** Onde o ZIP foi descompactado. */
-const ORIGEM = 'C:/Users/adielvale/AppData/Local/Temp/opencode/rocks_zip/rocks_individuais';
+const ORIGEM = 'C:/Users/adielvale/AppData/Local/Temp/opencode/sprites_zip/sprites_168x168';
 
 /**
  * Célula de saída, e a grade de empacotamento.
  *
- * 4x4 dá dezesseis células para o bioma com mais sprites (frost, com 14). A
- * folha é 4*176 por 4*176, e o `endFrame` no BootScene corta no total real de
- * cada bioma, de modo que a célula vazia nunca vira um frame usável.
+ * 168 é o tamanho do canvas de origem, então a redução é quase 1:1 e quase não
+ * há reamostragem. 4x4 dá dezesseis células para o bioma com mais sprites
+ * (frost, com 14), e o `endFrame` no BootScene corta no total real de cada bioma,
+ * de modo que a célula vazia nunca vira um frame usável.
  */
-const CELULA = 176;
+const CELULA = 168;
 const COLUNAS = 4;
 const LINHAS = 4;
 
@@ -106,18 +117,34 @@ function recorteDoConteudo(img) {
 /**
  * Reduz o recorte para dentro da célula, encaixando na base.
  *
+ * O encaixe é DENTRO da célula: horizontalmente ao centro, e com a última linha
+ * do conteúdo exatamente na última linha da célula. É essa última linha que
+ * decide se a rocha assenta ou flutua, porque no jogo o sprite usa origem
+ * (0.5, 1) — a base da imagem É o ponto de apoio no tile.
+ *
+ * A versão anterior escrevia o conteúdo no canto (0, 0) da célula e calculava
+ * `baseX`/`baseY` no empacotamento para reassentar depois. Essas duas variáveis
+ * nunca eram lidas: a cópia do buffer para a folha é posicional, de célula
+ * inteira, e ignora as coordenadas. O resultado era conteúdo no TOPO da célula,
+ * e o vazio sobrando embaixo virava exatamente o sintoma de rocha flutuando —
+ * quanto mais baixo o sprite no canvas de origem, maior era o buraco. Medido na
+ * folha da Mina Solar antes da correção: 9 das 12 rochas não encostavam na base,
+ * e a dispersão entre a mais alta e a mais baixa era de 32px na tela.
+ *
  * Bilinear com alfa na média e desmultiplicação na escrita. As duas etapas
  * importam: sem o alfa na média, a borda semi-transparente é puxada para o
  * preto e a rocha ganha um contorno escuro; sem desmultiplicar, a cor gravada é
  * a cor escurecida pela mistura com o fundo.
  */
-function reduzParaCelula(img, recorte, destinoX, destinoY) {
+function reduzParaCelula(img, recorte) {
   const { width: W, channels: C, data: D } = img;
   const saida = new Uint8ClampedArray(CELULA * CELULA * 4);
 
   const escala = Math.min(CELULA / recorte.largura, CELULA / recorte.altura);
   const larguraDestino = Math.max(1, Math.round(recorte.largura * escala));
   const alturaDestino = Math.max(1, Math.round(recorte.altura * escala));
+  const destinoX = Math.round((CELULA - larguraDestino) / 2);
+  const destinoY = CELULA - alturaDestino;
 
   for (let y = 0; y < alturaDestino; y += 1) {
     const sy = (y + 0.5) / escala - 0.5 + recorte.y;
@@ -318,50 +345,47 @@ function distanciaDeContorno(a, b) {
 
 await mkdir('public/assets', { recursive: true });
 
-const temManifest = await temArquivo(`${ORIGEM}/manifest.json`);
-
 for (const biome of alvos) {
   const destino = `public/assets/rocks_${biome}.png`;
+  const pasta = `${ORIGEM}/${biome}`;
 
-  if (!temManifest) {
+  // A listagem vem do DIRECTÓRIO, e não de um manifest. A pasta é a fonte da
+  // verdade, e um manifest ao lado é uma segunda lista para sair de sincronia —
+  // foi assim que um sprite novo podia chegar e nunca entrar na rodagem.
+  const nomes = (await readdir(pasta).catch(() => [])).filter((n) => n.endsWith('.png')).sort();
+
+  if (nomes.length === 0) {
     console.log(
-      `manifest.json nao encontrado em ${ORIGEM}. Descompacte o ZIP de sprites `
-        + `individuais e rode de novo. Nada foi escrito.`
+      `${pasta} nao existe ou esta vazia. Descompacte o ZIP de sprites `
+        + `padronizados e rode de novo. Nada foi escrito para ${biome}.`
     );
-    process.exit(1);
-  }
-
-  const manifesto = JSON.parse(await readFile(`${ORIGEM}/manifest.json`, 'utf8'));
-  const lista = manifesto[biome];
-
-  if (!Array.isArray(lista) || lista.length === 0) {
-    console.log(`${biome}: o manifest.json nao lista sprites. Nada foi escrito.`);
     continue;
   }
 
-  if (lista.length > COLUNAS * LINHAS) {
+  if (nomes.length > COLUNAS * LINHAS) {
     console.log(
-      `${biome}: ${lista.length} sprites, e a grade comporta ${COLUNAS * LINHAS}. `
+      `${biome}: ${nomes.length} sprites, e a grade comporta ${COLUNAS * LINHAS}. `
         + `Aumente COLUNAS/LINHAS em slice-rocks.mjs. Nada foi escrito.`
     );
     continue;
   }
 
+  const lista = nomes.map((file) => ({ file }));
   const largura = COLUNAS * CELULA;
   const altura = LINHAS * CELULA;
   const saida = new Uint8ClampedArray(largura * altura * 4);
   const contornos = [];
   const medidas = [];
   const descartados = [];
+  // A posição na folha conta só as peças que entraram. Usar o índice da pasta
+  // deixaria buracos: na Vento os quatro descartados ocupariam as células 0, 3, 4
+  // e 9, e as oito rochas que sobraram cairiam em 1, 2, 5, 6, 7, 8, 10 e 11 —
+  // com `endFrame` em 7, o jogo usaria as células 0, 3 e 4, que estariam
+  // TRANSPARENTES. Três das oito rochas da Vento não apareceriam.
+  let posicao = 0;
 
-  for (let i = 0; i < lista.length; i += 1) {
-    const item = lista[i];
+  for (const item of lista) {
     const entrada = `${ORIGEM}/${biome}/${item.file}`;
-
-    if (!(await temArquivo(entrada))) {
-      console.log(`  ${item.file}: o manifest lista, e o arquivo nao esta la. Pulando.`);
-      continue;
-    }
 
     const img = await readPng(entrada);
     const recorte = recorteDoConteudo(img);
@@ -385,12 +409,13 @@ for (const biome of alvos) {
     contornos.push(halvesDoContorno(img));
 
     // Empacota em ordem de leitura: linha a linha, da esquerda para a direita.
-    const coluna = i % COLUNAS;
-    const linha = Math.floor(i / COLUNAS);
+    const coluna = posicao % COLUNAS;
+    const linha = Math.floor(posicao / COLUNAS);
+    posicao += 1;
 
-    const celula = reduzParaCelula(img, recorte, 0, 0);
-    const baseX = coluna * CELULA + Math.round((CELULA - celula.larguraDestino) / 2);
-    const baseY = linha * CELULA + (CELULA - celula.alturaDestino);
+    // `reduzParaCelula` já devolve a peça encaixada na base da célula, então o
+    // empacotamento é só uma cópia posicional da célula inteira para a folha.
+    const celula = reduzParaCelula(img, recorte);
 
     for (let y = 0; y < CELULA; y += 1) {
       for (let x = 0; x < CELULA; x += 1) {

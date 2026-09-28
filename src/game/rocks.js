@@ -14,7 +14,7 @@
  */
 
 /** Célula de saída do recorte. Tem de bater com `CELULA_SAIDA` do script. */
-export const ROCK_CELL_SIZE = 176;
+export const ROCK_CELL_SIZE = 168;
 
 /**
  * Grade das folhas: 4 x 4 células.

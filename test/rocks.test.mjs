@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, access } from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 
+import { readPng } from '../scripts/png.mjs';
 import { BIOMES } from '../src/game/progression.js';
 import {
   ROCK_CELL_SIZE,
@@ -87,43 +88,46 @@ test('a grade comporta todos os sprites de todos os biomas', () => {
   );
 });
 
-test('a contagem de sprites bate com o manifest, menos a arte levitante', () => {
-  // O manifest lista tudo que veio no ZIP, inclusive a arte levitante que o
-  // fatiador recusa. Então a contagem do código tem de ser MENOR ou igual à do
-  // manifest — e nunca maior, que é o que colocaria um índice fora da folha.
+test('a contagem de sprites bate com a pasta, menos a arte levitante', () => {
+  // A pasta de origem é a fonte da verdade, e não um manifest ao lado: é a pasta
+  // que o fatiador lê, e um manifest seria uma segunda lista para sair de
+  // sincronia.
   //
-  // A Galeria de Vento é o caso: 12 no manifest, 8 no jogo, e a diferença são
-  // os quatro sprites que flutuam de propósito.
-  const pasta = 'C:/Users/adielvale/AppData/Local/Temp/opencode/rocks_zip/rocks_individuais';
+  // A contagem do código tem de ser MENOR ou igual à da pasta, e nunca maior —
+  // declarar mais sprites do que a folha tem sempre dá índice fora da folha, que
+  // é o placeholder de textura ausente.
+  const pasta = 'C:/Users/adielvale/AppData/Local/Temp/opencode/sprites_zip/sprites_168x168';
 
-  if (!existsSync(`${pasta}/manifest.json`)) {
-    // Sem o ZIP descompactado não há o que comparar, e falhar aqui seria
-    // depender de um caminho que não viaja com o repositório.
+  if (!existsSync(pasta)) {
+    // Sem o ZIP descompactado não há o que comparar, e falhar aqui seria depender
+    // de um caminho que não viaja com o repositório.
     return;
   }
 
-  const manifesto = JSON.parse(readFileSync(`${pasta}/manifest.json`, 'utf8'));
+  let totalPasta = 0;
 
-  for (const [biome, lista] of Object.entries(manifesto)) {
-    const declarado = getRockVariantCount(biome);
+  for (const biome of BIOMES) {
+    const arquivos = readdirSync(`${pasta}/${biome.id}`)
+      .filter((n) => n.endsWith('.png'));
+    const declarado = getRockVariantCount(biome.id);
+    totalPasta += arquivos.length;
 
     assert.ok(
-      declarado <= lista.length,
-      `${biome}: o codigo declara ${declarado} sprites, e o manifest tem `
-        + `${lista.length}. Declarar mais que o manifest sempre dá índice fora `
-        + `da folha, que é o placeholder de textura ausente.`
+      declarado <= arquivos.length,
+      `${biome.id}: o codigo declara ${declarado} sprites, e a pasta tem `
+        + `${arquivos.length}. Declarar mais do que a folha tem sempre dá `
+        + `índice fora da folha, que é o placeholder de textura ausente.`
     );
   }
 
   // A diferença tem que ser o descarte de levitantes, e nada mais. Se um bioma
   // perdesse sprites por outro motivo, esta contagem acusaria.
-  const totalManifest = Object.values(manifesto).reduce((a, l) => a + l.length, 0);
   const totalCodigo = Object.values(ROCK_VARIANT_COUNTS).reduce((a, n) => a + n, 0);
 
   assert.equal(
-    totalManifest - totalCodigo,
+    totalPasta - totalCodigo,
     4,
-    `${totalManifest - totalCodigo} sprites descartados, e o esperado são 4 `
+    `${totalPasta - totalCodigo} sprites descartados, e o esperado são 4 `
       + `levitantes da Galeria de Vento`
   );
 });
@@ -319,4 +323,58 @@ test('a rocha nao cobre mais que tres linhas de fundo', () => {
     `o modelo mais baixo sairia com ${(lado * menorModelo).toFixed(1)}px de altura, `
       + `abaixo dos 14px que ainda leem como rocha`
   );
+});
+
+test('nenhuma celula em uso fica com buraco embaixo, e nenhuma esta vazia', async () => {
+  // Este e o teste do sintoma de rocha flutuando, e ele existe porque o fatiador
+  // tinha um bug que nenhuma outra verificacao pegava: `reduzParaCelula` escrevia
+  // o conteudo no canto (0, 0) da celula, e o empacotamento calculava `baseX` e
+  // `baseY` para reassentar em seguida — duas variaveis que nunca eram lidas,
+  // porque a copia do buffer para a folha e posicional e ignora as coordenadas.
+  //
+  // O resultado era conteudo no TOPO da celula, com o vazio sobrando embaixo. Na
+  // cena o sprite usa origem (0.5, 1), entao esse vazio aparecia como levitacao:
+  // quanto mais baixo o sprite estava no canvas de origem, maior era o buraco.
+  // Medido na folha da Mina Solar antes da correcao, 9 das 12 rochas nao encostavam
+  // na base, e a dispersao entre a mais alta e a mais baixa era de 32px na tela.
+  //
+  // A variacao de tamanho entre sprites continua existindo — e e o que da
+  // silhuetas diferentes. O que nao pode existir e buraco: buraco e levitacao.
+  for (const biome of BIOMES) {
+    const folha = await readPng(new URL(`rocks_${biome.id}.png`, raiz));
+    const total = getRockVariantCount(biome.id);
+
+    for (let indice = 0; indice < total; indice += 1) {
+      const x0 = (indice % ROCK_SHEET_COLUMNS) * ROCK_CELL_SIZE;
+      const y0 = Math.floor(indice / ROCK_SHEET_COLUMNS) * ROCK_CELL_SIZE;
+      const alfaEm = (y, x) => folha.data[((y0 + y) * folha.width + x0 + x) * folha.channels + 3];
+
+      let ultimaOpaque = -1;
+      for (let y = ROCK_CELL_SIZE - 1; y >= 0 && ultimaOpaque < 0; y -= 1) {
+        for (let x = 0; x < ROCK_CELL_SIZE; x += 1) {
+          if (alfaEm(y, x) > 8) {
+            ultimaOpaque = y;
+            break;
+          }
+        }
+      }
+
+      assert.notEqual(
+        ultimaOpaque,
+        -1,
+        `${biome.id}: a celula ${indice} esta TRANSPARENTE. Com 'endFrame' em `
+          + `${total - 1} no BootScene, o jogo vai pedir um frame vazio, e o `
+          + `Phaser mostra o placeholder de textura ausente.`
+      );
+
+      assert.equal(
+        ultimaOpaque,
+        ROCK_CELL_SIZE - 1,
+        `${biome.id}: a celula ${indice} termina na linha ${ultimaOpaque} da `
+          + `celula, e nao na ${ROCK_CELL_SIZE - 1}. As ${ROCK_CELL_SIZE - 1 - ultimaOpaque} `
+          + `linhas vazias viram levitacao na tela, porque o sprite e ancorado `
+          + `pela base.`
+      );
+    }
+  }
 });

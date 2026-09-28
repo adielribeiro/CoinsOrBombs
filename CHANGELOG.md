@@ -5,6 +5,91 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Corrigido
+
+- **As rochas flutuavam, e a causa não era a arte.** Era o fatiador.
+
+  `reduzParaCelula` escrevia o conteúdo no canto (0, 0) da célula, e o
+  empacotamento calculava `baseX` e `baseY` para reassentar em seguida. Essas duas
+  variáveis **nunca eram lidas**: a cópia do buffer para a folha é posicional, de
+  célula inteira, e ignora as coordenadas. O conteúdo ficava no topo da célula, e
+  o vazio sobrando embaixo aparecia na tela como levitação — porque o sprite usa
+  origem (0.5, 1), e a base da imagem é o ponto de apoio no tile.
+
+  Medido na folha da Mina Solar antes da correção: **9 das 12 rochas não encostavam
+  na base**, e a dispersão entre a mais alta e a mais baixa era de **32px** na
+  tela. As três que encostavam eram as que preenchiam a célula inteira de altura.
+
+  Isso também explica por que padronizar os sprites em 168×168 não resolveu, e
+  por que não resolveria: medida nos 75 sprites, a folga transparente é
+  **simétrica** — de 4px a 48px em cima e embaixo — ou seja, cada sprite está
+  **centralizado** no canvas, e não apoiado numa base comum, com 44px de dispersão
+  entre a base mais alta e a mais baixa. Usar o canvas como veio afundaria um
+  sprite curto 46px no chão. O que faz o sprite assentar é descartar o padding,
+  e o fatiador descartava — só que jogava o descarte no lado errado da célula.
+
+- **Três das oito rochas da Galeria de Vento não apareciam.** O índice de
+  empacotamento era o da pasta, e não o da contagem de peças que entraram. Os
+  quatro sprites levitantes descartados ocupavam as células 0, 3, 4 e 9, e as oito
+  rochas que sobraram caíam em 1, 2, 5, 6, 7, 8, 10 e 11 — com `endFrame` em 7, o
+  jogo pedia as células 0, 3 e 4, que estavam **transparentes**.
+
+  Nenhum bioma tinha o problema, porque só o Vento descarta peça. E a contagem
+  declarada no código estava certa o tempo todo, o que tornava a falha mais
+  difícil de enxergar: o código dizia 8, a folha tinha 12 células, e três delas
+  eram buracos dentro da faixa em uso.
+
+### Adicionado
+
+- **A boca da caverna e a picareta ganharam arte nova**, e as duas foram trocadas
+  junto com a geometria que dependia do tamanho antigo.
+
+  A boca antiga (`entrance_frame.png`, conteúdo de 101×61) era desenhada com
+  `setScale(0.54)` e origem no centro, acima da linha do chão: numa arte menor, a
+  boca ficava inteira flutuando sobre o tile. Agora ela é um arco de 156×113,
+  ancorado na **base** como as rochas, na mesma linha de chão, com 1,05 da largura
+  do tile. `entrance_frame.png` saiu; `cave_entrance.png` entrou.
+
+  A picareta antiga tinha 73×83 de conteúdo e a nova tem 140×142. Na escala antiga
+  ela sairia com o dobro do tamanho e cobriria a rocha que está sendo quebrada —
+  que é justamente o que o efeito precisa mostrar. A largura agora vem do tile
+  (0,45), e não de um `setScale` sobre a arte.
+
+  - **A arte das duas foi aparada pelo conteúdo** (`scripts/trim-props.mjs`), e
+    isso não é um detalhe cosmético. Elas chegam centralizadas num canvas de
+    168×168, com 29px de folga transparente embaixo na boca. Como o jogo ancora
+    pela base, essa folga **é** levitação: os 29px viravam 12,6px de distância
+    entre o rodapé do arco e o chão. Aparar resolve na origem, e deixa a
+    proporção do arquivo ser a proporção real.
+  - `CAVE_ENTRANCE_ASPECT` e `PICKAXE_ASPECT` moram em `config.js` com o nome do
+    arquivo do lado, e `test/props.test.mjs` compara as duas coisas. Uma
+    proporção errada não dá erro: `setDisplaySize` achata a arte em silêncio, o
+    build passa, os testes passam, e o arco sai esmagado num tile que é duas
+    vezes mais largo que alto.
+
+- **`scripts/preview-props.mjs`, que compõe a camada de objetos em Node.**
+
+  Existe porque a verificação no navegador não é confiável aqui: a aba do
+  ambiente de teste fica com `document.visibilityState === 'hidden'`, o
+  `requestAnimationFrame` é estrangulado, o loop do Phaser nunca dá um passo, e a
+  cena fica presa em `status = 1` (started, nunca running) com a tela sem pintar.
+  Nenhum erro, nenhum aviso — só a tela que não enche.
+
+  O script monta o mesmo mapa com a mesma geometria do `CaveScene` (`toIso`,
+  origem (0.5, 1), `setDisplaySize`, amostra bilinear, ordem do pintor), com as
+  constantes vindas do próprio jogo, e **mede o assentamento**: para cada objeto,
+  onde o pixel mais baixo deita em relação à linha de chão do seu tile. Antes da
+  correção do fatiador ele acusou dispersão de 32,14px nas rochas e 12,60px na
+  boca. Agora são 0,00px nos dois, e o teste trava a mesma invariante.
+
+- **`test/props.test.mjs`**, com dez testes: a arte aparada, a proporção do código
+  batendo com a do arquivo, a folga transparente, a boca maior que o tile, a boca
+  e as rochas assentando na mesma linha, e a picareta não maior que a rocha.
+
+- **Um teste nas folhas de rocha**: nenhuma célula em uso pode ficar com buraco
+  embaixo, e nenhuma pode estar vazia. É a invariante do fatiador, e ela falhava
+  em 9 dos 12 frames da Mina Solar sem nenhum outro teste reclamar.
+
 ### Removido
 
 - **Quatro sprites de arte levitante da Galeria de Vento**: `wind_01`, `wind_04`,
@@ -35,9 +120,15 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   era necessária (frost tem 14), e agora o Vento é o outro extremo.
 
 - **As rochas agora são doze ou quatorze assuntos diferentes por bioma**, e não
-  variações de pose do mesmo assunto. Vem dos sprites individuais entregues no
-  ZIP `rocks_biomas_png_individuais.zip`, com um PNG por modelo e um
-  `manifest.json` ao lado.
+  variações de pose do mesmo assunto. Vem dos sprites individuais entregues no ZIP
+  `sprites_168x168_padronizadas.zip`, com um PNG por modelo, todos com o canvas em
+  168×168.
+
+  **A pasta de origem é a fonte da verdade, e não um `manifest.json` ao lado.** A
+  primeira versão do fatiador lia a lista do manifest; agora ele lista o
+  diretório. Um manifest ao lado da pasta que ele descreve são duas listas para
+  sair de sincronia, e foi assim que um sprite novo podia chegar e nunca entrar na
+  rodagem.
 
   **Eu estava errado na leitura anterior, e o número prova.** Eu disse que o
   jitter resolvia a variação, e chamei aquilo de remendo — mas o certo era dizer
@@ -77,10 +168,6 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   Custo: as folhas ficaram 456–641 KB, contra 331–464 KB da versão de células
   cheias. É o preço de mais arte por folha, e o pacote de boot vai de 13,9 MB
   para 14,6 MB.
-
-- **O jitter de ângulo, escala e espelhamento por rocha**, derivado de
-  (coluna, linha, variante). Continua valendo, mas agora como acréscimo sobre
-  assuntos de verdade.
 
 - **O jitter de ângulo, escala e espelhamento**, derivado de
   (coluna, linha, variante).
@@ -162,9 +249,9 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
     sobre arte que já tem cor: tingir uma rocha azul de um azul claro não muda o
     matiz, só lava o contraste. É o mesmo motivo que fez o chão ganhar um atlas
     por bioma.
-  - O recorte reduz de 362px para 176px por célula. A rocha ocupa cerca de 60px
-    na tela, então 176 é um buffer de 2,9x: sobra para tela de alta densidade sem
-    sobrar imagem invisível. Uma folha sai de 1,7–2,2 MB para 331–464 KB.
+  - O recorte reduz de 362px para 168px por célula. A rocha ocupa cerca de 60px
+    na tela, então 168 é um buffer de 2,8x: sobra para tela de alta densidade sem
+    sobrar imagem invisível. Uma folha sai de 1,7–2,2 MB para 286–589 KB.
   - `ROCK_VARIANTS` deixou de ser uma lista de chaves e passou a ser um índice de
     frame. Antes `rock` aparecia duas vezes para pesar o boulder redondo; agora
     os doze modelos entram com a mesma chance, e o índice é número puro para o

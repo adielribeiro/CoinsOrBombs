@@ -75,7 +75,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('deco_tracks', 'assets/deco_tracks.png');
 
     // Special
-    this.load.image('entrance_frame', 'assets/entrance_frame.png');
+    this.load.image('cave_entrance', 'assets/cave_entrance.png');
     this.load.image('exit_glow', 'assets/exit_glow.png');
     this.load.image('cave_bg_sunstone', 'assets/cave_bg_sunstone.png');
     this.load.image('cave_bg_frost', 'assets/cave_bg_frost.png');

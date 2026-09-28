@@ -1,5 +1,15 @@
 import Phaser from 'phaser';
-import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH, getTileMetrics, toIso } from '../config.js';
+import {
+  BASE_TILE_HEIGHT,
+  BASE_TILE_WIDTH,
+  CAVE_ENTRANCE_ASPECT,
+  CAVE_ENTRANCE_BASE,
+  CAVE_ENTRANCE_WIDTH,
+  PICKAXE_ASPECT,
+  PICKAXE_DISPLAY,
+  getTileMetrics,
+  toIso
+} from '../config.js';
 import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrameIndex } from '../ground.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { ROCK_DISPLAY, getRockFrameIndex, getRockJitter, getRockSheetKey } from '../rocks.js';
@@ -1046,8 +1056,18 @@ export class CaveScene extends Phaser.Scene {
       }
 
       if (tile.type === 'entrance') {
-        const frame = this.add.image(point.x, point.y - tileHeight * 0.52, 'entrance_frame');
-        frame.setScale(0.54 * mapScale);
+        // A boca é um arco com entulho no rodapé, então ela é ancorada na BASE e
+        // posicionada na linha do chão, como as rochas. A versão anterior usava
+        // `setScale` com origem no centro e subia o sprite da linha do chão:
+        // a boca ficava inteira flutuando acima do tile.
+        const larguraBoca = Math.round(tileWidth * CAVE_ENTRANCE_WIDTH);
+        // A altura vem da proporção da arte, senão o arco sai achatado num tile
+        // que é duas vezes mais largo que alto.
+        const alturaBoca = Math.round(larguraBoca * CAVE_ENTRANCE_ASPECT);
+        const frame = this.add
+          .image(point.x, point.y + tileHeight * CAVE_ENTRANCE_BASE, 'cave_entrance')
+          .setOrigin(0.5, 1)
+          .setDisplaySize(larguraBoca, alturaBoca);
         this.objectLayer.add(frame);
 
         if (!this.attractMode) {
@@ -1315,11 +1335,19 @@ export class CaveScene extends Phaser.Scene {
     if (!this.origin) return;
     if (this.reducedMotion) return;
 
-    const { tileWidth, tileHeight, mapScale } = this.renderMetrics;
+    const { tileWidth, tileHeight } = this.renderMetrics;
     const point = toIso(tile.col, tile.row, this.origin.x, this.origin.y, tileWidth, tileHeight);
+    // A arte da picareta nova tem 140x142 de conteúdo, contra 73x83 da antiga. Na
+    // escala antiga ela sairia do dobro do tamanho e cobriria a rocha que está
+    // sendo quebrada — que é justamente o que o efeito precisa mostrar. Por isso
+    // a largura vem do tile, e não do `setScale` sobre a arte.
+    const larguraPicareta = Math.round(tileWidth * PICKAXE_DISPLAY);
     this.pickaxeEffect.setVisible(true);
     this.pickaxeEffect.setAlpha(1);
-    this.pickaxeEffect.setScale(0.42 * mapScale);
+    this.pickaxeEffect.setDisplaySize(
+      larguraPicareta,
+      Math.round(larguraPicareta * PICKAXE_ASPECT)
+    );
     this.pickaxeEffect.setAngle(-35);
     this.pickaxeEffect.setPosition(point.x + tileWidth * 0.32, point.y - tileHeight * 1.3);
     this.pickaxeEffect.setDepth(point.y + 40);
