@@ -123,6 +123,14 @@ const GAME_VERSION = '0.2.0';
 const SETTINGS_STORAGE_KEY = 'coinsorbombs:settings:v1';
 const PROFILE_STORAGE_KEY = 'coinsorbombs:profile:v1';
 
+/**
+ * Total de caves, derivado dos biomas.
+ *
+ * Estava escrito à mão no tagline do menu ("80 caves · 4 biomas"), e mentiu
+ * assim que as faixas passaram de 20 para 10 caves. Agora vem da lista.
+ */
+const TOTAL_CAVES = BIOMES[BIOMES.length - 1].endCave;
+
 const DEFAULT_SETTINGS = {
   reducedMotion: false,
   showGrid: false,
@@ -1505,9 +1513,7 @@ export default function App() {
                 {activeBiome.name} · {activeProgress.label}
               </h2>
 
-              <p className="pause-message">
-                A cave está congelada. Suas moedas, melhorias e relíquias ficam guardadas.
-              </p>
+              <p className="pause-message">Cave congelada.</p>
 
               <div className="pause-actions">
                 <button className="menu-primary-btn compact" type="button" onClick={() => setShowPause(false)}>
@@ -1527,7 +1533,7 @@ export default function App() {
               </div>
 
               <span className="pause-hint">
-                <kbd>Esc</kbd> continua · voltar ao menu reinicia a cave no início do bioma
+                <kbd>Esc</kbd> continua
               </span>
             </div>
           </div>
@@ -1547,7 +1553,9 @@ export default function App() {
                 <h1 className="menu-title">
                   Coins<span className="menu-title-or">or</span>Bombs
                 </h1>
-                <span className="menu-tagline">80 caves · 4 biomas · nenhuma segunda chance</span>
+                <span className="menu-tagline">
+                  {TOTAL_CAVES} caves · {BIOMES.length} biomas · nenhuma segunda chance
+                </span>
               </div>
 
               <nav className="menu-actions" aria-label="Menu principal">
@@ -1558,9 +1566,6 @@ export default function App() {
                 >
                   <span className="menu-item-bar" aria-hidden="true" />
                   <span className="menu-item-label">Entrar</span>
-                  {/* Decorativo: sem aria-hidden o nome acessível vira
-                      "Entrar começar a run". */}
-                  <span className="menu-item-hint" aria-hidden="true">começar a run</span>
                 </button>
 
                 <button
@@ -1570,7 +1575,6 @@ export default function App() {
                 >
                   <span className="menu-item-bar" aria-hidden="true" />
                   <span className="menu-item-label">Configurações</span>
-                  <span className="menu-item-hint" aria-hidden="true">tela cheia, grade, animação</span>
                 </button>
 
                 <button
@@ -1580,13 +1584,11 @@ export default function App() {
                 >
                   <span className="menu-item-bar" aria-hidden="true" />
                   <span className="menu-item-label">Informações</span>
-                  <span className="menu-item-hint" aria-hidden="true">biomas, relíquias, objetivos</span>
                 </button>
               </nav>
 
               <div className="menu-foot">
                 <span className="menu-foot-item">v{GAME_VERSION}</span>
-                <span className="menu-foot-item">React · Phaser · Vite</span>
               </div>
             </div>
           </div>
@@ -1612,11 +1614,6 @@ export default function App() {
               <div className="menu-info-head biome-select-head">
                 <div>
                   <h2>{biomeSelectContext === 'menu' ? 'Selecione um bioma' : 'Próximo bioma'}</h2>
-                  <p>
-                    {biomeSelectContext === 'menu'
-                      ? 'Escolha em qual bioma deseja iniciar sua exploração.'
-                      : `Confirme o ambiente para entrar na Cave ${pendingBiome ? getBiomeProgress(pendingBiome.startCave).label : '1/20'}.`}
-                  </p>
                 </div>
 
                 <span className="biome-select-subtle">
@@ -1645,16 +1642,15 @@ export default function App() {
                           ? 'Disponível'
                           : 'Visitado';
 
-                  let description = 'Ambiente disponível para exploração.';
+                  // Só o bioma bloqueado ganha texto: é o único caso em que o
+                  // jogador precisa saber o que falta. Os demais já têm badge
+                  // dizendo o estado, e a frase só ocupava espaço.
+                  let description = null;
 
                   if (!unlocked) {
-                    description = `Conclua a Cave ${getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave} para liberar.`;
+                    description = `Cave ${getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave}`;
                   } else if (unlockedByDev) {
-                    description = `Liberado pelo modo desenvolvedor. Conclui na Cave ${getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave}.`;
-                  } else if (biome.id === activeBiome.id) {
-                    description = 'Bioma atual da sua run.';
-                  } else if (completed) {
-                    description = 'Você já concluiu este bioma.';
+                    description = `Cave ${getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave}`;
                   }
 
                   return (
@@ -1672,7 +1668,7 @@ export default function App() {
                       </div>
 
                       <span className="biome-card-range">{biome.rangeLabel}</span>
-                      <p>{description}</p>
+                      {description && <p>{description}</p>}
                     </button>
                   );
                 })}
@@ -1706,13 +1702,12 @@ export default function App() {
                 />
                 <span>
                   <strong>Tela cheia ao começar</strong>
-                  <small>
-                    {needsPwaHint
-                      ? 'No iPhone e no iPad o Safari não tem tela cheia — instale pela Tela de Início.'
-                      : fullscreenAvailable
-                        ? 'Entra em tela cheia ao iniciar a run. Use Esc ou o botão no canto para sair.'
-                        : 'Este navegador não oferece tela cheia; o jogo continua normal.'}
-                  </small>
+                  {/* Esta descrição fica porque o caso é do navegador, não da
+                      opção: no iPhone o botão simplesmente não funciona, e sem
+                      dizer isso o jogador acha que a configuração quebrou. */}
+                  {needsPwaHint && (
+                    <small>No iPhone e no iPad o Safari não tem tela cheia — instale pela Tela de Início.</small>
+                  )}
                 </span>
               </label>
 
@@ -1726,7 +1721,6 @@ export default function App() {
                 />
                 <span>
                   <strong>Reduzir animações</strong>
-                  <small>Desliga partículas, tremor da picareta e pulsos da saída.</small>
                 </span>
               </label>
 
@@ -1738,7 +1732,6 @@ export default function App() {
                 />
                 <span>
                   <strong>Grade isométrica</strong>
-                  <small>Desenha a malha de tiles para ajudar a mapear a cave.</small>
                 </span>
               </label>
 
@@ -1752,7 +1745,6 @@ export default function App() {
                 />
                 <span>
                   <strong>Lembrar melhor cave</strong>
-                  <small>Salva o recorde neste navegador (localStorage).</small>
                 </span>
               </label>
 
@@ -1766,17 +1758,12 @@ export default function App() {
                 />
                 <span>
                   <strong>Modo desenvolvedor</strong>
-                  <small>
-                    Libera todos os biomas para pular direto para qualquer ambiente, sem precisar
-                    completar as caves anteriores. Não altera o progresso salvo.
-                  </small>
                 </span>
               </label>
 
               {settings.developerMode && (
                 <p className="settings-dev-note">
-                  {unlockedBiomes.length} de {BIOMES.length} biomas liberados · caves 1–
-                  {BIOMES[BIOMES.length - 1].endCave} acessíveis agora.
+                  {unlockedBiomes.length} de {BIOMES.length} biomas liberados
                 </p>
               )}
 

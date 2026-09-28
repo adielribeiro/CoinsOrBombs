@@ -1,4 +1,5 @@
-// Composição lado a lado do chão dos quatro biomas, para comparar de uma vez.
+// Composição lado a lado do chão de todos os biomas, para comparar de uma vez.
+// A lista vem de BIOMES, então um bioma novo entra aqui sem tocar neste script.
 //
 //   node scripts/preview-biomes.mjs
 import { writeFile } from 'node:fs/promises';

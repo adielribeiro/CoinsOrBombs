@@ -441,16 +441,6 @@ button {
   text-transform: uppercase;
 }
 
-.menu-item-hint {
-  font-size: 11px;
-  letter-spacing: var(--track-micro);
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  opacity: 0;
-  transform: translateX(-6px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
 .menu-item:hover,
 .menu-item:focus-visible {
   color: var(--ink);
@@ -459,12 +449,6 @@ button {
 .menu-item:hover .menu-item-bar,
 .menu-item:focus-visible .menu-item-bar {
   height: 100%;
-}
-
-.menu-item:hover .menu-item-hint,
-.menu-item:focus-visible .menu-item-hint {
-  opacity: 1;
-  transform: translateX(0);
 }
 
 .menu-foot {
@@ -1831,10 +1815,6 @@ button {
   .menu-item {
     min-height: 54px;
     grid-template-columns: 2px 1fr;
-  }
-
-  .menu-item-hint {
-    display: none;
   }
 
   .menu-item-label {

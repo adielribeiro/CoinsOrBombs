@@ -19,7 +19,14 @@ import {
 import { BIOMES } from '../src/game/progression.js';
 import { generateMap, getMapSize } from '../src/game/systems/mapGenerator.js';
 
-const MAX_CAVES = 20;
+/**
+ * Total de caves, derivado dos biomas.
+ *
+ * Estava fixo em 20, e com as faixas passando de 20 para 10 caves o teste
+ * parou de cobrir o jogo inteiro: a verificação de que o atlas cobre o maior
+ * mapa só olhava as primeiras 20 caves.
+ */
+const MAX_CAVES = BIOMES[BIOMES.length - 1].endCave;
 
 /**
  * Fontes lidas no topo do arquivo, e não dentro dos testes.

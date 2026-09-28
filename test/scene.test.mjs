@@ -87,6 +87,56 @@ test('o tint do chão é o mesmo para todas as células, sem termo por tile', ()
   }
 });
 
+/**
+ * A tela de título tem que mostrar a arte do bioma e nada mais.
+ *
+ * O bug: o guarda de `attractMode` estava só no handler do evento, e o
+ * `createGame` agenda três redesenhos de resize logo depois do create. O menu
+ * recebia a arte do bioma e, cerca de 300ms depois, o mapa inteiro por cima —
+ * chão, rochas, entrada e saída. Era o mesmo elemento fantasma que o recurso
+ * veio para remover, só que voltando depois.
+ *
+ * Build e testes passavam: o código estava "certo" em cada linha. Só apareceu
+ * contando os objetos em cada camada, com o espelho `__cobSceneState`.
+ */
+test('renderMap desvia para o fundo do menu quando está em modo attract', () => {
+  const corpo = scene.slice(scene.indexOf('renderMap() {'));
+
+  assert.match(
+    corpo.slice(0, 400),
+    /if \(this\.attractMode[\s\S]*?renderAttractBackdrop\(\);\s*return;/,
+    'renderMap deveria desviar para renderAttractBackdrop no modo attract, antes de limpar as camadas'
+  );
+});
+
+test('o guarda de attract vem antes de qualquer desenho de mapa', () => {
+  // Se o guarda viesse depois do `removeAll`, o desvio ainda limparia as camadas
+  // e voltaria a desenhar o mapa. A ordem é o que importa, então ela é testada.
+  const corpo = scene.slice(scene.indexOf('renderMap() {'));
+  const guarda = corpo.indexOf('if (this.attractMode');
+  const limpa = corpo.indexOf('removeAll');
+
+  assert.ok(guarda > -1, 'nenhum guarda de attractMode no renderMap');
+  assert.ok(limpa > -1, 'nenhuma limpeza de camada no renderMap');
+  assert.ok(
+    guarda < limpa,
+    `o guarda de attractMode (posição ${guarda}) precisa vir antes da limpeza (posição ${limpa})`
+  );
+});
+
+test('o fundo do menu limpa as três camadas antes de desenhar', () => {
+  const corpo = scene.slice(scene.indexOf('renderAttractBackdrop() {'));
+  const fim = corpo.indexOf('publishSceneState()');
+
+  for (const camada of ['backgroundLayer', 'floorLayer', 'objectLayer']) {
+    assert.match(
+      corpo.slice(0, fim),
+      new RegExp(`${camada}\\.removeAll\\(true\\)`),
+      `${camada} não é limpa no fundo do menu: o mapa anterior ficaria visível por cima`
+    );
+  }
+});
+
 test('a entrada e a saída continuam por cima da cor do bioma', () => {
   // São marcadores de jogo e precisam de leitura imediata, então o tint do
   // bioma não pode sobrescrever o delas. A ordem no código importa.
@@ -106,7 +156,11 @@ test('palette.ground existe, é número e é claro o bastante', () => {
   // `palette.ground` foi inserido por script. Faltando em algum bioma, o tint
   // receberia undefined e o chão renderizaria preto — outro caminho para a
   // tela preta, e igualmente invisível ao build.
-  assert.ok(BIOMES.length >= 4, 'esperava os quatro biomas');
+  // O número vem dos próprios dados, não de um número escrito à mão. A
+  // versão anterior fixava `>= 4`, que continuaria passando com quatro biomas
+  // depois de o jogo chegar a seis — a checagem dizia verificar os biomas sem
+  // dizer quais.
+  assert.ok(BIOMES.length >= 6, `esperava os seis biomas, e há ${BIOMES.length}`);
 
   for (const biome of BIOMES) {
     const ground = biome.palette?.ground;
@@ -125,7 +179,7 @@ test('palette.ground existe, é número e é claro o bastante', () => {
   }
 });
 
-test('os quatro biomas têm cor de chão distinta', () => {
+test('todos os biomas têm cor de chão distinta', () => {
   const valores = BIOMES.map((b) => b.palette.ground);
   assert.equal(new Set(valores).size, valores.length, 'dois biomas com a mesma cor de chão');
 });

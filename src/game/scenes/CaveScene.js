@@ -206,6 +206,19 @@ export class CaveScene extends Phaser.Scene {
       this.scheduleResponsiveRefresh();
     };
 
+    /**
+     * Modo attract: a tela de título.
+     *
+     * Antes isto chamava `renderMap()`, e o menu ficava com o mapa de verdade
+     * desenhado por cima do background: chão, rochas, estrutura de saída e
+     * entrada. Sobre a arte do bioma, o resultado era um segundo cenário
+     * competindo com o primeiro — as rochas apareciam como formas fantasma
+     * atravessando o logo, e o chão virava um retângulo isométrico no meio de
+     * uma caverna pintada.
+     *
+     * Agora a tela de título mostra a arte do bioma, e nada mais. É o que uma
+     * tela de título de console faz: uma imagem, e o texto por cima.
+     */
     this.onAttractMode = (event) => {
       const active = Boolean(event?.detail?.active);
 
@@ -216,8 +229,16 @@ export class CaveScene extends Phaser.Scene {
       this.hoverIndicator.clear();
       this.hoverIndicator.setVisible(false);
 
-      if (this.mapData && !this.metaState.inLobby) {
+      // O lobby tem o seu próprio fundo, que já é o da tela de título.
+      if (this.metaState.inLobby) return;
+
+      // Só o caminho normal do mapa. `renderMap` decide entre a cave e a tela
+      // de título pelo estado de `attractMode`, então este handler e o sync de
+      // resize passam pelo mesmo lugar.
+      if (this.mapData) {
         this.renderMap();
+      } else {
+        this.renderAttractBackdrop();
       }
     };
 
@@ -248,16 +269,7 @@ export class CaveScene extends Phaser.Scene {
         this.scene.resume();
       }
 
-      // Espelho em `window` só para o estado ser observável de fora. Sem isso a
-      // pausa é um efeito interno sem jeito de verificar: o Phaser 3.90 não
-      // expõe a lista de jogos, e ler o canvas não prova nada porque o WebGL é
-      // criado sem `preserveDrawingBuffer` e o readback volta vazio.
-      window.__cobSceneState = {
-        paused: this.paused,
-        cave: this.metaState?.cave ?? null,
-        hp: this.metaState?.hp ?? null,
-        inLobby: this.metaState?.inLobby ?? null
-      };
+      this.publishSceneState();
     };
 
     this.onSettingsChange = (event) => {
@@ -549,20 +561,24 @@ export class CaveScene extends Phaser.Scene {
     this.syncUI();
   }
 
+  /**
+   * Fundo do lobby, que é o fundo do menu.
+   *
+   * O lobby não tem mapa: é a tela entre uma cave e a próxima. Então o fundo
+   * dele é a arte do bioma, exatamente como na tela de título, e usa o mesmo
+   * renderizador.
+   *
+   * Antes isto chamava `drawCaveWalls` diretamente, e `drawCaveWalls` desenha
+   * uma sombra de chão arredondada (`floorShadow`) para assentar o mapa. Sem
+   * mapa, essa sombra vira um retângulo vazio no meio da caverna — o mesmo tipo
+   * de elemento fantasma que foi removido do fundo da cave.
+   */
   renderLobbyBackdrop() {
-    this.backgroundLayer.removeAll(true);
-    this.floorLayer.removeAll(true);
-    this.objectLayer.removeAll(true);
     this.hoverIndicator.setVisible(false);
     this.hidePickaxeEffect();
 
     this.updateRenderMetrics();
-
-    this.drawCaveWalls({
-      minX: this.scale.width * 0.16,
-      maxX: this.scale.width * 0.84,
-      maxY: this.scale.height * 0.72
-    });
+    this.renderAttractBackdrop();
   }
 
   getCenteredMapOrigin() {
@@ -614,49 +630,6 @@ export class CaveScene extends Phaser.Scene {
     return this.getMapBoundsForMetrics(originX, originY, tileWidth, tileHeight);
   }
 
-  addBackdropRock(x, y, scale = 1.6, alpha = 0.22, tint = 0x2f251c) {
-    const variants = ['rock', 'rock_01', 'rock_02', 'rock_03'];
-    const texture = Phaser.Utils.Array.GetRandom(variants);
-
-    const rock = this.add.image(x, y, texture);
-    rock.setScale(scale);
-    rock.setAlpha(alpha);
-    rock.setTint(tint);
-    rock.setAngle(Phaser.Math.Between(-18, 18));
-    rock.setDepth(-960);
-
-    this.backgroundLayer.add(rock);
-  }
-
-  drawCaveCracks(bounds) {
-    const cracks = this.add.graphics();
-    const biome = this.mapData?.biome ?? getBiomeForCave(this.metaState.cave);
-    cracks.lineStyle(2, biome.palette.edge, 0.18);
-
-    for (let i = 0; i < 18; i += 1) {
-      const startX = Phaser.Math.Between(Math.floor(bounds.minX - 120), Math.floor(bounds.maxX + 120));
-      const startY = Phaser.Math.Between(Math.floor(bounds.minY - 90), Math.floor(bounds.maxY + 110));
-      const segments = Phaser.Math.Between(3, 6);
-
-      let x = startX;
-      let y = startY;
-
-      cracks.beginPath();
-      cracks.moveTo(x, y);
-
-      for (let s = 0; s < segments; s += 1) {
-        x += Phaser.Math.Between(-22, 22);
-        y += Phaser.Math.Between(12, 28);
-        cracks.lineTo(x, y);
-      }
-
-      cracks.strokePath();
-    }
-
-    cracks.setDepth(-955);
-    this.backgroundLayer.add(cracks);
-  }
-
   drawCaveWalls(bounds) {
     const biome = this.mapData?.biome ?? getBiomeForCave(this.metaState.cave);
     const background = this.add.image(this.scale.width / 2, this.scale.height / 2, biome.backgroundKey ?? 'cave_bg');
@@ -690,6 +663,20 @@ export class CaveScene extends Phaser.Scene {
     this.backgroundLayer.add(floorShadow);
   }
 
+  /**
+   * Fundo da cave: a arte do bioma, e só ela.
+   *
+   * Antes isto desenhava um segundo cenário por cima do background: umas 40
+   * pedras com `alpha` de 0,14 a 0,16 ao longo das bordas, mais 18 fissuras
+   * desenhadas e 34 pontos de poeira. Eram as "rochas quase invisíveis" que
+   * apareciam sobre a arte do bioma: um borrão fantasma, sem pertencer a lugar
+   * nenhum, que só escurecia o fundo e criava a impressão de bug.
+   *
+   * A arte do bioma (`cave_bg_*`) já é uma caverna completa, com parede,
+   * chão e profundidade. Encher o que está atrás dela com um cenário
+   * procedural só compete com a arte. O que sobra é a vinheta, que serve para
+   * assentar a UI, e a poeira, que é a única camada que ainda dá vida.
+   */
   renderCaveBackdrop(originX, originY) {
     this.backgroundLayer.removeAll(true);
 
@@ -713,36 +700,6 @@ export class CaveScene extends Phaser.Scene {
     dust.setDepth(-980);
     this.backgroundLayer.add(dust);
 
-    this.drawCaveCracks(bounds);
-
-    for (let x = bounds.minX - 120; x <= bounds.maxX + 120; x += 88) {
-      this.addBackdropRock(
-        x + Phaser.Math.Between(-8, 8),
-        bounds.minY - 32 + Phaser.Math.Between(-12, 10),
-        Phaser.Math.FloatBetween(1.45, 1.95),
-        0.16,
-        Phaser.Utils.Array.GetRandom(biome.palette.rockTints)
-      );
-    }
-
-    for (let y = bounds.minY + 20; y <= bounds.maxY + 70; y += 82) {
-      this.addBackdropRock(
-        bounds.minX - 86 + Phaser.Math.Between(-10, 8),
-        y + Phaser.Math.Between(-8, 8),
-        Phaser.Math.FloatBetween(1.25, 1.85),
-        0.14,
-        Phaser.Utils.Array.GetRandom(biome.palette.rockTints)
-      );
-
-      this.addBackdropRock(
-        bounds.maxX + 86 + Phaser.Math.Between(-8, 10),
-        y + Phaser.Math.Between(-8, 8),
-        Phaser.Math.FloatBetween(1.25, 1.85),
-        0.14,
-        Phaser.Utils.Array.GetRandom(biome.palette.rockTints)
-      );
-    }
-
     const vignette = this.add.graphics();
     vignette.fillStyle(biome.palette.edge, 0.14);
     vignette.fillRect(0, 0, 68, height);
@@ -751,6 +708,70 @@ export class CaveScene extends Phaser.Scene {
     vignette.fillRect(0, height - 58, width, 58);
     vignette.setDepth(-970);
     this.backgroundLayer.add(vignette);
+  }
+
+  /**
+   * Fundo da tela de título: a arte do bioma, nada mais.
+   *
+   * Sem o mapa. Ver o comentário de `onAttractMode` — desenhar a cave aqui
+   * colocava um segundo cenário por cima da arte, e eram as rochas que
+   * apareciam atravessando o logo no menu.
+   */
+  renderAttractBackdrop() {
+    this.backgroundLayer.removeAll(true);
+    this.floorLayer.removeAll(true);
+    this.objectLayer.removeAll(true);
+
+    const biome = getBiomeForCave(this.metaState.cave);
+    const width = this.scale.width;
+    const height = this.scale.height;
+
+    const background = this.add.image(width / 2, height / 2, biome.backgroundKey ?? 'cave_bg');
+    const coverScale = Math.max(width / background.width, height / background.height);
+
+    background.setScale(coverScale);
+    background.setDepth(-1000);
+    this.backgroundLayer.add(background);
+
+    // Vinheta mais forte que a da cave: o texto do menu precisa de contraste,
+    // e a arte do bioma é clara em alguns pontos.
+    const shade = this.add.graphics();
+    shade.fillStyle(biome.palette.edge, 0.3);
+    shade.fillRect(0, 0, width, 160);
+    shade.fillRect(0, height - 190, width, 190);
+    shade.fillRect(0, 0, 240, height);
+    shade.fillRect(width - 240, 0, 240, height);
+    shade.setDepth(-995);
+    this.backgroundLayer.add(shade);
+
+    this.publishSceneState();
+  }
+
+  /**
+   * Publica o estado da cena em `window`, para ser observável de fora.
+   *
+   * O Phaser 3.90 removeu `Phaser.GAMES`, então não há caminho oficial para
+   * alcançar a cena a partir do console. E ler o canvas não prova nada: o WebGL
+   * é criado sem `preserveDrawingBuffer`, então o readback volta vazio.
+   *
+   * A contagem de objetos por camada é a parte que resolve a dúvida real — "o
+   * que está desenhado atrás do menu?". Antes desta mudança, a resposta era
+   * só olhando, e foi assim que o cenário procedural sobreviveu tanto tempo
+   * por cima da arte do bioma.
+   */
+  publishSceneState() {
+    window.__cobSceneState = {
+      paused: this.paused,
+      cave: this.metaState?.cave ?? null,
+      hp: this.metaState?.hp ?? null,
+      inLobby: this.metaState?.inLobby ?? null,
+      attractMode: this.attractMode,
+      layers: {
+        background: this.backgroundLayer?.length ?? 0,
+        floor: this.floorLayer?.length ?? 0,
+        objects: this.objectLayer?.length ?? 0
+      }
+    };
   }
 
   getMarkerFontSize(base) {
@@ -784,7 +805,24 @@ export class CaveScene extends Phaser.Scene {
     this.objectLayer.add(glow);
   }
 
+  /**
+   * Desenha o mapa da cave.
+   *
+   * O guarda de `attractMode` fica AQUI, e não em cada chamador. `renderMap` é
+   * chamado de vários lugares — `refreshRun`, `performResponsiveRefresh`, a
+   * volta ao lobby — e o sync de resize agenda três redesenhos logo depois do
+   * create. Com o guarda só no `onAttractMode`, o menu desenhava a arte do bioma
+   * e logo em seguida o mapa inteiro por cima: o mesmo fantasma de rocha que
+   * o recurso veio para tirar, só que voltando 300ms depois.
+   *
+   * No lugar certo, o caminho é único e nenhum chamador precisa saber.
+   */
   renderMap() {
+    if (this.attractMode && !this.metaState.inLobby) {
+      this.renderAttractBackdrop();
+      return;
+    }
+
     this.backgroundLayer.removeAll(true);
     this.floorLayer.removeAll(true);
     this.objectLayer.removeAll(true);
@@ -962,6 +1000,7 @@ export class CaveScene extends Phaser.Scene {
       }
     });
 
+    this.publishSceneState();
   }
 
   renderIsoGrid(originX, originY, tileWidth, tileHeight) {

@@ -56,6 +56,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('cave_bg_frost', 'assets/cave_bg_frost.png');
     this.load.image('cave_bg_ember', 'assets/cave_bg_ember.png');
     this.load.image('cave_bg_ruins', 'assets/cave_bg_ruins.png');
+    this.load.image('cave_bg_wind', 'assets/cave_bg_wind.png');
+    this.load.image('cave_bg_crystal', 'assets/cave_bg_crystal.png');
 
     // Biome decorations
     this.load.image('deco_gold_pile', 'assets/deco_gold_pile.png');

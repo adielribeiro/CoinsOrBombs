@@ -1,11 +1,22 @@
+/**
+ * Biomas, em ordem de progressão.
+ *
+ * Cada bioma tem 10 caves, e a próxima faixa começa na cave seguinte:
+ * 1-10, 11-20, 21-30, 31-40, 41-50, 51-60. O total de 60 caiu dos 80
+ * anteriores porque as faixas encolheram de 20 para 10.
+ *
+ * `unlockCave` é a cave que precisa ser CONCLUÍDA para liberar o bioma, então
+ * o segundo bioma abre ao terminar a 10, o terceiro ao terminar a 20, e assim
+ * por diante.
+ */
 export const BIOMES = [
   {
     id: 'sunstone',
     name: 'Mina Solar',
     unlockCave: 1,
     startCave: 1,
-    endCave: 20,
-    rangeLabel: 'Caves 1-20',
+    endCave: 10,
+    rangeLabel: 'Caves 1-10',
     backgroundKey: 'cave_bg_sunstone',
     relicId: 'amber_fang',
     relicChance: 0.12,
@@ -18,9 +29,9 @@ export const BIOMES = [
       dust: 0xf5cd8a,
       rockTints: [0x3b2b1f, 0x442f20, 0x2c1f16],
       edge: 0x24160f,
-      // Cor do chao. O atlas e uma superficie continua em cinza, entao um
-      // unico atlas serve a todos os biomas: a cor entra como tint na camada
-      // inteira. Tinta por celula reintroduziria a grade.
+      // A cor do chão mora no atlas de cada bioma (o tint do Phaser só
+      // multiplica, então tingir um atlas marrom de azul daria lama escura).
+      // Este valor é só o ajuste fino, e por isso é quase branco.
       ground: 0xfff6e8,
       entrance: 0x71bfff,
       exit: 0x78ffb6,
@@ -31,10 +42,10 @@ export const BIOMES = [
   {
     id: 'frost',
     name: 'Gruta de Gelo',
-    unlockCave: 20,
-    startCave: 21,
-    endCave: 40,
-    rangeLabel: 'Caves 21-40',
+    unlockCave: 10,
+    startCave: 11,
+    endCave: 20,
+    rangeLabel: 'Caves 11-20',
     backgroundKey: 'cave_bg_frost',
     relicId: 'frost_bloom',
     relicChance: 0.14,
@@ -60,10 +71,10 @@ export const BIOMES = [
   {
     id: 'ember',
     name: 'Profundezas Rubras',
-    unlockCave: 40,
-    startCave: 41,
-    endCave: 60,
-    rangeLabel: 'Caves 41-60',
+    unlockCave: 20,
+    startCave: 21,
+    endCave: 30,
+    rangeLabel: 'Caves 21-30',
     backgroundKey: 'cave_bg_ember',
     relicId: 'ember_core',
     relicChance: 0.16,
@@ -89,10 +100,10 @@ export const BIOMES = [
   {
     id: 'ruins',
     name: 'Ruínas Abissais',
-    unlockCave: 60,
-    startCave: 61,
-    endCave: 80,
-    rangeLabel: 'Caves 61-80',
+    unlockCave: 30,
+    startCave: 31,
+    endCave: 40,
+    rangeLabel: 'Caves 31-40',
     backgroundKey: 'cave_bg_ruins',
     relicId: 'ruin_tablet',
     relicChance: 0.18,
@@ -105,14 +116,76 @@ export const BIOMES = [
       dust: 0xe1d2ff,
       rockTints: [0x2d223c, 0x3c2c51, 0x241a31],
       edge: 0x171021,
-      // Cor do chao. O atlas e uma superficie continua em cinza, entao um
-      // unico atlas serve a todos os biomas: a cor entra como tint na camada
-      // inteira. Tinta por celula reintroduziria a grade.
+      // A cor do chão mora no atlas de cada bioma (o tint do Phaser só
+      // multiplica, então tingir um atlas marrom de azul daria lama escura).
+      // Este valor é só o ajuste fino, e por isso é quase branco.
       ground: 0xf6f0ff,
       entrance: 0xbcb2ff,
       exit: 0xc6ffd6,
       rockHighlight: 0xe1d2ff,
       highlight: 0xb99cff
+    }
+  },
+  {
+    id: 'wind',
+    name: 'Galeria de Vento',
+    unlockCave: 40,
+    startCave: 41,
+    endCave: 50,
+    rangeLabel: 'Caves 41-50',
+    backgroundKey: 'cave_bg_wind',
+    relicId: 'gust_shell',
+    relicChance: 0.2,
+    // Mais moedas e menos bombas: o vento espalha o minério e leva a
+    // detonação para longe. É o bioma de respiração depois de três apertos.
+    coinMultiplier: 1.12,
+    bombMultiplier: 0.94,
+    // `deco_ice_spike` em vez de uma arte nova: a estalagmite alta funciona
+    // tanto numa gruta congelada quanto numa galeria de vento, e uma arte
+    // nova sairia do estilo das outras quatro. O que diferencia o bioma é o
+    // fundo e o chão, que são únicos.
+    primaryDeco: 'deco_ice_spike',
+    palette: {
+      background: '#101a1c',
+      overlay: 0x74d8e8,
+      dust: 0xd6f4ff,
+      rockTints: [0x24363c, 0x2f4650, 0x1b2930],
+      edge: 0x0e1a1e,
+      ground: 0xf0fbff,
+      entrance: 0x8ef0ff,
+      exit: 0xcaff9a,
+      rockHighlight: 0xd6f4ff,
+      highlight: 0x74d8e8
+    }
+  },
+  {
+    id: 'crystal',
+    name: 'Câmara de Cristal',
+    unlockCave: 50,
+    startCave: 51,
+    endCave: 60,
+    rangeLabel: 'Caves 51-60',
+    backgroundKey: 'cave_bg_crystal',
+    relicId: 'prism_core',
+    relicChance: 0.24,
+    // Menos moedas e muito mais bomba: o cristal reflete a detonação de volta
+    // para dentro da cave. É o bioma final, e o mais caro.
+    coinMultiplier: 0.88,
+    bombMultiplier: 1.2,
+    // `deco_crystal_blue` é literalmente um cristal, e o nome do bioma é
+    // Cristal. Criar arte nova aqui seria redundante.
+    primaryDeco: 'deco_crystal_blue',
+    palette: {
+      background: '#141a24',
+      overlay: 0xa8f0ff,
+      dust: 0xe8fbff,
+      rockTints: [0x2a3348, 0x374259, 0x1f2736],
+      edge: 0x121824,
+      ground: 0xf4f8ff,
+      entrance: 0xc0e8ff,
+      exit: 0xa0ffd8,
+      rockHighlight: 0xe8fbff,
+      highlight: 0xa8f0ff
     }
   }
 ];
@@ -145,6 +218,20 @@ export const RELIC_CATALOG = {
     name: 'Placa das Ruínas',
     biomeId: 'ruins',
     description: 'Inscrição ancestral trazida das Ruínas Abissais.'
+  },
+  gust_shell: {
+    id: 'gust_shell',
+    icon: '🐚',
+    name: 'Concha de Rajada',
+    biomeId: 'wind',
+    description: 'Casco oco que canta quando o vento passa.'
+  },
+  prism_core: {
+    id: 'prism_core',
+    icon: '💎',
+    name: 'Núcleo de Prisma',
+    biomeId: 'crystal',
+    description: 'Coração da Câmara de Cristal.'
   }
 };
 
@@ -221,7 +308,7 @@ export function getBiomeProgress(cave = 1) {
  *
  * `developerMode` ignora o `unlockCave` e devolve todos. Existe porque testar
  * o chão e a paleta de um bioma exigiria jogar a run inteira até lá: a Gruta de
- * Gelo só abre na Cave 20, e são 20 caves para ver uma cor.
+ * Gelo só abre na Cave 10, e são 10 caves para ver uma cor.
  *
  * O parâmetro é explícito e não vem de um global: quem chama decide, e o
  * default segue sendo o caminho normal do jogo.

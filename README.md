@@ -59,15 +59,20 @@ objetivos e relíquias. Só as melhorias são perdidas.
 
 ## Progressão
 
-**4 biomas × 20 caves = 80 caves.** Cada bioma tem cenário, paleta, relíquia e
+**6 biomas × 10 caves = 60 caves.** Cada bioma tem cenário, paleta, relíquia e
 multiplicadores próprios de moeda e bomba.
 
 | Bioma | Caves | Desbloqueia | Relíquia | Moedas | Bombas |
 | --- | --- | --- | --- | --- | --- |
-| 🟡 Mina Solar | 1–20 | Início | Presa Âmbar | ×1.00 | ×1.00 |
-| 🔵 Gruta de Gelo | 21–40 | Cave 20 | Flor de Gelo | ×0.94 | ×1.04 |
-| 🔴 Profundezas Rubras | 41–60 | Cave 40 | Núcleo Incandescente | ×1.02 | ×1.08 |
-| 🟣 Ruínas Abissais | 61–80 | Cave 60 | Placa das Ruínas | ×0.96 | ×1.12 |
+| 🟡 Mina Solar | 1–10 | Início | Presa Âmbar | ×1.00 | ×1.00 |
+| 🔵 Gruta de Gelo | 11–20 | Cave 10 | Flor de Gelo | ×0.94 | ×1.04 |
+| 🔴 Profundezas Rubras | 21–30 | Cave 20 | Núcleo Incandescente | ×1.02 | ×1.08 |
+| 🟣 Ruínas Abissais | 31–40 | Cave 30 | Placa das Ruínas | ×0.96 | ×1.12 |
+| 🩵 Galeria de Vento | 41–50 | Cave 40 | Concha de Rajada | ×1.12 | ×0.94 |
+| 💎 Câmara de Cristal | 51–60 | Cave 50 | Núcleo de Prisma | ×0.88 | ×1.20 |
+
+A Galeria de Vento é o alívio no meio da progressão: mais moedas e menos bombas
+que qualquer outra. A Câmara de Cristal é o oposto, e é a mais cara do jogo.
 
 Cada mapa é gerado do zero: tamanho, densidade de bombas, decoração, resistência
 das rochas e posição da saída mudam por cave.
@@ -156,7 +161,8 @@ npm run dev      # http://localhost:5173
 | `npm run pages` | Build + copia para `docs/game` (o que o Pages serve) |
 | `node scripts/fetch-fonts.mjs` | Rebaixa as fontes do Google Fonts para `public/assets/fonts` |
 | `node scripts/generate-ground.mjs` | Gera os atlas do chão, um por bioma |
-| `node scripts/preview-biomes.mjs` | Monta o chão dos quatro biomas lado a lado |
+| `node scripts/preview-biomes.mjs` | Monta o chão de todos os biomas lado a lado |
+| `node scripts/generate-backdrops.mjs` | Gera o fundo de caverna dos biomas sem arte pintada |
 | `node scripts/preview-ground.mjs` | Reproduz a camada de chão em Node e mede a costura |
 | `node scripts/measure-reference.mjs <img>` | Mede uma imagem de referência: contraste por escala, seixos, bordas |
 | `node scripts/measure-floor-scales.mjs` | Compara o perfil do chão com a referência |

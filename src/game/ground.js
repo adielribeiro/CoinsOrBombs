@@ -69,7 +69,9 @@ export const GROUND_TEXTURE_KEYS = {
   sunstone: 'ground_sunstone',
   frost: 'ground_frost',
   ember: 'ground_ember',
-  ruins: 'ground_ruins'
+  ruins: 'ground_ruins',
+  wind: 'ground_wind',
+  crystal: 'ground_crystal'
 };
 
 export const GROUND_TEXTURE_KEY = GROUND_TEXTURE_KEYS.sunstone;
@@ -479,7 +481,7 @@ const SOIL_LIGHT = [196, 156, 110];
  * saliente que a terra solta da mina.
  *
  * As luminâncias são deliberadamente diferentes entre si. Gelo é claro, ember é
- * escuro: um chão com a mesma luminância nos quatro biomas não daria a
+ * escuro: um chão com a mesma luminância em todos os biomas não daria a
  * sensação de ambiente diferente.
  */
 export const SOIL_MATERIALS = {
@@ -532,6 +534,40 @@ export const SOIL_MATERIALS = {
     pebbleGain: 1.2,
     pebbleLift: 1.1,
     warmth: 20
+  },
+  // Vento: terra varrida, pálida e mais lisa que a Mina Solar. A galeria é
+  // atravessada por corrente de ar, e o chão aparece lavado.
+  wind: {
+    id: 'wind',
+    dark: [76, 92, 96],
+    mid: [132, 154, 158],
+    light: [188, 206, 210],
+    // Quase sem fissura: o vento leva a terra solta, e o que resta é chão
+    // firme. A mais lisa das quatro texturas.
+    crack: 0.14,
+    pebbleGain: 1.1,
+    pebbleLift: 0.8,
+    warmth: 16
+  },
+  // Cristal: rocha polida e escura, com veio ciano forte. O chão mais escuro
+  // depois da brasa, e o de mais alto contraste por ser pedra polida.
+  //
+  // O ciano é de propósito. A primeira versão usou um azul acinzentado
+  // ([34,44,62] / [72,88,116]), e o teste de cores distintas reprovou: a
+  // distância para o chão das Ruínas, que também é cinza-violeta, dava 19,7
+  // contra um corte de 30. Dois biomas com o mesmo chão não são dois biomas.
+  // Puxar o cristal para o ciano saturado o afasta tanto das Ruínas quanto do
+  // Vento, que é um cinza-claro.
+  crystal: {
+    id: 'crystal',
+    dark: [16, 42, 48],
+    mid: [40, 104, 112],
+    light: [112, 188, 190],
+    // Fissura forte: pedra fraturada pelo cristal, e a fresta brilha.
+    crack: 0.46,
+    pebbleGain: 1.22,
+    pebbleLift: 1.4,
+    warmth: 26
   }
 };
 
@@ -551,7 +587,11 @@ export const SOIL_BY_BIOME = {
   sunstone: SOIL_MATERIALS.earth,
   frost: SOIL_MATERIALS.frost,
   ember: SOIL_MATERIALS.ember,
-  ruins: SOIL_MATERIALS.ruins
+  ruins: SOIL_MATERIALS.ruins,
+  // Vento: terra varrida, pálida e mais lisa que a Mina Solar. A galeria é
+  // atravessada por corrente de ar, e o chão aparece lavado.
+  wind: SOIL_MATERIALS.wind,
+  crystal: SOIL_MATERIALS.crystal
 };
 
 function soilRamp(t, material) {

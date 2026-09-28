@@ -27,7 +27,7 @@ test('sem modo desenvolvedor, o desbloqueio segue o unlockCave', () => {
 test('sem modo desenvolvedor, nenhum atalho libera bioma futuro', () => {
   // O melhor cave continua sendo a única fonte de verdade quando o modo está
   // desligado. `true` explícito não pode virar atalho.
-  for (const cave of [1, 5, 19, 20, 39, 40, 59, 60, TOTAL_CAVES]) {
+  for (const cave of [1, 5, 9, 10, 19, 20, 29, 30, 39, 40, 49, 50, 59, 60, TOTAL_CAVES]) {
     const liberados = getUnlockedBiomes(cave, false);
     for (const biome of liberados) {
       assert.ok(
@@ -39,7 +39,7 @@ test('sem modo desenvolvedor, nenhum atalho libera bioma futuro', () => {
 });
 
 test('modo desenvolvedor libera todos os biomas em qualquer cave', () => {
-  for (const cave of [1, 5, 20, 40, 60, TOTAL_CAVES]) {
+  for (const cave of [1, 5, 10, 20, 30, 40, 50, TOTAL_CAVES]) {
     const liberados = getUnlockedBiomes(cave, true);
 
     assert.equal(
@@ -59,7 +59,7 @@ test('modo desenvolvedor libera todos os biomas em qualquer cave', () => {
 test('isBiomeUnlocked concorda com getUnlockedBiomes', () => {
   // São duas funções que respondem à mesma pergunta, em sítios diferentes do
   // app. Se divergirem, a tela de seleção e a de informações discordam.
-  for (const cave of [1, 19, 20, 40, 60, 80]) {
+  for (const cave of [1, 9, 10, 19, 20, 29, 30, 39, 40, 49, 50, 59, 60]) {
     for (const dev of [false, true]) {
       const peloFiltro = new Set(getUnlockedBiomes(cave, dev).map((b) => b.id));
 
@@ -75,8 +75,8 @@ test('isBiomeUnlocked concorda com getUnlockedBiomes', () => {
 });
 
 test('isBiomeUnlocked trata bioma ausente sem estourar', () => {
-  assert.equal(isBiomeUnlocked(null, 80, true), false);
-  assert.equal(isBiomeUnlocked(undefined, 80), false);
+  assert.equal(isBiomeUnlocked(null, TOTAL_CAVES, true), false);
+  assert.equal(isBiomeUnlocked(undefined, TOTAL_CAVES), false);
 });
 
 test('getUnlockedBiomes devolve uma cópia, não o array original', () => {

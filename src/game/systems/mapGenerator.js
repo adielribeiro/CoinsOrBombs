@@ -1,4 +1,4 @@
-import { createRelicContent, getBiomeForCave, getBiomeProgress } from '../progression.js';
+import { BIOMES, createRelicContent, getBiomeForCave, getBiomeProgress } from '../progression.js';
 import { findSafeRoute, getNeighbors4, getNeighbors8 } from './helpers.js';
 
 // O boulder redondo entra com peso maior: as lajes com rachadura (rock_01..03)
@@ -11,23 +11,98 @@ const ROCK_VARIANTS = ['rock', 'rock', 'rock_01', 'rock_02', 'rock_03'];
  * do chão precisam cobrir o maior mapa, e essa verificação só faz sentido
  * contra a função que define o tamanho.
  */
+/**
+ * Teto de tiles por lado.
+ *
+ * Fica abaixo das 14 colunas e 12 linhas do atlas do chão, para que nenhuma
+ * célula precise repetir. A verificação está em test/ground.test.mjs.
+ */
+const MAX_TILES = 9;
+
+/**
+ * Teto da fração de rochas que escondem bomba.
+ *
+ * Acima de um terço, a cave deixa de ser um quebra-cabeça e vira sorteio: o
+ * jogador não consegue ler o mapa, só pode torcer. O teto vale DEPOIS do
+ * `bombMultiplier` do bioma, senão ele não é teto.
+ */
+const MAX_BOMB_DENSITY = 0.3;
+
+/**
+ * Fração de rochas que escondem bomba numa cave.
+ *
+ * Exportada porque a curva é a única parte da dificuldade que a amostragem não
+ * consegue verificar. Comparar a densidade medida da Cave 10 com a da Cave 11
+ * dava 0,144 contra 0,148: uma margem de 0,004 dentro de um erro de cerca de
+ * 0,045 com 60 amostras. O teste passava ou falhava conforme o sorteio, e
+ * reprovar ali não significava nada. Testando a fórmula, a afirmação "a cave 11
+ * é mais perigosa que a 10" é exata.
+ *
+ * A rampa é sobre a cave GLOBAL. Com a cave local do bioma a densidade
+ * reiniciava a cada bioma, e a última cave de um mundo era mais perigosa que a
+ * primeira do seguinte: a Câmara de Cristal abria mais fácil do que a Cave 40
+ * tinha fechado. O `bombMultiplier` do bioma entra por cima, e é ele que faz a
+ * Galeria de Vento ser o alívio no meio da progressão.
+ *
+ * O teto é aplicado DEPOIS do multiplicador. Antes ele era aplicado antes,
+ * então o limite de 0,3 não era um limite: a Câmara de Cristal passava dele e
+ * chegava a 0,36.
+ */
+export function getBombDensity(cave = 1, biome = BIOMES[0]) {
+  return Math.min(MAX_BOMB_DENSITY, (0.12 + (cave - 1) * 0.003) * biome.bombMultiplier);
+}
+
+/**
+ * Dimensões da cave.
+ *
+ * O tamanho cresce dentro do bioma, e não com o número absoluto da cave.
+ *
+ * A versão anterior usava `4 + (cave - 1) / 2`, e isso crescia sem parar: com
+ * 80 caves a maior cave era 43x31, um mapa impossível de ler. O problema é que
+ * `cave` é global, então o sexto bioma começava já enorme.
+ *
+ * Agora a progressão é por bioma: as caves vão de 6x7 a 9x9 dentro de cada
+ * bioma de 10, e o bioma seguinte recomeça pequeno. Isso casa com a ideia de
+ * que cada bioma é um mundo próprio, e mantém o maior mapa em 9x9 — que o
+ * atlas de 14x12 cobre com folga.
+ */
 export function getMapSize(cave) {
+  const biome = getBiomeForCave(cave);
+  const localCave = cave - biome.startCave;
+  const step = Math.floor(localCave / 2);
+
   return {
-    width: 4 + Math.floor((cave - 1) / 2),
-    height: 5 + Math.floor((cave - 1) / 3)
+    width: Math.min(MAX_TILES, 6 + step),
+    height: Math.min(MAX_TILES, 7 + Math.floor(localCave / 3))
   };
 }
 
 /**
- * A resistência da rocha agora também cresce com a profundidade do bioma.
- * Antes ela dependia só da picareta, então a Cave 20 era idêntica à
- * Cave 1 em dificuldade de quebra.
+ * Resistência da rocha.
+ *
+ * A rampa é sobre a cave GLOBAL, não sobre a local do bioma. A versão anterior
+ * usava `localCave`, e com as faixas encolhidas para 10 caves isso criava um
+ * degrau para baixo a cada bioma: a rocha da Cave 10 era mais dura que a da
+ * Cave 11, e o jogador sentia o mundo ficando mais fácil ao avançar. Pior, com
+ * o bônus de bioma somando, a soma passava a valer 0 na Cave 51 e a rocha
+ * virava inquebrável.
+ *
+ * São duas parcelas: a rampa global, suave e sempre crescente, e o índice do
+ * bioma, que é o degrau entre um mundo e outro. É o que dá a sensação de que a
+ * Câmara de Cristal é outro jogo, e não a continuação da Mina Solar.
+ *
+ * O total fica em 18 na Cave 60 com picareta base, e 14 com a picareta no
+ * máximo. A faixa antiga de 80 caves chegava a 9, então a progressão é mais
+ * longa, mas o teto continua em terreno de uma dúzia de cliques por rocha.
  */
-function getRockHp(pickaxePower = 1, localCave = 1) {
+function getRockHp(pickaxePower = 1, cave = 1, biomeIndex = 0) {
   const base = 6 - pickaxePower;
-  const depthBonus = Math.floor((localCave - 1) / 4);
+  const depthBonus = Math.floor((cave - 1) / 7);
+  // Um ponto por bioma, contra um ponto a cada sete caves: o degrau de bioma
+  // pesa mais do que a escadinha interna, mas não atropela a rampa.
+  const biomeBonus = biomeIndex;
 
-  return Math.max(1, base + depthBonus);
+  return Math.max(1, base + depthBonus + biomeBonus);
 }
 
 function pickRandom(list) {
@@ -182,27 +257,22 @@ function decorateOpenTiles(tiles, width, height, entry, biome) {
       }
 
       if (adjacentRockCount >= 2 && roll < 0.05) {
-        tile.deco = biome.id === 'sunstone' ? 'deco_gold_pile' : 'deco_rubble';
+        tile.deco = DECO_NEAR_ROCK[biome.id] ?? 'deco_rubble';
         continue;
       }
 
-      if (biome.id === 'sunstone' && roll < 0.14) {
-        tile.deco = Math.random() < 0.55 ? 'deco_gold_pile' : 'deco_lantern';
-        continue;
-      }
+      // Decoração temática do bioma, por tabela.
+      //
+      // Era uma cascata de `if (biome.id === 'x')`, e os biomas novos caíam
+      // direto no genérico: a Galeria de Vento e a Câmara de Cristal recebiam
+      // entulho de mó通用, que não diz nada sobre o lugar. Com a tabela, um
+      // bioma novo entra por dados e o teste cobre a tabela inteira.
+      const tematica = DECO_BY_BIOME[biome.id];
 
-      if (biome.id === 'frost' && roll < 0.16) {
-        tile.deco = Math.random() < 0.7 ? 'deco_ice_spike' : 'deco_crystal_blue';
-        continue;
-      }
-
-      if (biome.id === 'ember' && roll < 0.16) {
-        tile.deco = Math.random() < 0.7 ? 'deco_lava_vent' : 'deco_crystal_red';
-        continue;
-      }
-
-      if (biome.id === 'ruins' && roll < 0.16) {
-        tile.deco = Math.random() < 0.6 ? 'deco_ruin_pillar' : 'deco_crate';
+      if (tematica && roll < tematica.chance) {
+        tile.deco = Math.random() < tematica.mainChance
+          ? tematica.main
+          : tematica.alt;
         continue;
       }
 
@@ -217,11 +287,38 @@ function decorateOpenTiles(tiles, width, height, entry, biome) {
       }
 
       if (roll < 0.18) {
-        tile.deco = biome.id === 'frost' ? 'deco_crystal_blue' : 'deco_crystal_red';
+        tile.deco = tematica?.alt ?? (biome.id === 'frost' ? 'deco_crystal_blue' : 'deco_crystal_red');
       }
     }
   }
 }
+
+/**
+ * Decoração temática de cada bioma.
+ *
+ * `chance` é a probabilidade de sair algo do bioma em vez do entulho comum,
+ * `mainChance` o quanto pesa a decoração principal contra a secundária, e
+ * `alt` o que completa. `DECO_NEAR_ROCK` é o que aparece encostado em rocha,
+ * que costuma ser algo pequeno.
+ */
+const DECO_BY_BIOME = {
+  sunstone: { chance: 0.14, main: 'deco_gold_pile', mainChance: 0.55, alt: 'deco_lantern' },
+  frost: { chance: 0.16, main: 'deco_ice_spike', mainChance: 0.7, alt: 'deco_crystal_blue' },
+  ember: { chance: 0.16, main: 'deco_lava_vent', mainChance: 0.7, alt: 'deco_crystal_red' },
+  ruins: { chance: 0.16, main: 'deco_ruin_pillar', mainChance: 0.6, alt: 'deco_crate' },
+  // Vento: estalactite alta e cristal azul, a mesma paleta do gelo — a
+  // galeria é fria e vazia, e repetir a arte fica melhor do que inventar uma
+  // peça fora do estilo.
+  wind: { chance: 0.15, main: 'deco_ice_spike', mainChance: 0.45, alt: 'deco_crystal_blue' },
+  // Cristal: o nome do bioma é Cristal, e `deco_crystal_blue` é literalmente
+  // um cristal.
+  crystal: { chance: 0.18, main: 'deco_crystal_blue', mainChance: 0.6, alt: 'deco_crystal_red' }
+};
+
+const DECO_NEAR_ROCK = {
+  sunstone: 'deco_gold_pile',
+  ruins: 'deco_ruin_pillar'
+};
 
 /**
  * Abre o menor trecho de caminho necessário para que a rocha da saída fique
@@ -372,13 +469,21 @@ function floodOpenTiles(mapData, start) {
 export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
   const biome = getBiomeForCave(cave);
 
+  // `getMapSize` e `getRockHp` recebem a cave GLOBAL, não a local. A versão
+  // anterior passava `localCave` para as duas, o que só funcionava porque
+  // `getMapSize` usava o número absoluto. Depois que `getMapSize` passou a
+  // crescer por bioma, passar a local dava sempre o tamanho da primeira cave do
+  // bioma e a dificuldade parava de subir.
+  //
+  // `localCave` continua existindo aqui, mas só para a densidade de armadilha,
+  // que é expressa em fracção de rocha e não em valor absoluto.
   const { localCave } = getBiomeProgress(cave);
-  const { width, height } = getMapSize(localCave);
+  const { width, height } = getMapSize(cave);
   const entryRow = Math.floor(height / 2);
 
   const entry = { col: 0, row: entryRow };
   const exit = pickHiddenExitPosition(width, height, entry);
-  const rockHp = getRockHp(pickaxePower, localCave);
+  const rockHp = getRockHp(pickaxePower, cave, BIOMES.indexOf(biome));
   const tiles = [];
 
   for (let row = 0; row < height; row += 1) {
@@ -453,10 +558,10 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
 
   // Densidade em vez de contagem absoluta: o número de rochas cresce ~7x da
   // Cave 1 para a Cave 20, então uma contagem fixa fazia a densidade de
-  // bomba CAIUR com a profundidade. A Cave 1 ficava com ~24% de chance por
+  // bomba CAIR com a profundidade. A Cave 1 ficava com ~24% de chance por
   // rocha com apenas 2 de vida — a run morria por sorteio antes de qualquer
   // decisão do jogador.
-  const bombDensity = Math.min(0.3, 0.12 + (localCave - 1) * 0.005) * biome.bombMultiplier;
+  const bombDensity = getBombDensity(cave, biome);
 
   const bombCandidates = [];
 

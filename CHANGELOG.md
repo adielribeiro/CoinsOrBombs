@@ -7,6 +7,30 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Dois biomas novos: Galeria de Vento e Câmara de Cristal**, e as faixas
+  encolheram de 20 para 10 caves. São 6 biomas e 60 caves, era 4 e 80.
+
+  A Galeria de Vento é o alívio no meio da progressão: ×1.12 de moeda e
+  ×0.94 de bomba, o mais fácil do jogo depois da Mina Solar. A Câmara de
+  Cristal é o oposto e o fim: ×0.88 de moeda, ×1.20 de bomba e a maior chance
+  de relíquia (0.24). Entre os dois há uma queda proposital de dificuldade, que
+  é o que faz o sexto bioma parecer um degrau e não uma continuação.
+
+  - **Os fundos dos biomas novos são gerados**, por `scripts/generate-backdrops.mjs`.
+    Os quatro existentes são arte pintada; não havia como fazer isso à mão com
+    o mesmo resultado, e um retângulo liso ao lado dos outros denuncia o bioma
+    novo na hora.
+  - **A Galeria de Vento tem correntes de ar** cruzando a galeria, e a Câmara de
+    Cristal tem facetas planas na parede. São as assinaturas que differentiate
+    os dois de uma caverna genérica.
+  - O chão de cada bioma novo também é um atlas próprio (`ground_wind`,
+    `ground_crystal`), porque o tint do Phaser só multiplica: tingir um atlas
+    marrom de ciano daria lama, não cristal.
+  - A decoração por bioma virou uma **tabela** (`DECO_BY_BIOME`) no lugar de uma
+    cascata de `if (biome.id === 'x')`. Com a cascata, os biomas novos caíam
+    direto no genérico e recebiam entulho de morro, que não diz nada sobre o
+    lugar. Com a tabela, um bioma novo entra por dados.
+
 - **Pausa com Esc**, com Continuar e Ir para o menu.
 
   A tecla Esc já fechava modais, e continuava fazendo isso: a pausa é o último
@@ -34,6 +58,59 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   Container. Só apareceu no console do navegador. A correção foi mover a
   derivação para logo abaixo dos `useState`, antes de qualquer efeito que a
   leia.
+
+### Removido
+
+- **O cenário procedural por cima do fundo da caverna.** Eram ~40 pedras com
+  `alpha` de 0,14 a 0,16 ao longo das bordas, mais 18 fissuras desenhadas e 34
+  pontos de poeira, desenhados por cima da arte do bioma.
+
+  Sobre uma arte de caverna completa, isso aparecia como formas fantasma
+  atravessando o logo do menu: um borrão que não pertencia a lugar nenhum e só
+  escurecia o fundo. `addBackdropRock` e `drawCaveCracks` saíram junto, e
+  ficaram sem caller.
+
+- **O mapa desenhado na tela de título.** O modo attract chamava `renderMap()`,
+  então o menu tinha chão, rochas, entrada e saída de verdade por cima do
+  fundo. Agora a tela de título mostra a arte do bioma e nada mais, que é o que
+  uma tela de título de console faz. O lobby passou a usar o mesmo renderizador:
+  sem mapa, a sombra de chão arredondada virava um retângulo vazio no meio da
+  caverna.
+
+- **As frases que explicavam as ações.** "começar a run", "tela cheia, grade,
+  animação", "biomas, relíquias, objetivos", "React · Phaser · Vite", as
+  descrições de cada interruptor das configurações e as linhas de contexto da
+  pausa e da seleção de bioma. Restaram os rótulos, o número de caves e
+  biomas, e o aviso de tela cheia no iPhone — esse fica porque o caso é do
+  navegador, e sem ele o jogador acha que a configuração quebrou.
+
+  O que ficou é o que o jogador não consegue deduzir sozinho: o badge de
+  estado de cada bioma, e a cave que libera o bioma bloqueado.
+
+### Corrigido
+
+- **A dificuldade reiniciava a cada bioma.** Com as faixas encolhidas para 10
+  caves, `getRockHp` e a densidade de bomba usavam a cave *local* do bioma, então
+  a Cave 11 era mais fácil que a Cave 10 e a Galeria de Cristal abria mais
+  leve do que a Cave 40 tinha fechado. As duas rampas agora são sobre a cave
+  global, e o degrau entre biomas vem do índice do bioma por cima.
+
+  O mesmo erro fazia a soma zerar na Cave 51, e a rocha virava **inquebrável**.
+  Há teste agora para que nenhuma cave do jogo saia com 0 de resistência.
+
+- **O teto de densidade de bomba não era teto.** `Math.min(0.3, ...)` era
+  aplicado *antes* do `bombMultiplier` do bioma, então a Câmara de Cristal
+  passava dele e chegava a 0,36. O clamp foi para depois do multiplicador.
+
+- **O tamanho do mapa crescia sem parar.** `getMapSize` usava `4 + (cave - 1) / 2`,
+  e com 80 caves a maior era 43×31, impossível de ler. Agora cresce *dentro* do
+  bioma, de 6×7 a 9×9, e o próximo bioma recomeça pequeno. O atlas de 14×12
+  passou a ter folga de verdade.
+
+- **O chão da Câmara de Cristal era quase igual ao das Ruínas.** O teste de
+  cores distintas reprovou com distância 19,7 contra um corte de 30: o cristal
+  era um azul acinzentado, e as Ruínas também. Puxado para ciano saturado, que
+  o afasta das Ruínas e do Vento ao mesmo tempo.
 
 ### Mudado
 
