@@ -75,6 +75,18 @@ const initialState = {
   ...createImprovementState()
 };
 
+/**
+ * Utilitários da run.
+ *
+ * `tone` é a cor de cada um, e ela mora aqui por dois motivos. O primeiro é
+ * funcional: sem um tom por item, os três botões ficam visualmente idênticos
+ * e o jogador precisa ler o rótulo para saber o que é o quê. O segundo é de
+ * direção: a barra usava `--ink-faint` no rótulo e `opacity: 0.3` no botão
+ * inteiro, e as duas reduções se somavam — o resultado era um borrão que
+ * competia com a arte do fundo em vez de informar.
+ *
+ * Os tons seguem o ícone: rosa para vida, âmbar para bomba, ciano para bússola.
+ */
 const utilityCatalog = [
   {
     id: 'lifePotion',
@@ -82,7 +94,8 @@ const utilityCatalog = [
     name: 'Poção de Vida',
     description: 'Recupera 1 ponto de vida durante a run.',
     cost: 10,
-    shortName: 'Vida'
+    shortName: 'Vida',
+    tone: '#ff5f7e'
   },
   {
     id: 'revealBomb',
@@ -90,7 +103,8 @@ const utilityCatalog = [
     name: 'Poção Dedo-Duro',
     description: 'Revela uma bomba escondida no mapa atual.',
     cost: 35,
-    shortName: 'Duro'
+    shortName: 'Duro',
+    tone: '#ffb23c'
   },
   {
     id: 'safePath',
@@ -98,7 +112,8 @@ const utilityCatalog = [
     name: 'Poção Caminho Seguro',
     description: 'Mostra a rota segura até a saída da cave atual.',
     cost: 80,
-    shortName: 'Seguro'
+    shortName: 'Seguro',
+    tone: '#3ddcff'
   }
 ];
 
@@ -1191,7 +1206,11 @@ export default function App() {
                   const isSelected = selectedUtility === utility.id;
 
                   return (
-                    <div key={utility.id} className={`utility-slot ${isSelected ? 'selected' : ''}`}>
+                    <div
+                      key={utility.id}
+                      className={`utility-slot ${isSelected ? 'selected' : ''} ${count > 0 ? 'has-item' : 'is-empty'}`}
+                      style={{ '--util-accent': utility.tone }}
+                    >
                       <button
                         className="utility-icon-btn"
                         type="button"

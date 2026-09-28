@@ -5,6 +5,34 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Mudado
+
+- **A barra de utilitários ficou destacada, com uma cor por item.**
+
+  A barra somava três reduções de uma vez: `opacity: 0.3` no botão inteiro,
+  `--ink-faint` no rótulo e `--ink-dim` na contagem. O resultado era um borrão
+  que competia com a arte do bioma em vez de informar — e, pior, os três botões
+  ficavam visualmente idênticos, então o jogador tinha que ler o rótulo para
+  saber o que era o quê.
+
+  - **Cada utilitário tem o seu tom**, e o tom mora no catálogo em `App.jsx`, não
+    no CSS: rosa para vida, âmbar para bomba, ciano para bússola. A lista já é a
+    fonte de verdade, e duplicar os tons no CSS seriam duas listas para manter em
+    sincronia — o mesmo motivo dos biomas.
+  - **O botão nunca mais fica transparente.** O que muda é o alfa do tom, e só
+    isso. O slot vazio continua legível, porque o jogador precisa ver que existe
+    uma poção de vida mesmo tendo zero delas.
+  - Medido o contraste do rótulo contra o fundo da barra, composto sobre a arte
+    escura do bioma: **5,2 / 7,4 / 8,0**, os três em AA. Antes eram 3,2 / 2,8 /
+    2,8, abaixo de AA para texto pequeno.
+  - A contagem virou um quadradinho com o fundo no tom, e o ícone ganha um
+    brilho curto quando há item. Continua hairline em vez de card, que é a regra
+    do design.
+
+  Não entrou gradiente preenchido nem `box-shadow` no botão: as duas coisas estão
+  de fora de propósito no cabeçalho deste arquivo, porque denunciam "web".
+  A cor vem de matiz e saturação, com a moldura continuando de 1px.
+
 ### Adicionado
 
 - **Fundos pintados da Galeria de Vento e da Câmara de Cristal.**
