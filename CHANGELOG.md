@@ -5,6 +5,45 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Removido
+
+- **Os interruptores "Reduzir animações" e "Grade isométrica"** das
+  configurações.
+
+  Tirar a opção do menu é uma coisa. Tirar o comportamento junto seria outra, e
+  seria um erro nos dois casos.
+
+  - **A animação reduzida continua, e passou a vir do sistema**, por
+    `prefers-reduced-motion`. Apagar o interruptor e deixar o comportamento preso
+    num booleano salvo tiraria a acessibilidade de quem depende dela. A troca é
+    melhor do que a original em dois sentidos: não exige que o jogador saiba que
+    a opção existe, procure no menu e ligue; e respeita a preferência de quem
+    configurou o sistema inteiro, e não só este site.
+  - **A grade isométrica saiu de vez.** `renderIsoGrid` foi junto, e com ele a
+    propriedade `this.showGrid` e a linha que o chamava. A grade era resíduo: o
+    chão passou a ser superfície contínua, e desenhar a malha por cima era
+    justamente o que denunciava a grade.
+  - **A chave salva foi neutralizada, e é o detalhe que importa.** `readStorage`
+    faz merge com o que está no navegador, e merge é o comportamento certo para
+    um default NOVO — mas para uma chave REMOVIDA é o oposto: o `showGrid: true`
+    de quem tinha ligado voltava e entrava no estado, sem nenhum interruptor na
+    tela para desligar. O efeito seria a grade ligada e sem caminho para sair.
+    Por isso `readSettings` descarta as chaves removidas na leitura, e o
+    `localStorage` se cura sozinho na gravação seguinte.
+  - O payload enviado à cena sai agora de `buildSceneSettings`, e não dos dois
+    `dispatchEvent` inline. Eram dois lugares para manter em sincronia, e é
+    exatamente aí que a divergência apareceria: um enviaria `reducedMotion` e o
+    outro não.
+  - A linha "Entrada" ficou, e agora ela informa. Sem o interruptor, "Entrada:
+    Reduzida" seria um fato que o jogador não pode mudar; com a media query atrás
+    dela, é a resposta a uma pergunta feita no sistema e respeitada aqui.
+
+  Verificado no navegador: o cenário perigoso foi semeado de propósito
+  (`reducedMotion: true` e `showGrid: true` no `localStorage`). Depois da carga as
+  duas chaves tinham desaparecido do que é gravado, a cena desenhou o mapa sem a
+  grade, e com a media query simulada como `reduce` a cena recebeu
+  `reducedMotion: true`.
+
 ### Mudado
 
 - **A barra de utilitários ficou transparente, e sem os rótulos de texto.**

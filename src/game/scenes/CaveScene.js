@@ -89,7 +89,6 @@ export class CaveScene extends Phaser.Scene {
     this.clearedCaves = new Set();
     this.toastSequence = 0;
     this.reducedMotion = false;
-    this.showGrid = false;
     this.hudInset = 0;
     this.attractMode = false;
     this.paused = false;
@@ -274,13 +273,11 @@ export class CaveScene extends Phaser.Scene {
 
     this.onSettingsChange = (event) => {
       const next = event?.detail ?? {};
+      const reducedMotion = Boolean(next.reducedMotion);
 
-      if (this.reducedMotion === Boolean(next.reducedMotion)) {
-        if (this.showGrid === Boolean(next.showGrid)) return;
-      }
+      if (this.reducedMotion === reducedMotion) return;
 
-      this.reducedMotion = Boolean(next.reducedMotion);
-      this.showGrid = Boolean(next.showGrid);
+      this.reducedMotion = reducedMotion;
 
       if (this.mapData && !this.metaState.inLobby) {
         this.renderMap();
@@ -839,10 +836,6 @@ export class CaveScene extends Phaser.Scene {
     const biome = this.mapData.biome ?? getBiomeForCave(this.metaState.cave);
     const groundTexture = getGroundTextureKey(biome.id);
 
-    if (this.showGrid) {
-      this.renderIsoGrid(originX, originY, tileWidth, tileHeight);
-    }
-
     // Filhos de um Phaser.Container são desenhados na ordem de inserção:
     // setDepth() é ignorado dentro de containers. Em isométrico o grid
     // precisa de ordenação por Y real, e o loop row->col original não é
@@ -1001,33 +994,6 @@ export class CaveScene extends Phaser.Scene {
     });
 
     this.publishSceneState();
-  }
-
-  renderIsoGrid(originX, originY, tileWidth, tileHeight) {
-    const grid = this.add.graphics();
-    const color = 0x8fb6d8;
-    const halfW = tileWidth / 2;
-    const halfH = tileHeight / 2;
-
-    grid.lineStyle(1, color, 0.22);
-
-    for (let row = 0; row < this.mapData.height; row += 1) {
-      for (let col = 0; col < this.mapData.width; col += 1) {
-        const point = toIso(col, row, originX, originY, tileWidth, tileHeight);
-
-        grid.strokePoints(
-          [
-            { x: point.x, y: point.y - halfH },
-            { x: point.x + halfW, y: point.y },
-            { x: point.x, y: point.y + halfH },
-            { x: point.x - halfW, y: point.y }
-          ],
-          true
-        );
-      }
-    }
-
-    this.floorLayer.add(grid);
   }
 
   /**

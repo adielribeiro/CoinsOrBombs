@@ -143,13 +143,48 @@ const PROFILE_STORAGE_KEY = 'coinsorbombs:profile:v1';
  */
 const TOTAL_CAVES = BIOMES[BIOMES.length - 1].endCave;
 
+/**
+ * Configurações que o jogador escolhe.
+ *
+ * `reducedMotion` e `showGrid` saíram daqui junto com os interruptores. As duas
+ * agora são derivadas: a animação reduzida vem de `prefers-reduced-motion` e a
+ * grade fica sempre desligada. Ver `buildSceneSettings`.
+ */
 const DEFAULT_SETTINGS = {
-  reducedMotion: false,
-  showGrid: false,
   persistProgress: true,
   autoFullscreen: true,
   developerMode: false
 };
+
+/**
+ * Lê as configurações, descartando as chaves que deixaram de existir.
+ *
+ * `readStorage` faz merge com o que está salvo, e é o comportamento certo para
+ *_defaults_ novos. Mas para uma chave REMOVIDA ele é o contrário do que se
+ * quer: o `showGrid: true` de um jogador que tinha ligado a grade voltava do
+ * navegador e entrava no estado, mesmo sem mais nenhum interruptor na tela.
+ *
+ * O efeito prático era o pior dos dois: a cena recebia `showGrid: true` e
+ * desenhava a grade, e o jogador não tinha caminho para desligar. `buildSceneSettings`
+ * já neutraliza isso, mas deixar a chave no estado é armadilha para quem for
+ * mexer aqui depois — um `settings.showGrid` lido em qualquer lugar voltaria a
+ * valer sem ninguém saber por quê.
+ *
+ * Descartar na leitura faz o `localStorage` se curar sozinho na próxima
+ * gravação, e o estado passa a descrever só o que existe.
+ */
+const CHAVES_DE_SETTINGS_REMOVIDAS = ['reducedMotion', 'showGrid'];
+
+function readSettings() {
+  const lido = readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
+  const limpo = { ...lido };
+
+  for (const chave of CHAVES_DE_SETTINGS_REMOVIDAS) {
+    delete limpo[chave];
+  }
+
+  return limpo;
+}
 
 function readStorage(key, fallback) {
   if (typeof window === 'undefined') return fallback;
@@ -324,6 +359,46 @@ function isCoarsePointerDevice() {
 }
 
 /**
+ * O sistema pede menos animação?
+ *
+ * Havia um interruptor "Reduzir animações" nas configurações, e ele saiu. A
+ * opção não foi junto com o comportamento: agora quem desliga partículas, o
+ * tremor da picareta e o pulso da saída é o SISTEMA, pelo
+ * `prefers-reduced-motion`.
+ *
+ * A troca é melhor do que aoption original em dois sentidos. Primeiro, não
+ * exige que o jogador saiba que existe a opção, procure no menu e ligue.
+ * Segundo, respeita a preferência de quem muda o sistema inteiro, e não só
+ * este site. Apagar o interruptor e manter o comportamento preso num booleano
+ * salvo seria tirar a acessibilidade de quem depende dela.
+ */
+function prefersReducedMotion() {
+  if (typeof window === 'undefined') return false;
+  if (typeof window.matchMedia !== 'function') return false;
+
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
+ * O que vai para a cena do Phaser.
+ *
+ * Sai de uma função, e não dos dois `dispatchEvent` inline, porque eles já
+ *eram dois lugares para manter em sincronia e era exatamente aí que a
+ * divergência apareceria: um enviaria `reducedMotion` e o outro não.
+ */
+function buildSceneSettings(settings) {
+  return {
+    ...settings,
+    reducedMotion: prefersReducedMotion(),
+    // A grade isométrica também perdeu o interruptor. Aqui vai explícito
+    // porque `readStorage` faz merge com o que está salvo: um jogador que tinha
+    // ligado a grade continuaria com ela ligada, sem nenhum caminho para
+    // desligar. Fixar o valor é o que neutraliza a preferência antiga.
+    showGrid: false
+  };
+}
+
+/**
  * A detecção antiga era só `largura <= 900 && altura > largura`, o que
  * classificava janelas de desktop estreitas como celular em retrato. Pior:
  * o gate de rotação só ficava visível abaixo de 640px de CSS, então entre
@@ -404,7 +479,7 @@ export default function App() {
   const [biomeSelectContext, setBiomeSelectContext] = useState('menu');
   const [selectedBiomeId, setSelectedBiomeId] = useState(firstBiome.id);
   const [pendingBiomeState, setPendingBiomeState] = useState(null);
-  const [settings, setSettings] = useState(() => readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS));  const [hudHeight, setHudHeight] = useState(0);
+  const [settings, setSettings] = useState(() => readSettings());  const [hudHeight, setHudHeight] = useState(0);
   const [profile, setProfile] = useState(() => readStorage(PROFILE_STORAGE_KEY, { bestCave: 1 }));
   const [isFullscreen, setIsFullscreen] = useState(() => isFullscreenActive());
   const [fullscreenNotice, setFullscreenNotice] = useState(null);
@@ -539,7 +614,7 @@ export default function App() {
   useEffect(() => {
     writeStorage(SETTINGS_STORAGE_KEY, settings);
 
-    window.dispatchEvent(new CustomEvent('cob-settings', { detail: settings }));
+    window.dispatchEvent(new CustomEvent('cob-settings', { detail: buildSceneSettings(settings) }));
   }, [settings]);
 
   useEffect(() => {
@@ -1126,7 +1201,7 @@ export default function App() {
    */
   useEffect(() => {
     const replyToScene = () => {
-      window.dispatchEvent(new CustomEvent('cob-settings', { detail: settings }));
+      window.dispatchEvent(new CustomEvent('cob-settings', { detail: buildSceneSettings(settings) }));
       window.dispatchEvent(
         new CustomEvent('cob-attract-mode', { detail: { active: entryPhase === ENTRY_PHASE.MENU } })
       );
@@ -1726,30 +1801,6 @@ export default function App() {
               <label className="settings-toggle">
                 <input
                   type="checkbox"
-                  checked={settings.reducedMotion}
-                  onChange={(event) =>
-                    setSettings((current) => ({ ...current, reducedMotion: event.target.checked }))
-                  }
-                />
-                <span>
-                  <strong>Reduzir animações</strong>
-                </span>
-              </label>
-
-              <label className="settings-toggle">
-                <input
-                  type="checkbox"
-                  checked={settings.showGrid}
-                  onChange={(event) => setSettings((current) => ({ ...current, showGrid: event.target.checked }))}
-                />
-                <span>
-                  <strong>Grade isométrica</strong>
-                </span>
-              </label>
-
-              <label className="settings-toggle">
-                <input
-                  type="checkbox"
                   checked={settings.persistProgress}
                   onChange={(event) =>
                     setSettings((current) => ({ ...current, persistProgress: event.target.checked }))
@@ -1779,9 +1830,15 @@ export default function App() {
                 </p>
               )}
 
+              {/* A linha ficou, e agora ela informa. Antes era o par do
+                  interruptor que estava acima dela; sem o interruptor, "Entrada:
+                  Reduzida" passaria a ser um fato que o jogador não pode
+                  mudar. Com `prefers-reduced-motion` atrás dela, é a resposta a
+                  uma pergunta que o jogador fez no sistema e que o jogo
+                  respeitou. */}
               <div className="settings-line">
                 <span>Entrada</span>
-                <strong>{settings.reducedMotion ? 'Reduzida' : 'Animada'}</strong>
+                <strong>{prefersReducedMotion() ? 'Reduzida' : 'Animada'}</strong>
               </div>
               <div className="settings-line">
                 <span>Orientação recomendada</span>

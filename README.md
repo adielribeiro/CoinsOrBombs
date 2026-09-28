@@ -121,9 +121,22 @@ faltam, e o contorno vermelho quando você clica numa rocha ainda cercada.
 
 - **Tela cheia ao começar** — entra em tela cheia ao iniciar a run. Ligado por
   padrão; desligue se preferir jogar com a barra do navegador visível.
-- **Reduzir animações** — desliga partículas, tremor da picareta e pulsos.
-- **Grade isométrica** — desenha a malha de tiles para mapear a cave.
 - **Lembrar melhor cave** — salva o recorde em `localStorage`.
+- **Modo desenvolvedor** — libera os seis biomas de uma vez, para pular direto
+  para qualquer ambiente sem jogar a progressão inteira.
+
+### Sobre a animação reduzida
+
+Não há interruptor, e nunca houve a versão boa dele. Partículas, tremor da
+picareta e pulsos da saída desligam sozinhos quando o sistema pede, por
+`prefers-reduced-motion`. Quem configura "reduzir movimento" no SO ou no
+sistema operacional recebe o comportamento sem procurar nada no menu, e quem
+mexeu na preferência do sistema inteiro vê o site respeitar.
+
+### Sobre a grade isométrica
+
+Não existe mais. O chão é uma superfície contínua, sem malha, e a grade por
+cima era justamente o que denunciava a grade.
 
 ### Sobre a tela cheia
 
