@@ -1,38 +1,29 @@
 import Phaser from 'phaser';
-import {
-  BASE_TILE_HEIGHT,
-  BASE_TILE_WIDTH,
-  FLOOR_ART,
-  getFloorDisplaySize,
-  getTileMetrics,
-  toIso
-} from '../config.js';
+import { BASE_TILE_HEIGHT, BASE_TILE_WIDTH, getTileMetrics, toIso } from '../config.js';
+import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEY, groundFrameIndex } from '../ground.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { generateMap } from '../systems/mapGenerator.js';
 import { findSafeRoute, getNeighbors4, isFrontierRock } from '../systems/helpers.js';
 
 /**
- * Encaixa a arte de chão na célula isométrica.
+ * Desenha a célula do chão.
  *
- * A arte é um bloco: losango da superfície superior em cima, faces laterais
- * embaixo. Só o losango de cima deve cair na célula; as faces laterais ficam
- * sob o tile vizinho, que é desenhado depois na ordem de profundidade.
+ * O chão vem de um atlas gerado por `scripts/generate-ground.mjs`, e não de
+ * arte de tile: a antiga `floor_*.png` era uma grelha 3x3 e a grade aparecia
+ * em toda célula. Ver src/game/ground.js.
+ *
+ * A célula é desenhada 1px maior que o losango da grade. As bordas de duas
+ * células vizinhas caem em posições fracionárias (a meia-altura é 24,5px), e
+ * sem essa sobreposição o filtro bilinear do sprite deixa um fio de fundo
+ * aparecer ao longo de cada aresta — que é a grade de novo, agora fininha.
  */
-function applyFloorPlacement(floor, point, tileWidth, tileHeight) {
-  const { displayWidth, displayHeight } = getFloorDisplaySize(tileWidth);
+function drawGroundCell(scene, col, row, point, tileWidth, tileHeight) {
+  const cell = scene.add
+    .image(point.x, point.y, GROUND_TEXTURE_KEY)
+    .setFrame(groundFrameIndex(col, row))
+    .setDisplaySize(tileWidth + 1, tileHeight + 1);
 
-  floor.setDisplaySize(displayWidth, displayHeight);
-
-  // A arte é desenhada um pouco maior que a célula, porque a célula só
-  // recebe o losango de cima e as faces laterais precisam ir parar embaixo
-  // do vizinho. Centralizar a imagem no ponto do tile já coloca o losango
-  // exatamente entre os vértices superior e inferior da célula: o topo do
-  // losango fica a displayHeight/2 - displayHeight*topOffsetY do centro, que
-  // é a metade da altura da célula.
-  const cellHalf = tileHeight / 2;
-  const topShift = displayHeight / 2 - displayHeight * FLOOR_ART.topOffsetY;
-
-  floor.setPosition(point.x, point.y - (cellHalf - topShift));
+  return cell;
 }
 
 export class CaveScene extends Phaser.Scene {
@@ -772,22 +763,16 @@ export class CaveScene extends Phaser.Scene {
       // a arte inteira. Ver FLOOR_ART em config.js — desenhar o bloco inteiro
       // fazia as faces laterais invadir o tile vizinho e o piso virar uma
       // pilha de blocos em vez de chão contínuo.
-      const floor = this.add
-        .image(point.x, point.y, tile.floorVariant || 'floor_01')
-        .setOrigin(0.5, 0.5);
-
-      applyFloorPlacement(floor, point, tileWidth, tileHeight);
+      const floor = drawGroundCell(this, col, row, point, tileWidth, tileHeight);
 
       floor.setData('tile', tile);
       tile.floorSprite = floor;
 
-      if (tile.floorTone && tile.floorTone !== 1) {
-        // Clamp: GetColor empacota em bytes, e um valor acima de 255 vaza
-        // para o canal vizinho e produz uma tinta que renderiza preto.
-        const tone = Math.max(0, Math.min(255, Math.round(tile.floorTone * 255)));
-        floor.setTint(Phaser.Display.Color.GetColor(tone, tone, tone));
-      }
-
+      // O tom por tile foi removido de propósito: tingir cada célula com um
+      // valor próprio reintroduz exatamente a grade que o atlas contínuo
+      // eliminou, agora como degrau de brilho em vez de linha desenhada. A
+      // variação de tom está na textura e a cor vem do bioma, aplicada na
+      // camada inteira.
       if (tile.type === 'exit') {
         floor.setTint(biome.palette.exit);
         floor.setInteractive({ cursor: 'pointer' });
@@ -898,6 +883,12 @@ export class CaveScene extends Phaser.Scene {
         }
       }
     });
+
+    // A cor do bioma entra aqui, na camada inteira, e não em cada célula. O
+    // atlas do chão é uma superfície contínua em cinza; tingir cada tile por
+    // vez criaria degraus de luminância exatamente na fronteira, que é a grade
+    // que o atlas contínuo acaba de eliminar.
+    this.floorLayer.setTint(biome.palette.ground);
   }
 
   renderIsoGrid(originX, originY, tileWidth, tileHeight) {
@@ -1380,10 +1371,15 @@ export class CaveScene extends Phaser.Scene {
       floor.setData('tile', tile);
       tile.sprite = floor;
     } else {
-      const fallbackFloorKey = tile.floorVariant || 'floor_01';
-      const fallbackFloor = this.add.image(rewardPos.x, rewardPos.y, fallbackFloorKey).setDisplaySize(tileWidth + 4, tileHeight + 18);
+      const fallbackFloor = drawGroundCell(
+        this,
+        tile.col,
+        tile.row,
+        rewardPos,
+        this.renderMetrics.tileWidth,
+        this.renderMetrics.tileHeight
+      );
 
-      fallbackFloor.setDepth(rewardPos.y);
       fallbackFloor.setData('tile', tile);
       this.floorLayer.add(fallbackFloor);
 

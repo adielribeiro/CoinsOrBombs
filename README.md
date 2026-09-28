@@ -155,7 +155,8 @@ npm run dev      # http://localhost:5173
 | `npm run preview` | Serve o build na porta 3000 |
 | `npm run pages` | Build + copia para `docs/game` (o que o Pages serve) |
 | `node scripts/fetch-fonts.mjs` | Rebaixa as fontes do Google Fonts para `public/assets/fonts` |
-| `node scripts/measure-floor.mjs` | Mede a geometria da arte de chão (losango e faces laterais) |
+| `node scripts/generate-ground.mjs` | Gera `public/assets/ground_atlas.png`, o chão contínuo |
+| `node scripts/preview-ground.mjs` | Reproduz a camada de chão em Node e mede a costura |
 
 O `vite.config.js` usa `base: './'`, então o mesmo build roda na raiz, em
 `/CoinsOrBombs/` e em qualquer subpasta.
@@ -214,18 +215,46 @@ defeito em vez de arte.
 
 ### O chão
 
-A arte de piso é desenhada como um bloco (losango em cima, faces laterais
-embaixo), mas só o **losango** é encaixado na célula da grade. As faces
-laterais ficam embaixo do tile vizinho, desenhado depois na ordem de
-profundidade — por isso o piso é contínuo, sem junta entre tiles.
+O chão **não é arte de tile**. A arte anterior (`floor_*.png`) era um bloco com
+uma grelha 3x3 de nove lajes e rejunte escuro; desenhada célula a célula, a
+malha se repetia em cada tile e o piso lia como azulejo. Nenhum ajuste de
+escala remove aquilo, porque a grade está gravada dentro do PNG.
 
-Cada tile ainda recebe um tom levemente diferente e, em ~40% deles, um pouco
-de entulho. Tudo derivado de hash da posição: o chão não muda quando a tela é
-redimensionada.
+Hoje o chão é uma superfície contínua sintetizada em `src/game/ground.js`,
+como função das coordenadas **contínuas** de mapa — a inversa da projeção
+isométrica:
 
-A medição que embasa isso está em `FLOOR_ART` (`src/game/config.js`) e pode
-ser refeita com `node scripts/measure-floor.mjs`, que lê o PNG e reporta onde
-estão o losango e as faces laterais.
+```
+colf =  dx / tileWidth  + dy / tileHeight
+rowf = -dx / tileWidth  + dy / tileHeight
+```
+
+Como a função não depende da célula, duas células que compartilham uma aresta
+amostram a mesma curva. A emenda é contínua **por construção**: não há costura
+para fechar nem ajuste para acertar. `scripts/generate-ground.mjs` recorta essa
+superfície num atlas de 14x12 células, e cada célula do mapa pega o seu frame.
+
+Detalhes que não são óbvios:
+
+- **O domínio do ruído é girado ~20°.** Os eixos de (colf, rowf) são os eixos
+  da célula, então qualquer octave de frequência inteira produziria um desenho
+  que se repete a cada célula — uma grade, só que com outro formato.
+- **A cor entra como tint na camada inteira**, não em cada célula. Um atlas
+  cinza serve aos quatro biomas, e tingir célula por célula criaria degraus de
+  luminância exatamente na fronteira.
+- **A rampa de cinzas é clara de propósito.** O tint do Phaser multiplica, e
+  `palette.ground` nunca passa de 255 por canal: com a rampa escura o chão
+  saía lamacento, sem folga para o bioma clarear.
+- **A célula é desenhada 1px maior que o losango.** As arestas vizinhas caem em
+  posições fracionárias (a meia-altura é 24,5px) e, sem a sobreposição, o filtro
+  bilinear deixa um fio de fundo em cada aresta.
+
+`node scripts/preview-ground.mjs` reproduz em Node a camada de chão exatamente
+como o jogo a desenha e **mede** o salto de luminância atravessando as
+fronteiras contra o salto dentro das células. Numa superfície contínua o
+primeiro é comparável ao segundo; com costura seria muito maior. Hoje a razão
+é **0,16** — a fronteira é cinco vezes mais suave que o interior da própria
+célula.
 
 ## Stack
 

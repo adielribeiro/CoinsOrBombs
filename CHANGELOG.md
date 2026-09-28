@@ -7,40 +7,93 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Mudado
 
-- **O chão da cave virou chão de caverna, e não mais uma pilha de blocos.**
-  Esta era a maior contribute visual do projeto e o defeito era geométrico, não
-  de estilo.
+- **O chão da cave deixou de ser arte de tile e virou uma superfície
+  contínua.** A grade não era efeito de estilo: estava gravada na arte.
 
-  A arte de piso é um bloco: losango da superfície em cima, moldura clara ao
-  redor e faces laterais escuras embaixo. Desenhada no tamanho cheio da célula,
-  as faces laterais avançavam para dentro do tile vizinho e viravam uma junta
-  escura grossa em cada um — o piso lia como blocos empilhados, e era a
-  "genericidade" que aparecia.
+  `floor_01..03` eram um bloco com **grelha 3x3 de nove lajes** e rejunte
+  escuro, mais a moldura clara do losango. Desenhada célula a célula, a
+  malha se repetia em cada tile. Encostar o losango na célula (a tentativa
+  anterior) removia a junta escura entre tiles, mas a grelha de 3x3
+  continuava visível dentro de cada um — nenhuma escala ou sobreposição
+  remove aquilo, porque está dentro do PNG. Saiu a arte de piso; no lugar
+  dela entra uma superfície gerada.
 
-  Medindo a arte (`node scripts/measure-floor.mjs`, idêntico nas três
-  variantes): canvas 160x100, área opaca de y=19 a y=95, losango de cima em
-  y=19..83 com 121px de largura, e 12px de faces laterais. O losango tem razão
-  1,89 — praticamente o 2:1 da grade, então a arte é geometricamente
-  compatível e só estava sendo desenhada no tamanho errado.
+  `src/game/ground.js` sintetiza o chão como função das coordenadas
+  **contínuas** de mapa, invertendo a projeção isométrica
+  (`colf = dx/tw + dy/th`, `rowf = -dx/tw + dy/th`). Como a função não
+  depende da célula, duas células que compartilham uma aresta amostram a
+  mesma curva: a emenda é contínua por construção, sem costura e sem
+  ajuste. `scripts/generate-ground.mjs` recorta essa superfície num atlas
+  de 14x12 células (512 KB, 50% opaco porque os cantos ficam transparentes
+  e os losangos vizinhos preenchem).
 
-  Agora só o losango cai na célula, alinhado pelos vértices, e as faces
-  laterais ficam embaixo do vizinho, que é desenhado depois na ordem de
-  profundidade. O espaço entre tiles deixou de existir.
+  - **Nenhuma malha de ruído alinha com a grade.** Os eixos de (colf, rowf)
+    são os eixos da célula, então o domínio é girado ~20° antes da
+    amostragem, e as frequências sobem por 2.03 em vez de 2 — progressão
+    geométrica exata restaura simetria e o chão volta a parecer desenho
+    repetido.
+  - **Poças de luz, cascalho e fendas.** Ruído em várias frequências para
+    manchas largas, granulação e grão; duas camadas de Voronói para seixos
+    (com raio variado por seixo e volume pela direção do centro) e uma para
+    fendas, mascaradas por ruído de baixa frequência para aparecerem em
+    recortes e não como teia de polígonos. O jitter dos pontos do Voronói vai
+    de 0.15 a 0.85: com 0 a 1 as arestas ficam retas demais.
+  - **Rampa clara de propósito.** O tint do Phaser multiplica, então a cor
+    final é a rampa vezes `palette.ground`; com a rampa escura o chão saía
+    lamacento, sem folga para o bioma clarear.
+  - **Um atlas para os quatro biomas.** A cor entra como tint na camada
+    inteira, não em cada célula — tingir célula por célula criaria degraus de
+    luminância exatamente na fronteira, que é a grade de novo.
+  - `palette.ground` novo nos quatro biomas; `floorVariant` e `floorTone`
+    saíram do gerador de mapa. A rampa de cinzas também dá variação de
+    temperatura (quente/frio) balanced, para o chão não ficar cinza chapado
+    sob qualquer tingimento.
 
-  - **Variação de tom por tile** (0.88 a 1.0, por hash da posição). Três
-    variantes repetidas em grade faziam o olho achar o mesmo bloco a cada dois
-    tiles. O teto é 1.0 porque o tint do Phaser multiplica a textura, e
-    `GetColor` acima de 255 estoura o byte e renderiza o tile quase preto —
-    foi exatamente o que aconteceu na primeira tentativa.
-  - **Entulho** em ~40% dos tiles, com posição e tamanho derivados de hash:
-    cascalho estável, que some ao redimensionar em vez de piscar.
-  - Teto de escala do mapa de 1.16 para 1.35, porque com o chão ocupando a
-    célula inteira a cave ficava pequena no meio da tela.
+- **A célula é desenhada 1px maior que o losango.** As arestas de células
+  vizinhas caem em posições fracionárias (a meia-altura é 24,5px) e, sem
+  essa sobreposição, o filtro bilinear deixa um fio de fundo em cada
+  aresta — a grade de novo, agora fininha.
 
-- 7 testes novos (`test/floor.test.mjs`) travando a geometria do piso em
-  quatro escalas de render: o losango fecha a célula, não deixa fresta, não
-  avança demais, as faces laterais passam do fundo da célula, o tom nunca
-  estoura o byte, e tom e entulho são estáveis entre gerações.
+- Teto de escala do mapa de 1.16 para 1.35, porque com o chão ocupando a
+  célula inteira a cave ficava pequena no meio da tela.
+
+- **12 testes novos** (`test/ground.test.mjs`) em vez dos 7 de piso. O
+  invariante central é que a aresta compartilhada amostra a mesma curva de
+  mapa, verificado nas duas formas de aresta do losango e nos dois sentidos.
+  Três testes medem descontinuidade do jeito certo, e vale registrar por quê,
+  porque três vezes o critério ingênuo deu um alarme falso:
+
+  - "salto pequeno entre amostras vizinhas" **acusava um degrau de 0,35 que
+    não existe** (o máximo real é 0,011): comparava um ponto com outro 0,8 de
+    mapa adiante. E mesmo corrigido, é o critério errado — uma fenda escura é
+    legitimamente íngreme. O teste certo divide a amostragem por 2 e exige
+    que o degrau encolha junto: descontinuidade não encolhe.
+  - "diferença de cor entre células vizinhas" dava 10 níveis, e vinham de as
+    duas amostras estarem a até 0,05 de mapa de distância. O certo é comparar
+    o gradiente **atravessando** a fronteira com o gradiente **dentro** da
+    célula: numa superfície contínua o primeiro é comparável ao segundo, e
+    com costura seria muito maior. Medido no render: **0,16**.
+  - "nenhuma célula pode ser chapada" reprovava com variação de 3,9 numa
+    célula. Regionais localmente suaves são o que torna a superfície natural;
+    o que denunciaria arte por tile é a repetição, e esse teste virou "o
+    centro de cada célula tem cor distinta".
+
+### Removido
+
+- `public/assets/floor_01..03.png`, `scripts/measure-floor.mjs` e
+  `test/floor.test.mjs`. A arte de piso e a medição dela deixaram de existir;
+  o chão é sintetizado.
+
+### Adicionado
+
+- `scripts/generate-ground.mjs` gera `public/assets/ground_atlas.png`.
+- `scripts/preview-ground.mjs` reproduz em Node a camada de chão exatamente
+  como o jogo a desenha (posição isométrica, `setDisplaySize(tileWidth + 1,
+  tileHeight + 1)`, amostragem bilinear, tint do bioma) e **mede** o salto
+  através das fronteiras contra o salto dentro das células. Foi a
+  ferramenta que permitiu iterar sem navegador.
+- `getMapSize` passou a ser exportada: o atlas precisa cobrir o maior mapa e
+  essa verificação só faz sentido contra a função que define o tamanho.
 
 ### Mudado
 

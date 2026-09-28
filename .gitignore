@@ -24,5 +24,6 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 
-# screenshots capturados localmente
+# screenshots e previews capturados localmente
 __shot.html
+ground-preview.png

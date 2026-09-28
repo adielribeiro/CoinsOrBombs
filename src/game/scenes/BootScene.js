@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 
+import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEY } from '../ground.js';
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('BootScene');
@@ -10,10 +12,14 @@ export class BootScene extends Phaser.Scene {
     this.load.image('bomb', 'assets/bomb.png');
     this.load.image('pickaxe', 'assets/pickaxe_lvl1.png');
 
-    // Floors
-    this.load.image('floor_01', 'assets/floor_01.png');
-    this.load.image('floor_02', 'assets/floor_02.png');
-    this.load.image('floor_03', 'assets/floor_03.png');
+    // Chão. Um atlas, não uma arte por tile: a antiga `floor_*.png` era uma
+    // grelha 3x3 e a grade aparecia em cada célula. Cada frame deste atlas é
+    // um recorte de UMA superfície contínua. Gerado por
+    // `node scripts/generate-ground.mjs`.
+    this.load.spritesheet(GROUND_TEXTURE_KEY, 'assets/ground_atlas.png', {
+      frameWidth: GROUND_CELL_WIDTH,
+      frameHeight: GROUND_CELL_HEIGHT
+    });
 
     // Rocks
     this.load.image('rock_01', 'assets/rock_01.png');

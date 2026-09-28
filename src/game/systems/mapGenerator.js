@@ -1,13 +1,17 @@
 import { createRelicContent, getBiomeForCave, getBiomeProgress } from '../progression.js';
 import { findSafeRoute, getNeighbors4, getNeighbors8 } from './helpers.js';
 
-const FLOOR_VARIANTS = ['floor_01', 'floor_02', 'floor_03'];
 // O boulder redondo entra com peso maior: as lajes com rachadura (rock_01..03)
 // são ambíguas em silhueta pequena, enquanto o boulder lê imediatamente como
 // "isto aqui é uma rocha".
 const ROCK_VARIANTS = ['rock', 'rock', 'rock_01', 'rock_02', 'rock_03'];
 
-function getMapSize(cave) {
+/**
+ * Dimensões da cave. Exportado porque `GROUND_COLUMNS`/`GROUND_ROWS` no atlas
+ * do chão precisam cobrir o maior mapa, e essa verificação só faz sentido
+ * contra a função que define o tamanho.
+ */
+export function getMapSize(cave) {
   return {
     width: 4 + Math.floor((cave - 1) / 2),
     height: 5 + Math.floor((cave - 1) / 3)
@@ -39,11 +43,11 @@ function createBaseTile(col, row, rockHp) {
     revealed: false,
     walkable: false,
     hp: rockHp,
-    floorVariant: pickRandom(FLOOR_VARIANTS),
-    // Hash da posição: a mesma pedra volta sempre no mesmo lugar, então o
-    // mapa não "pisca" a cada redesenho, e o padrão fica estável em vez de
-    // aleatório a cada chamada.
-    floorTone: pickFloorTone(col, row),
+    // `floorVariant` e `floorTone` saíram daqui. O chão vem de um atlas de
+    // superfície contínua (src/game/ground.js): escolher uma arte por tile
+    // repetia a malha em cada célula, e tingir cada tile com um brilho próprio
+    // recriava a mesma grade como degrau de luminância. A variação de tom mora
+    // na textura e a cor vem do bioma.
     grit: pickGrit(col, row),
     rockVariant: pickRandom(ROCK_VARIANTS),
     deco: null,
@@ -52,29 +56,16 @@ function createBaseTile(col, row, rockHp) {
 }
 
 /**
- * Brilho por tile, entre 0.88 e 1.0.
+ * Quantidade de entulho desenhado sobre a célula, em sprites.
  *
- * Sem isso, três variantes repetidas em grade denunciam o tile: o olho
- * encontra o mesmo bloco a cada dois tiles. Uma variação de até 12% quebra a
- * repetição sem parecer pintado.
- *
- * O teto é 1.0 de propósito. O tint do Phaser MULTIPLICA a textura, então
- * acima de 1.0 seria "clarear" — e `GetColor` estouraria o byte de cor,
- * produzindo uma tinta inválida que renderiza o tile quase preto.
+ * Hash da posição: a mesma pedra volta sempre no mesmo lugar, então o mapa não
+ * "pisca" a cada redesenho.
  */
-function pickFloorTone(col, row) {
-  const hash = Math.sin(col * 12.9898 + row * 78.233) * 43758.5453;
-  const noise = hash - Math.floor(hash);
-
-  return 0.88 + noise * 0.12;
-}
-
-/** ~40% dos tiles ganham um pouco de entulho, para o piso não ficar liso. */
 function pickGrit(col, row) {
   const hash = Math.sin(col * 39.3468 + row * 11.135) * 24634.6345;
   const noise = hash - Math.floor(hash);
 
-  return noise < 0.4 ? 1 + Math.floor(noise * 9) : 0;
+  return noise < 0.4 ? 1 + Math.floor(noise * 3) : 0;
 }
 
 function getDistance(a, b) {

@@ -18,6 +18,10 @@ export const BIOMES = [
       dust: 0xf5cd8a,
       rockTints: [0x3b2b1f, 0x442f20, 0x2c1f16],
       edge: 0x24160f,
+      // Cor do chao. O atlas e uma superficie continua em cinza, entao um
+      // unico atlas serve a todos os biomas: a cor entra como tint na camada
+      // inteira. Tinta por celula reintroduziria a grade.
+      ground: 0xe8c9a0,
       entrance: 0x71bfff,
       exit: 0x78ffb6,
       rockHighlight: 0xffdcae,
@@ -43,6 +47,10 @@ export const BIOMES = [
       dust: 0xd7f0ff,
       rockTints: [0x1f3344, 0x29475c, 0x183041],
       edge: 0x0f2230,
+      // Cor do chao. O atlas e uma superficie continua em cinza, entao um
+      // unico atlas serve a todos os biomas: a cor entra como tint na camada
+      // inteira. Tinta por celula reintroduziria a grade.
+      ground: 0xc4dcee,
       entrance: 0x9bd9ff,
       exit: 0xb6ffef,
       rockHighlight: 0xd7f0ff,
@@ -68,6 +76,10 @@ export const BIOMES = [
       dust: 0xffc0b1,
       rockTints: [0x4b221d, 0x5b2a24, 0x341814],
       edge: 0x2a120f,
+      // Cor do chao. O atlas e uma superficie continua em cinza, entao um
+      // unico atlas serve a todos os biomas: a cor entra como tint na camada
+      // inteira. Tinta por celula reintroduziria a grade.
+      ground: 0xf0b49e,
       entrance: 0xffc283,
       exit: 0xff9878,
       rockHighlight: 0xffc0b1,
@@ -93,6 +105,10 @@ export const BIOMES = [
       dust: 0xe1d2ff,
       rockTints: [0x2d223c, 0x3c2c51, 0x241a31],
       edge: 0x171021,
+      // Cor do chao. O atlas e uma superficie continua em cinza, entao um
+      // unico atlas serve a todos os biomas: a cor entra como tint na camada
+      // inteira. Tinta por celula reintroduziria a grade.
+      ground: 0xd2c2f2,
       entrance: 0xbcb2ff,
       exit: 0xc6ffd6,
       rockHighlight: 0xe1d2ff,
