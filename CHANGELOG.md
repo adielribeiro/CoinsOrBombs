@@ -5,6 +5,75 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Mudado
+
+- **O chão deixou de ser liso: agora é terra de caverna, com relevo.**
+  A versão anterior era matematicamente contínua e ainda lia como chão liso.
+  A causa não era amplitude, era falta de estrutura.
+
+  Medi a referência de terra batida antes de mexer em qualquer número
+  (`scripts/measure-reference.mjs` e `scripts/measure-floor-scales.mjs`).
+  Duas descobertas:
+
+  1. **O contraste da referência é quase plano entre as escalas** — desvio de
+     15,4 na escala 2 caindo a 8,4 na escala 64. A primeira versão do chão já
+     tinha contraste alto em todas as escalas (razão 1,15 a 1,72) e mesmo assim
+     lia como liso. Ou seja, **amplitude não era o problema: organização era**.
+     Ruído alto não vira terra, vira granulado.
+  2. **A densidade dos seixos estava errada por um fator grande.** Com
+     frequência 0.95 havia uma pedrinha por célula; a referência tem várias, de
+     8 a 40px numa célula de 96px.
+
+  A síntese deixou de ser "soma de ruídos" e passou a ser um **campo de altura
+  iluminado**:
+
+  - `groundHeight` monta torrões, seixos e cascalho num campo de relevo, em
+    três escalas.
+  - `shadeFromHeight` tira a normal por diferença central e aplica luz de
+    cima-esquerda. É o que dá volume a cada seixo: face de cima clara, base
+    escura. Sem a derivada, seixo é mancha chapada e some.
+  - A cor vem do solo (rgb médio 126,79,39 contra rgb(136,84,39) da referência),
+    não de uma rampa de cinzas.
+  - O perfil medido contra a referência ficou em **0,96 / 1,07 / 1,11 / 1,10 /
+    0,97 / 0,76** nas escalas 2 a 64 — praticamente sobre a referência.
+
+  Três bugs meus, todos achados por medição e não por olho:
+
+  - **A fissura não podia estar no campo de altura.** Uma fissura é um vale, e
+    um vale tem dois lados cujas normais apontam para lados opostos: iluminar o
+    relevo deixava a borda clara dos dois lados, e o chão virava um polígono
+    CONTORNADO — exatamente a malha que o chão contínuo existe para eliminar.
+    Agora a fissura é aplicada só na cor, como oclusão.
+  - **`crack` chegava a 18,8** porque a máscara não era limitada antes de
+    multiplicar. A fresta saía preta sólida e virava o traço mais escuro da
+    cena. O `clamp01` no termo da máscara resolve; há teste travando.
+  - **Luz e tom estavam somados**, dando contraste por escala de 2,2 contra o
+    alvo de 1,0: o relevo já produzia variação e o tom da rampa somava mais
+    uma vez. Separados, cada um no seu lugar.
+
+  Ferramentas novas, todas de medição:
+
+  - `scripts/measure-reference.mjs` — mede contraste por escala, densidade de
+    seixos e continuidade de borda de uma imagem de referência.
+  - `scripts/measure-floor-scales.mjs` — compara o perfil do chão com a
+    referência, em duas colunas lado a lado.
+  - `scripts/attribute-contrast.mjs` — zera um termo do campo de altura por vez
+    e mede o efeito. Foi ele que mostrou que a densidade dos seixos, e não a
+    nitidez do perfil, era o culpado: minha primeira hipótese (a borda dura do
+    `smoothstep`) estava errada, e trocar por uma gaussiana não mudou nada.
+  - `scripts/measure-lambert.mjs` — imprime a distribuição do termo de luz.
+  - `scripts/png.mjs` — leitor de PNG em RGBA, compartilhado.
+
+  3 testes novos (`test/ground.test.mjs`): nenhum campo da superfície sai de
+  [0,1], a fissura é rara (cobre menos de 12% do chão), e o chão é marrom de
+  terra e não a rampa de cinza anterior.
+
+  Um teste meu estava medindo a coisa errada e acusou descontinuidade onde não
+  havia: media `light`, que passa por `clamp01`, então o degrau máximo travava
+  em 0,50 para qualquer passo — era saturação do clamp, não salto. Passou a
+  medir `height`, que não tem clamp, e o limiar foi justificado por medição
+  (o salto de gradiente CAI ao refinar, que é a assinatura de continuidade).
+
 ### Corrigido
 
 - **Tela preta em toda cave.** Regressão introduzida na mesma entrega do chão

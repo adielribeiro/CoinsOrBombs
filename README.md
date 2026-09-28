@@ -157,6 +157,10 @@ npm run dev      # http://localhost:5173
 | `node scripts/fetch-fonts.mjs` | Rebaixa as fontes do Google Fonts para `public/assets/fonts` |
 | `node scripts/generate-ground.mjs` | Gera `public/assets/ground_atlas.png`, o chão contínuo |
 | `node scripts/preview-ground.mjs` | Reproduz a camada de chão em Node e mede a costura |
+| `node scripts/measure-reference.mjs <img>` | Mede uma imagem de referência: contraste por escala, seixos, bordas |
+| `node scripts/measure-floor-scales.mjs` | Compara o perfil do chão com a referência |
+| `node scripts/attribute-contrast.mjs` | Zera um termo do relevo por vez e mede o efeito |
+| `node scripts/measure-lambert.mjs` | Distribuição do termo de luz |
 
 O `vite.config.js` usa `base: './'`, então o mesmo build roda na raiz, em
 `/CoinsOrBombs/` e em qualquer subpasta.
@@ -220,9 +224,8 @@ uma grelha 3x3 de nove lajes e rejunte escuro; desenhada célula a célula, a
 malha se repetia em cada tile e o piso lia como azulejo. Nenhum ajuste de
 escala remove aquilo, porque a grade está gravada dentro do PNG.
 
-Hoje o chão é uma superfície contínua sintetizada em `src/game/ground.js`,
-como função das coordenadas **contínuas** de mapa — a inversa da projeção
-isométrica:
+Hoje o chão é uma superfície contínua sintetizada em `src/game/ground.js`, como
+função das coordenadas **contínuas** de mapa — a inversa da projeção isométrica:
 
 ```
 colf =  dx / tileWidth  + dy / tileHeight
@@ -232,29 +235,58 @@ rowf = -dx / tileWidth  + dy / tileHeight
 Como a função não depende da célula, duas células que compartilham uma aresta
 amostram a mesma curva. A emenda é contínua **por construção**: não há costura
 para fechar nem ajuste para acertar. `scripts/generate-ground.mjs` recorta essa
-superfície num atlas de 14x12 células, e cada célula do mapa pega o seu frame.
+superfície num atlas de 14x12 células.
+
+**Estrutura, não amplitude.** A primeira versão contínua ainda lia como chão
+liso, e a causa não era contraste baixo: era falta de estrutura. Ruído alto não
+vira terra, vira granulado. O que faz uma caverna ler como solo é um **campo de
+altura iluminado**:
+
+- `groundHeight` monta torrões, seixos e cascalho num campo de relevo, em três
+  escalas.
+- `shadeFromHeight` tira a normal por diferença central e aplica luz de
+  cima-esquerda. É daí que vem o volume: face de cima clara, base escura. Sem
+  a derivada, seixo é mancha chapada e some.
+- A cor vem do solo, com o desvio quente/frio que impede o chão de virar cinza
+  chapado sob qualquer tingimento de bioma.
+
+Como isso foi afinado, tudo por **medição**, com quatro scripts:
+
+| Script | Para que serve |
+| --- | --- |
+| `measure-reference.mjs` | Mede uma imagem de referência: contraste por escala, densidade de seixos, continuidade de borda |
+| `measure-floor-scales.mjs` | Compara o perfil do chão com a referência, coluna a coluna |
+| `attribute-contrast.mjs` | Zera um termo do campo de altura por vez e mede o efeito |
+| `measure-lambert.mjs` | Imprime a distribuição do termo de luz |
+
+Duas descobertas que mudaram a direção do trabalho:
+
+- A referência tem contraste **quase plano** entre as escalas 2 e 64 (15,4 a
+  8,4). A primeira versão já tinha contraste alto em todas e mesmo assim lia
+  como lisa — então o problema era organização, não amplitude.
+- A densidade dos seixos estava errada por um fator grande: havia uma pedrinha
+  por célula, e a referência tem várias. `attribute-contrast.mjs` mostrou que o
+  problema era a densidade e não a nitidez do perfil — trocar o `smoothstep` por
+  uma gaussiana não mudou nada, porque a hipótese estava errada.
 
 Detalhes que não são óbvios:
 
-- **O domínio do ruído é girado ~20°.** Os eixos de (colf, rowf) são os eixos
-  da célula, então qualquer octave de frequência inteira produziria um desenho
-  que se repete a cada célula — uma grade, só que com outro formato.
-- **A cor entra como tint na camada inteira**, não em cada célula. Um atlas
-  cinza serve aos quatro biomas, e tingir célula por célula criaria degraus de
-  luminância exatamente na fronteira.
-- **A rampa de cinzas é clara de propósito.** O tint do Phaser multiplica, e
-  `palette.ground` nunca passa de 255 por canal: com a rampa escura o chão
-  saía lamacento, sem folga para o bioma clarear.
-- **A célula é desenhada 1px maior que o losango.** As arestas vizinhas caem em
-  posições fracionárias (a meia-altura é 24,5px) e, sem a sobreposição, o filtro
-  bilinear deixa um fio de fundo em cada aresta.
+- **O domínio do ruído é girado ~20°.** Os eixos de (colf, rowf) são os eixos da
+  célula, então qualquer octave de frequência inteira produziria um desenho que
+  se repete a cada célula.
+- **A fissura não entra no campo de altura.** Um vale tem dois lados cujas
+  normais apontam para lados opostos; iluminar o relevo deixaria a borda clara
+  dos dois lados e o chão viraria um polígono contornado. A fissura é aplicada
+  só na cor, como oclusão.
+- **A cor entra como tint em cada célula, e é a mesma para todas.** Grade nasce
+  de valor *variado* por tile; uma cor só é o mesmo que tingir a camada inteira.
+  (`Container` não tem `setTint` — ver `test/scene.test.mjs`.)
+- **A célula é desenhada 1px maior que o losango**, para cobrir a fresta que o
+  filtro bilinear deixa nas arestas fracionárias.
 
 `node scripts/preview-ground.mjs` reproduz em Node a camada de chão exatamente
-como o jogo a desenha e **mede** o salto de luminância atravessando as
-fronteiras contra o salto dentro das células. Numa superfície contínua o
-primeiro é comparável ao segundo; com costura seria muito maior. Hoje a razão
-é **0,16** — a fronteira é cinco vezes mais suave que o interior da própria
-célula.
+como o jogo a desenha e mede o salto de luminância atravessando as fronteiras
+contra o salto dentro das células. Hoje a razão é **0,23**.
 
 ## Stack
 

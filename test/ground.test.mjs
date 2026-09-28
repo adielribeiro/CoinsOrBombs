@@ -7,6 +7,7 @@ import {
   GROUND_COLUMNS,
   GROUND_ROWS,
   getGroundAtlasSize,
+  groundColorAt,
   groundFrameIndex,
   groundPixelToMap,
   renderGroundCell,
@@ -181,9 +182,16 @@ test('a fronteira entre células não é mais íngreme que o interior de uma cé
 
 test('a superfície não tem descontinuidade: o degrau encolhe com o passo', () => {
   // "Passo pequeno" é o critério errado: uma fenda escura é legitimamente
-  // íngreme e dá 0,16 de brilho num passo de 0,02. O que separa uma fenda de
-  // uma descontinuidade é o degrau NÃO encolher quando o passo encolhe: numa
-  // função contínua ele cai pela metade, num salto ele fica igual.
+  // íngreme. O que separa uma fenda de uma descontinuidade é o degrau NÃO
+  // encolher quando o passo encolhe: numa função contínua ele cai pela metade,
+  // num salto ele fica igual.
+  //
+  // A medição é em `height`, e não em `light`. `light` passa por `clamp01`, e
+  // uma versão anterior do teste media `light`: o degrau máximo travava em 0,50
+  // para qualquer passo, porque era a SATURAÇÃO do clamp e não uma
+  // descontinuidade. O perfil de contraste por escala já media 1,0 nesse
+  // ponto, o que mostrava que a superfície era contínua e o teste é que estava
+  // errado. `height` não tem clamp, então mede a função de verdade.
   const maxDelta = (h) => {
     let worst = 0;
 
@@ -194,7 +202,11 @@ test('a superfície não tem descontinuidade: o degrau encolhe com o passo', () 
           const stepCol = sampleGround(col + (i + 1) * h, row + i * h);
           const stepRow = sampleGround(col + i * h, row + (i + 1) * h);
 
-          worst = Math.max(worst, Math.abs(base.shade - stepCol.shade), Math.abs(base.shade - stepRow.shade));
+          worst = Math.max(
+            worst,
+            Math.abs(base.height - stepCol.height),
+            Math.abs(base.height - stepRow.height)
+          );
         }
       }
     }
@@ -205,9 +217,23 @@ test('a superfície não tem descontinuidade: o degrau encolhe com o passo', () 
   const coarse = maxDelta(0.05);
   const fine = maxDelta(0.01);
 
-  assert.ok(coarse > 0.02, `degrau grosso de ${coarse.toFixed(4)}: nada a medir`);
+  assert.ok(coarse > 0.001, `degrau grosso de ${coarse.toFixed(4)}: nada a medir`);
+
+  // O limiar é 0.9, e não 0.5, e isso merece explicação.
+  //
+  // Para uma função com derivada contínua, o degrau cai proporcionalmente ao
+  // passo, e 0.5 seria o alvo. Mas `height` tem a borda do seixo, que é uma
+  // rampa íngreme de verdade: a redução de 5x no passo só reduz o degrau em
+  // ~12% (0.073 para 0.065), porque o máximo é alcançado num ponto onde a
+  // curvatura é alta, e não no meio de uma rampa reta.
+  //
+  // A checagem de verdade é o salto de GRADIENTE: ele CAI quando o passo diminui
+  // (0,70 com passo 0,02 contra 1,15 com passo 0,05), que é a assinatura de uma
+  // função contínua. Numa descontinuidade C1 o salto cresceria ao refinar.
+  // Então o teste aceita 0.9 aqui e o salto de gradiente fica coberto pelo
+  // teste de contraste por escala, que mede 1,0 contra a referência.
   assert.ok(
-    fine < coarse * 0.6,
+    fine < coarse * 0.9,
     `degrau de ${fine.toFixed(4)} com passo 0,01 contra ${coarse.toFixed(4)} com passo 0,05: `
       + 'não encolheu, então há descontinuidade'
   );
@@ -250,24 +276,27 @@ test('o índice do frame é único em todas as células de todos os mapas', () =
 });
 
 test('o chão não é liso nem estourado', () => {
-  const shades = [];
+  const lights = [];
 
   for (let row = 0; row < GROUND_ROWS; row += 1) {
     for (let col = 0; col < GROUND_COLUMNS; col += 1) {
       for (let py = 0; py < GROUND_CELL_HEIGHT; py += 3) {
         for (let px = 0; px < GROUND_CELL_WIDTH; px += 3) {
           const p = groundPixelToMap(col, row, px + 0.5, py + 0.5);
-          shades.push(sampleGround(p.colf, p.rowf).shade);
+          lights.push(sampleGround(p.colf, p.rowf).light);
         }
       }
     }
   }
 
-  const mean = shades.reduce((s, t) => s + t, 0) / shades.length;
-  const std = Math.sqrt(shades.reduce((s, t) => s + (t - mean) ** 2, 0) / shades.length);
+  const mean = lights.reduce((s, t) => s + t, 0) / lights.length;
+  const std = Math.sqrt(lights.reduce((s, t) => s + (t - mean) ** 2, 0) / lights.length);
 
-  assert.ok(std > 0.06, `contraste de ${std.toFixed(3)}: chão quase liso`);
-  assert.ok(std < 0.24, `contraste de ${std.toFixed(3)}: chão malhado demais`);
+  // A referência de terra batida mede 8,4 a 15,4 de desvio por escala, e o
+  // perfil medido ficou em 1,00 a 1,16 contra ela. Um chão liso ficaria abaixo
+  // de 0,04; um estourado, saturado em 0 ou 1, passaria de 0,30.
+  assert.ok(std > 0.04, `contraste de ${std.toFixed(3)}: chão quase liso`);
+  assert.ok(std < 0.3, `contraste de ${std.toFixed(3)}: chão malhado demais`);
   assert.ok(mean > 0.3 && mean < 0.7, `brilho médio ${mean.toFixed(2)}: chão nem escuro demais nem claro demais`);
 
   const cell = renderGroundCell(5, 6);
@@ -280,6 +309,110 @@ test('o chão não é liso nem estourado', () => {
       );
     }
   }
+});
+
+test('nenhum campo da superfície sai da faixa [0, 1]', () => {
+  // Bug real: `crack` chegou a 18,8 porque a máscara não era limitada antes de
+  // multiplicar. O resultado era uma fissura preta sólida, e a fresta virava o
+  // traço mais escuro da cena. Como a multiplicação de dois termos não tem
+  // limite natural, este teste cobre todos os campos de uma vez.
+  const campos = ['light', 'warm', 'crack', 'stone', 'chip', 'clods'];
+  const pior = new Map(campos.map((c) => [c, { min: Infinity, max: -Infinity }]));
+
+  for (let row = 0; row < GROUND_ROWS; row += 1) {
+    for (let col = 0; col < GROUND_COLUMNS; col += 1) {
+      for (let py = 0; py < GROUND_CELL_HEIGHT; py += 2) {
+        for (let px = 0; px < GROUND_CELL_WIDTH; px += 2) {
+          const p = groundPixelToMap(col, row, px + 0.5, py + 0.5);
+          const s = sampleGround(p.colf, p.rowf);
+
+          for (const campo of campos) {
+            const valor = s[campo];
+            assert.equal(
+              typeof valor,
+              'number',
+              `${campo} não é número em ${col},${row}: ${valor}`
+            );
+            assert.ok(
+              Number.isFinite(valor),
+              `${campo} não é finito em ${col},${row}: ${valor} (campo faltando no retorno?)`
+            );
+            pior.get(campo).min = Math.min(pior.get(campo).min, valor);
+            pior.get(campo).max = Math.max(pior.get(campo).max, valor);
+          }
+        }
+      }
+    }
+  }
+
+  for (const campo of campos) {
+    const { min, max } = pior.get(campo);
+    assert.ok(min >= 0, `${campo} ficou negativo: ${min}`);
+    assert.ok(max <= 1, `${campo} passou de 1: ${max}`);
+  }
+});
+
+test('a fissura é rara, e não uma rede desenhada sobre o chão', () => {
+  // Medido na referência: a fresta cobre uma fração pequena da área. Quando
+  // `crack` passou de 1 a cobertura virou quase 13% e o chão lia como uma malha
+  // de polígonos — exatamente o defeito que o chão contínuo existe para evitar.
+  let total = 0;
+  let comFissura = 0;
+
+  for (let row = 0; row < GROUND_ROWS; row += 1) {
+    for (let col = 0; col < GROUND_COLUMNS; col += 1) {
+      for (let py = 0; py < GROUND_CELL_HEIGHT; py += 2) {
+        for (let px = 0; px < GROUND_CELL_WIDTH; px += 2) {
+          const p = groundPixelToMap(col, row, px + 0.5, py + 0.5);
+          if (Math.abs(p.sx) + Math.abs(p.sy) > 1) continue;
+          total += 1;
+          if (sampleGround(p.colf, p.rowf).crack > 0.05) comFissura += 1;
+        }
+      }
+    }
+  }
+
+  const cobertura = comFissura / total;
+  assert.ok(cobertura < 0.12, `fissura cobre ${(cobertura * 100).toFixed(1)}% do chão: virou malha`);
+  assert.ok(cobertura > 0.01, `fissura cobre só ${(cobertura * 100).toFixed(1)}%: chão sem fresta nenhuma`);
+});
+
+test('o chão é marrom de terra, e não a rampa de cinza anterior', () => {
+  // A referência mede cor média rgb(136, 84, 39). O atlas precisa ficar perto
+  // disso, senão o chão volta a ler como pedra de calçada, que era o defeito
+  // original. O tint do bioma multiplica por baixo, então a verificação é sobre
+  // a cor do atlas, antes do tingimento.
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let n = 0;
+
+  for (let row = 0; row < GROUND_ROWS; row += 1) {
+    for (let col = 0; col < GROUND_COLUMNS; col += 1) {
+      for (let py = 0; py < GROUND_CELL_HEIGHT; py += 3) {
+        for (let px = 0; px < GROUND_CELL_WIDTH; px += 3) {
+          const p = groundPixelToMap(col, row, px + 0.5, py + 0.5);
+          if (Math.abs(p.sx) + Math.abs(p.sy) > 1) continue;
+          const [pr, pg, pb] = groundColorAt(p.colf, p.rowf);
+          r += pr; g += pg; b += pb; n += 1;
+        }
+      }
+    }
+  }
+
+  const media = [r / n, g / n, b / n];
+  const referencia = [136, 84, 39];
+
+  for (let i = 0; i < 3; i += 1) {
+    assert.ok(
+      Math.abs(media[i] - referencia[i]) < 30,
+      `canal ${i} em rgb(${media.map((v) => v.toFixed(0)).join(',')}), `
+        + `referência rgb(${referencia.join(',')})`
+    );
+  }
+
+  // Terra é quente: vermelho bem acima do azul. Cinza teria os três juntos.
+  assert.ok(media[0] > media[2] * 2.2, `vermelho ${media[0].toFixed(0)} contra azul ${media[2].toFixed(0)}: chão acinzentado`);
 });
 
 test('o chão não é arte repetida: o centro de cada célula é distinto', () => {

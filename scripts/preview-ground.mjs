@@ -5,7 +5,12 @@
 //
 // Espelha `drawGroundCell` em src/game/scenes/CaveScene.js: célula em
 // toIso(col, row), `setDisplaySize(tileWidth + 1, tileHeight + 1)`, amostra
-// bilinear (o filtro do Phaser) e o tint do bioma na camada inteira.
+// bilinear (o filtro do Phaser) e o tint do bioma em cada célula.
+//
+// A medição do fim é a que importa: ela compara o salto de luminância
+// atravessando a fronteira entre células com o salto dentro de uma célula.
+// Numa superfície contínua o primeiro é comparável ao segundo; com costura
+// seria muito maior.
 import { writeFile } from 'node:fs/promises';
 import { deflateSync } from 'node:zlib';
 

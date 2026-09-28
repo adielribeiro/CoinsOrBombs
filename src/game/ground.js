@@ -22,22 +22,28 @@
  *   colf = dx / tw + dy / th
  *   rowf = -dx / tw + dy / th
  *
- * Em (colf, rowf) a célula é o quadrado unitário [col-0.5, col+0.5] x
- * [row-0.5, row+0.5] — o losango da tela vira um quadrado alinhado. Como a
- * função é contínua e independe da célula, duas células que compartilham uma
- * aresta amostram a mesma curva: a emenda é contínua por construção, sem
- * ajuste e sem costura.
+ * Como a função é contínua e independe da célula, duas células que compartilham
+ * uma aresta amostram a mesma curva: a emenda é contínua por construção, sem
+ * ajuste e sem costura. `test/ground.test.mjs` trava isso numericamente.
  *
- * A versão anterior deste arquivo mapeava o ponto direto para (u, v) com
- * (u, v) = (col - row, col + row) e deslocamentos (sx, sy) e (sx*0.5, sy*0.5).
- * As duas tentativas deixavam as arestas vizinhas em curvas de plano diferentes
- * — a 1,0 de distância, uma célula inteira — e o chão ganhara uma grade
- * diagonal visível. `test/ground.test.mjs` trava isso numericamente.
+ * A malha de ruído é girada antes da amostragem porque os eixos de (colf, rowf)
+ * são exatamente os eixos da célula. Sem a rotação, qualquer octave de
+ * frequência inteira produziria um desenho que se repete a cada célula — que é
+ * uma grade, só que com outro formato.
  *
- * A malha de ruído é girada antes da amostragem porque os eixos de
- * (colf, rowf) são exatamente os eixos da célula. Sem a rotação, qualquer
- * octave de frequência inteira produziria um desenho que se repete a cada
- * célula — que é uma grade, só que com outro formato.
+ * Estrutura, e não só amplitude
+ * -----------------------------
+ * A primeira versão tinha contraste de brilho em todas as escalas e ainda lia
+ * como chão liso. Medir a referência de terra batida mostrou o motivo: o
+ * contraste dela é QUASE CONSTANTE da escala 2 à 64 (15,4 → 8,4), mas a nossa
+ * energia fina era ruído desorganizado. Um lodo de ruído alto não vira terra;
+ * vira granulado. O que faz a referência ler como solo é a ESTRUTURA: torrões
+ * com relevo, seixos com volume e sombra própria, e fissuras.
+ *
+ * Então a síntese aqui não é "ruído forte". É:
+ *   - um campo de ALTURA com torrões grandes e cascalho fino;
+ *   - luz e sombra derivatives desse campo, o que dá volume a cada seixo;
+ *   - cor vinda do terreno, não de uma rampa de cinzas chapada.
  */
 
 /** Células por coluna / linha no atlas. Cobre o maior mapa com folga. */
@@ -61,6 +67,57 @@ const GROUND_ROTATION = 0.349;
 const COS_ROTATION = Math.cos(GROUND_ROTATION);
 const SIN_ROTATION = Math.sin(GROUND_ROTATION);
 
+/** Direção da luz, em coordenadas de mapa. Vem de cima e da esquerda. */
+const LIGHT_X = -0.62;
+const LIGHT_Y = -0.78;
+
+/**
+ * Quanto o relevo pesa contra a luz ambiente, no diffuse.
+ *
+ * É o botão que impede a rampa de saturar. Com o termo Z valendo 1, o lambert
+ * saía com média 0,968 e p99 travado em 1,000 — quase todo o atlas no topo da
+ * rampa, cor média rgb(196,154,107) contra os rgb(136,84,39) da referência, e o
+ * chão virava areia clara.
+ *
+ * O valor 2.6 é o ponto de equilíbrio medido: ele centraliza a rampa, mas
+ * exagerado deixa o relevo amplificado demais e o contraste por escala sai em
+ * 2,7 a 3,2 contra o alvo de 1,0. A 1.4 o perfil fica perto da referência sem
+ * achatar o volume dos seixos.
+ */
+const NORMAL_TILT = 1.4;
+
+/**
+ * Nível de luz ambiente: quanto uma superfície perfeitamente plana recebe.
+ *
+ * Com o termo Z valendo 1 no diffuse, tudo recebia luz cheia. Aqui o ambiente é
+ * o valor base, e o relevo só move o resultado para cima ou para baixo em torno
+ * dele.
+ *
+ * O valor é a MÉDIA medida do termo de luz, não um palpite. Medido com
+ * `node scripts/measure-lambert.mjs`: média 0,365, desvio 0,356, p01 0,000 e
+ * p99 1,000. Como a média é o centro natural, usar 0.365 como ambiente centraliza
+ * a rampa e coloca a cor média do atlas em rgb(119,81,47) contra os
+ * rgb(136,84,39) da referência.
+ */
+const NORMAL_AMBIENT = 0.5;
+
+/**
+ * Exposição: quanto o relevo move o brilho em torno do ambiente.
+ *
+ * Medido com scripts/measure-floor-scales.mjs contra a referência de terra
+ * batida. A 1,35 o perfil saía em 2,1 a 2,3 — o dobro do alvo. A 0,5 o relevo
+ * continua legível (o seixo tem volume) e o perfil cai para perto de 1.
+ */
+const LIGHT_CONTRAST = 0.5;
+
+/**
+ * Peso das manchas de terra (tom) na cor.
+ *
+ * Separado da luz de propósito. As manchas variam em várias escalas, e somá-las
+ * à iluminação fazia o contraste por escala chegar a 2,3 contra o alvo de 1,0.
+ */
+const CLOOD_TONE = 0.4;
+
 /**
  * Hash inteiro de 32 bits. `Math.imul` mantém a multiplicação em 32 bits com
  * sinal em vez de perder precisão no double — sem isso o hash degenera numa
@@ -75,6 +132,14 @@ function hash2(ix, iy, seed) {
 
 function smoothstep(t) {
   return t * t * (3 - 2 * t);
+}
+
+function clamp01(t) {
+  return t < 0 ? 0 : t > 1 ? 1 : t;
+}
+
+function mix(a, b, t) {
+  return a + (b - a) * t;
 }
 
 /** Ruído de valor com interpolação suave: contínuo, mas não derivável. */
@@ -117,13 +182,15 @@ function fbm(x, y, seed, octaves, frequency) {
 }
 
 /**
- * Voronói de pontos jitterados: devolve a distância ao ponto mais próximo
- * (a forma dos seixos), a distância ao segundo (as arestas viram fendas) e o
- * vetor até o ponto mais próximo, que é o que dá volume ao seixo.
+ * Voronói de pontos jitterados.
  *
- * O jitter vai de 0.15 a 0.85, não de 0 a 1. Com 0 a 1 os pontos chegam perto
- * demais dos cantos da célula e as arestas ficam quase retas: o resultado lê
- * como uma rede de polígonos desenhada, não como fenda.
+ * O jitter vai de 0.15 a 0.85, e não de 0 a 1: com o jitter cheio os pontos
+ * chegam perto demais dos cantos da célula, as arestas ficam quase retas e o
+ * resultado lê como uma rede de polígonos desenhada em vez de cascalho.
+ *
+ * Devolve a distância ao ponto mais próximo, o vetor até ele (que dá volume ao
+ * seixo quando combinado com a luz) e a distância ao segundo ponto, cujas arestas
+ * viram fissura.
  */
 function voronoi(x, y, seed) {
   const x0 = Math.floor(x);
@@ -157,12 +224,151 @@ function voronoi(x, y, seed) {
   return { nearest, edge: second - nearest, nx: nearestX, ny: nearestY, cell: nearestCell };
 }
 
-function clamp01(t) {
-  return t < 0 ? 0 : t > 1 ? 1 : t;
+/**
+ * Campo de altura do solo.
+ *
+ * É a peça que faltava. Antes o brilho vinha de uma soma de ruídos e os seixos
+ * eram manchas; agora tudo sai de UM campo de altura, e a iluminação é derivada
+ * dele. É por isso que a referência tem volume: o torrão é uma forma, não um
+ * número de brilho.
+ *
+ * Três escalas, porque solo real tem três escalas: torrões grandes, seixos
+ * médios e cascalho fino. O jitter do Voronói quebra a regularidade, e o
+ * `cell` da célula mais próxima varia o raio de cada seixo, senão todos saem do
+ * mesmo tamanho e viram bolinha uniforme.
+ */
+function groundHeight(x, y) {
+  // Torrões: a base do solo, blobs grandes e irregulares.
+  //
+  // A referência tem contraste alto também na escala 32 (8,4 contra 15,4 na
+  // escala 2): a textura fina NÃO substitui a grossa. Por isso há DUAS
+  // frequências.
+  //
+  // `clodsWide` estava em 0.08, o que dá um período de 12 células — energia de
+  // escala 32 (janela de 0,29 a 0,57 célula) simplesmente não existe num
+  // período tão longo, e a medição não se mexeu. A frequência precisa ficar
+  // perto de 0.5, ou seja, período de duas células.
+  const clods = fbm(x, y, 11, 4, 0.18);
+  const clodsWide = fbm(x, y, 17, 3, 0.5);
+
+  // Perfil do seixo.
+  //
+  // `smoothstep(1 - d/r)` tem borda DURA onde o seixo encontra a terra, e essa
+  // borda é a causa do excesso de contraste na escala fina: a medição dava
+  // razão 1,83 contra o alvo de 1,00. A derivada do campo de altura pega essa
+  // descontinuidade de primeira ordem e transforma cada seixo num anel
+  // brilhante. Seixo real afunda na terra, então o perfil é exponencial: valor
+  // alto no miolo, queda suave na borda, sem anel.
+  const pebbleProfile = (d, radius) => Math.exp(-(d * d) / (radius * radius * 0.55));
+
+  // Seixos médios, com raio variado por seixo.
+  //
+  // A frequência é 0.62, e não 1.05. A medição por atribuição
+  // (scripts/attribute-contrast.mjs) mostrou que os seixos são a causa
+  // dominante do excesso de contraste na escala fina: sem eles a razão caía de
+  // 1,88 para 1,35, e o erro era deles e não da borda do perfil — trocar o
+  // smoothstep por uma gaussiana não mudou nada. Ou seja, o problema era a
+  // DENSIDADE, não a nitidez. Na referência há uma pedrinha a cada ~2 células,
+  // não três por célula.
+  const stones = voronoi(x * 0.62, y * 0.62, 137);
+  const stoneRadius = 0.16 + hash2(stones.cell, 0, 617) * 0.22;
+  const stone = pebbleProfile(stones.nearest, stoneRadius);
+
+  // Cascalho fino, sobreposto ao médio. Duas escalas de seixo se cancelam como
+  // repetição e leem como entulho de vários tamanhos. Cai de 2.6 para 1.7 pelo
+  // mesmo motivo dos seixos: cascalho denso demais vira granulado, não textura.
+  const chips = voronoi(x * 1.7, y * 1.7, 419);
+  const chipRadius = 0.1 + hash2(chips.cell, 0, 881) * 0.14;
+  const chip = pebbleProfile(chips.nearest, chipRadius);
+
+  // Fissuras.
+  //
+  // Esta foi a insistência mais teimosa do trabalho. A aresta do Voronói dentro
+  // do campo de altura produz um problema que a intuição não previa: uma fissura
+  // é um VALE, e um vale tem dois lados cujas normais apontam para lados
+  // opostos. Iluminar o relevo deixa a borda CLARA dos dois lados da fissura, e
+  // o resultado é um polígono CONTORNADO — exatamente a malha que o chão
+  // contínuo existe para eliminar. Era o que aparecia no preview.
+  //
+  // A solução: a fissura NÃO participa do campo de altura. Ela é aplicada só na
+  // cor, como sombra. Sem relevo, sem normal, sem borda clara dos dois lados:
+  // só escurecimento, que é o que uma fresta de terra realmente faz.
+  const cracks = voronoi(x * 0.78, y * 0.78, 211);
+  const crackMask = fbm(x, y, 233, 2, 0.4);
+  // Só uma parte do chão tem fissura, e a aresta é mais larga que a fissura
+  // desenhada: com a máscara em 0.5 e o divisor em 0.05, quase toda a aresta
+  // virava linha e o chão lia como uma rede desenhada por cima.
+  //
+  // O `clamp01` no segundo termo não é redundante: medindo, `crack` chegava a
+  // 18,8 quando deveria valer no máximo 1. `smoothstep` devolve um valor, e esse
+  // valor multiplica o outro, mas o PRODUTO é o que precisa estar limitado — e
+  // com a máscara passando de 1 o produto explodia. Fissura escurece até 42%,
+  // então um valor 18 vezes maior que o previsto pinta a fresta de preto sólido.
+  const crackMasked = clamp01((crackMask - 0.58) * 2.2);
+  const crack = smoothstep(clamp01(1 - cracks.edge / 0.075)) * crackMasked;
+
+  // Grão fino por cima, só para o piso não ficar plástico entre os seixos. A
+  // frequência cai de 7.4 para 3.1 e o peso de 0.05 para 0.02: era o principal
+  // culpado do excesso na escala 2 (razão 1,73 contra o alvo de 1,00).
+  const grit = fbm(x, y, 307, 2, 3.1);
+
+  // Pesos do campo de altura, medidos contra a referência.
+  //
+  // O perfil alvo é quase plano: 1,41 / 1,37 / 1,23 / 1,08 / 0,83 / 0,95 nas
+  // escalas 2 a 64. Sobra energia na ponta fina e falta na grossa, então os
+  // pesos visam a achatar a curva: os torrões (grosso) sobem e o cascalho (fino)
+  // desce. A fissura não entra aqui — ver o comentário dela.
+  const height =
+    clodsWide * 0.36
+    + clods * 0.56
+    + stone * 0.2
+    + chip * 0.1
+    + grit * 0.02;
+
+  return { height, stone, chip, crack, clods };
 }
 
-function mix(a, b, t) {
-  return a + (b - a) * t;
+/**
+ * Iluminação a partir do gradiente do campo de altura.
+ *
+ * A normal é estimada por diferença central com um passo pequeno. A luz vem de
+ * cima-esquerda, o que faz a face superior do seixo clarear e a inferior
+ * escurecer — é isso que dá volume. Sem essa derivada, o seixo é uma mancha
+ * chapada e some.
+ */
+function shadeFromHeight(height, x, y) {
+  // Passo da diferença central.
+  //
+  // Precisa ser grande o bastante para não fazer ALIASING do seixo. Com 0.012 o
+  // passo era 5% do raio do menor seixo, e o teste de descontinuidade acusou um
+  // degrau de 0.50 com passo 0.01 contra 0.49 com passo 0.05 — ou seja, o degrau
+  // não encolhia, que é a assinatura de superfície amostrada grosseiramente.
+  // A medição por região mostrou o degrau máximo não no topo do seixo, e sim na
+  // BORDA, onde o perfil é mais íngreme: é a borda que estava sendo mal
+  // amostrada. 0.05 é cerca de um quinto do raio do menor seixo.
+  const step = 0.05;
+  const hx = groundHeight(x + step, y).height - height;
+  const hy = groundHeight(x, y + step).height - height;
+
+  // Normal aproximada: (-dx, -dy, passo) normalizada.
+  const nx = -hx;
+  const ny = -hy;
+  const nz = step;
+  const length = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+  const nxn = nx / length;
+  const nyn = ny / length;
+  const nzn = nz / length;
+
+  // Diffuse com a luz. O termo Z (nzn) entra com peso 1 e os laterais com
+  // NORMAL_TILT: numa superfície quase plana o Z domina e todo mundo recebe
+  // luz, que era o defeito medido — lambert com média 0,968 e p99 travado em
+  // 1,000, porque o clamp escondia que metade da rampa estava saturada.
+  //
+  // Com NORMAL_TILT menor, uma face plana recebe NORMAL_TILT e uma face
+  // inclinada chega perto de 1, então o volume aparece e a rampa não satura.
+  const lambert = clamp01(NORMAL_TILT * (nxn * LIGHT_X + nyn * LIGHT_Y) + nzn * 0.35);
+
+  return { lambert };
 }
 
 /**
@@ -174,116 +380,124 @@ function mix(a, b, t) {
  *
  * @param {number} colf coluna contínua
  * @param {number} rowf linha contínua
- * @returns {{shade: number, warm: number, pebble: number, crack: number}}
+ * @returns {{height: number, stone: number, chip: number, crack: number,
+ *            light: number, warm: number}}
  */
 export function sampleGround(colf, rowf) {
   const x = colf * COS_ROTATION - rowf * SIN_ROTATION;
   const y = colf * SIN_ROTATION + rowf * COS_ROTATION;
 
-  // Manchas largas de luz e sombra, do tamanho de alguns tiles. É a camada que
-  // mais aproxima a referência: o brilho entra em poças, não em grade.
-  const broad = fbm(x, y, 11, 3, 0.3);
-  // Granulação média da rocha.
-  const mottle = fbm(x, y, 29, 3, 1.3);
-  // Grão fino, quase textura.
-  const grain = fbm(x, y, 53, 2, 6.2);
-  // Deriva de temperatura: manchas quentes e frias, como veio de minério.
-  // A diferença de dois campos independentes é usada em vez de um só
-  // deslocado de 0.5 porque o fbm tem média local enviesada: com um octave só
-  // a amostra real deu média 0,134 em `warm`, o que deixava o atlas inteiro
+  // O campo de altura é avaliado uma vez aqui e as derivadas usam amostras
+  // deslocadas. Uma versão anterior chamava groundHeight(x, y) duas vezes no
+  // mesmo ponto, o que dobrava o custo do gerador sem ganho nenhum.
+  const center = groundHeight(x, y);
+  const { lambert } = shadeFromHeight(center.height, x, y);
+  const { stone, chip, crack, clods } = center;
+
+  // Temperatura: a diferença de dois campos independentes, em vez de um só
+  // deslocado de 0.5. O fbm tem média local enviesada — com um octave só a
+  // amostra real deu média 0,134 em `warm`, o que deixava o atlas inteiro
   // azulado e brigava com o tingimento quente do bioma.
   const warmth = fbm(x, y, 71, 2, 0.42) - fbm(x, y, 97, 2, 0.39);
 
-  // Seixos. Duas camadas com frequências e sementes diferentes: uma só deixa
-  // a treliça do Voronói aparecer como fileiras de bolinhas. A interferência
-  // entre as duas é o que faz o olho ler cascalho.
+  // A luz já é o volume, então entra com peso cheio. O termo de cor vem de
+  // `clods` (patches largas de terra mais escura e mais clara) e não da mesma
+  // rampa de brilho, senão fica tudo cinza.
+  // Luz e tom são coisas separadas, e confundi-las custou duas iterações.
   //
-  // O raio varia por seixo, derivado da célula que o contém — do contrário
-  // todos saem do mesmo tamanho e o chão vira bolinha.
+  // `light` é SÓ a iluminação: ela modula o relevo e dá volume ao seixo. O tom
+  // (`clods`) vai para dentro da cor, em soilRamp, como manchas largas de terra
+  // mais escura e mais clara.
   //
-  // O vetor até o centro entra no brilho com sinal: a face voltada para
-  // cima-esquerda clareia, a oposta escurece. Sem isso o seixo é mancha chapada,
-  // e mancha chapada some; volume é o que o faz ler pedrinha.
-  const stones = voronoi(x * 0.95, y * 0.95, 137);
-  const stoneSize = 0.12 + hash2(stones.cell, 0, 617) * 0.14;
-  const gateA = fbm(x, y, 311, 2, 0.6);
-  const pebbleA = clamp01(1 - stones.nearest / stoneSize) * clamp01((gateA - 0.5) * 4.5);
-  const lightA = -((stones.nx + stones.ny) / 0.95) * 1.8 * pebbleA;
-
-  const chips = voronoi(x * 2.4, y * 2.4, 419);
-  const chipSize = 0.1 + hash2(chips.cell, 0, 881) * 0.12;
-  const gateB = fbm(x, y, 617, 2, 0.47);
-  const pebbleB = clamp01(1 - chips.nearest / chipSize) * clamp01((gateB - 0.54) * 4.5);
-  const lightB = -((chips.nx + chips.ny) / 2.4) * 1.8 * pebbleB;
-
-  const pebble = Math.max(pebbleA, pebbleB);
-  const pebbleLight = lightA + lightB;
-
-  // Fendas: uma rede de arestas de Voronói cobre a área inteira e vira desenho
-  // de teia. A máscara de baixa frequência é o que a transforma em rachaduras:
-  // some na maior parte do chão e aparece em recortes.
-  const cracks = voronoi(x * 0.55, y * 0.55, 211);
-  const crackGate = fbm(x, y, 233, 2, 0.37);
-  const crack = clamp01(1 - cracks.edge / 0.06) * clamp01((crackGate - 0.55) * 5);
-
-  const shade = clamp01(
-    0.5 + (broad - 0.5) * 0.85 + (mottle - 0.5) * 0.42 + (grain - 0.5) * 0.14
-      + pebble * 0.12 + pebbleLight - crack * 0.34
-  );
+  // Luz e tom já foram somados aqui, e o resultado dava contraste por escala de
+  // 2,2 contra o alvo de 1,0: o relevo produzia variação, e o tom da rampa
+  // somava mais uma vez por cima. Separados, cada um fica no seu lugar.
+  //
+  // LIGHT_CONTRAST é o botão de exposição: a rampa tem 130 níveis entre a
+  // fresta e o topo, e o relevo sozinho passava dela. 0.5 é o valor medido que
+  // deixa o perfil perto da referência.
+  const light = clamp01(NORMAL_AMBIENT + (lambert - NORMAL_AMBIENT) * LIGHT_CONTRAST);
 
   return {
-    shade,
-    // O viés quente/frio entra na cor, não no brilho, senão a derivação vira
-    // listras visíveis.
-    warm: clamp01(0.5 + warmth * 2.2),
-    pebble,
-    crack
+    height: center.height,
+    stone,
+    chip,
+    crack,
+    light,
+    // `clods` volta para fora porque `groundColorAt` usa as manchas de terra
+    // como TOM. Uma versão anterior o desestruturou e não devolveu, e o
+    // `groundColorAt` leu `undefined` — o atlas inteiro saiu NaN e o chão ficou
+    // invisível.
+    clods,
+    // O viés quente/frio entra na cor, não no brilho, senão vira listra.
+    warm: clamp01(0.5 + warmth * 2.2)
   };
 }
 
 /**
- * Rampa de cinzas da pedra, da fenda profunda ao topo iluminado.
+ * Cor do solo num ponto.
  *
- * Os valores são altos de propósito. O tint do Phaser MULTIPLICA a textura, e
- * `palette.ground` nunca passa de 255 por canal, então a cor final é sempre
- * estetereno multiplicado por algo abaixo de 1. Com a rampa escura o chão
- * saía em marrom lamacento, sem nenhuma folga para o bioma clarear.
- *
- * O deslocamento quente/frio entra por cima, e é ele que impede o chão de
- * parecer cinza chapado sob qualquer tingimento.
+ * A referência de terra batida mede rgb(136, 84, 39) como cor média, com os
+ * torrões mais claros chegando perto de rgb(190, 150, 105) e as fissuras
+ * caindo a rgb(70, 42, 22). A rampa aqui vai desse escuro ao claro, e recebe
+ * o deslocamento quente/frio por cima: é ele que impede o chão de virar cinza
+ * chapado sob qualquer tingimento de bioma.
  */
-const RAMP = [
-  { at: 0, rgb: [72, 64, 56] },
-  { at: 0.34, rgb: [120, 110, 97] },
-  { at: 0.6, rgb: [162, 150, 134] },
-  { at: 0.82, rgb: [196, 182, 163] },
-  { at: 1, rgb: [224, 210, 190] }
-];
+const SOIL_DARK = [66, 40, 21];
+const SOIL_MID = [136, 84, 39];
+const SOIL_LIGHT = [196, 156, 110];
 
-function rampColor(shade) {
-  for (let i = 1; i < RAMP.length; i += 1) {
-    if (shade <= RAMP[i].at) {
-      const lower = RAMP[i - 1];
-      const upper = RAMP[i];
-      const t = (shade - lower.at) / (upper.at - lower.at);
-
-      return [
-        Math.round(mix(lower.rgb[0], upper.rgb[0], t)),
-        Math.round(mix(lower.rgb[1], upper.rgb[1], t)),
-        Math.round(mix(lower.rgb[2], upper.rgb[2], t))
-      ];
-    }
+function soilRamp(t) {
+  if (t <= 0.5) {
+    const k = t / 0.5;
+    return [
+      Math.round(mix(SOIL_DARK[0], SOIL_MID[0], k)),
+      Math.round(mix(SOIL_DARK[1], SOIL_MID[1], k)),
+      Math.round(mix(SOIL_DARK[2], SOIL_MID[2], k))
+    ];
   }
 
-  return RAMP[RAMP.length - 1].rgb;
+  const k = (t - 0.5) / 0.5;
+  return [
+    Math.round(mix(SOIL_MID[0], SOIL_LIGHT[0], k)),
+    Math.round(mix(SOIL_MID[1], SOIL_LIGHT[1], k)),
+    Math.round(mix(SOIL_MID[2], SOIL_LIGHT[2], k))
+  ];
 }
 
-/** Converte a amostra num RGB, aplicando o desvio quente/frio. */
+/** Converte a amostra num RGB de solo, com a sombra da fissura e o desvio de temperatura. */
 export function groundColorAt(colf, rowf) {
-  const { shade, warm } = sampleGround(colf, rowf);
-  const [r, g, b] = rampColor(shade);
+  const { light, crack, stone, chip, warm, clods } = sampleGround(colf, rowf);
+  // `clods` entra aqui, como tom, e não como luz. Ver o comentário em
+  // sampleGround: misturar os dois dobrava o contraste por escala.
+  let [r, g, b] = soilRamp(clamp01(light + (clods - 0.5) * CLOOD_TONE));
+
+  // Fissura: escurece, sem tocar na cor do solo ao redor. A fresta é oclusão —
+  // a mesma terra, com menos luz chegando. Se escurecesse e também mudasse o
+  // matiz, viraria um risco pintado.
+  //
+  // O `clamp01` é uma segunda barreira. O defeito anterior deixava `crack`
+  // passar de 1 e a fresta saía preta sólida; o clamp de `crack` acima já
+  // resolve, mas um teto explícito no uso impede que o mesmo tipo de erro
+  // volte a pintar a aresta.
+  if (crack > 0) {
+    const k = 1 - clamp01(crack) * 0.42;
+    r *= k;
+    g *= k;
+    b *= k;
+  }
+
+  // Seixo: pedra é mais clara e mais fria que a terra ao redor. É o que separa
+  // o cascalho do lamaço — sem isso tudo vira uma massa só.
+  const mineral = Math.max(stone, chip * 0.7);
+  if (mineral > 0) {
+    r = mix(r, r * 1.14 + 16, mineral);
+    g = mix(g, g * 1.12 + 14, mineral);
+    b = mix(b, b * 1.05 + 10, mineral);
+  }
+
   // Frio tira verde, quente tira azul. Preserva a luminância: é pigmento, não luz.
-  const chroma = (warm - 0.5) * 34;
+  const chroma = (warm - 0.5) * 30;
 
   return [
     Math.max(0, Math.min(255, Math.round(r + chroma))),
