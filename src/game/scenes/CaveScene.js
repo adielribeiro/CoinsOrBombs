@@ -768,11 +768,20 @@ export class CaveScene extends Phaser.Scene {
       floor.setData('tile', tile);
       tile.floorSprite = floor;
 
-      // O tom por tile foi removido de propósito: tingir cada célula com um
-      // valor próprio reintroduz exatamente a grade que o atlas contínuo
-      // eliminou, agora como degrau de brilho em vez de linha desenhada. A
-      // variação de tom está na textura e a cor vem do bioma, aplicada na
-      // camada inteira.
+      // A cor do bioma entra como tint, e é a MESMA para todas as células.
+      // Pode parecer que estamos tingindo tile por tile, que era exatamente o
+      // que criava grade: não é. Grade vem de valor VARIADO por tile, que
+      // produz degrau de luminância na fronteira. Uma cor só é aritmeticamente
+      // o mesmo que tingir a camada inteira — e é a única opção, porque
+      // `Container` não tem `setTint` (os mixins dele são AlphaSingle,
+      // BlendMode, ComputedSize, Depth, Mask, PostPipeline, Transform e
+      // Visible, sem Tint). Chamar `floorLayer.setTint(...)` estoura um
+      // TypeError no fim do renderMap e mata a cena, deixando a tela preta com
+      // o HUD de React por cima. Foi o que aconteceu. Ver test/scene.test.mjs.
+      floor.setTint(biome.palette.ground);
+
+      // Saída e entrada ficam por cima da cor do bioma, por serem marcadores de
+      // jogo e precisar de leitura imediata.
       if (tile.type === 'exit') {
         floor.setTint(biome.palette.exit);
         floor.setInteractive({ cursor: 'pointer' });
@@ -884,11 +893,6 @@ export class CaveScene extends Phaser.Scene {
       }
     });
 
-    // A cor do bioma entra aqui, na camada inteira, e não em cada célula. O
-    // atlas do chão é uma superfície contínua em cinza; tingir cada tile por
-    // vez criaria degraus de luminância exatamente na fronteira, que é a grade
-    // que o atlas contínuo acaba de eliminar.
-    this.floorLayer.setTint(biome.palette.ground);
   }
 
   renderIsoGrid(originX, originY, tileWidth, tileHeight) {
@@ -1381,6 +1385,7 @@ export class CaveScene extends Phaser.Scene {
       );
 
       fallbackFloor.setData('tile', tile);
+      fallbackFloor.setTint(getBiomeForCave(this.metaState.cave).palette.ground);
       this.floorLayer.add(fallbackFloor);
 
       tile.floorSprite = fallbackFloor;

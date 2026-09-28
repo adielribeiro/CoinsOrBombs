@@ -5,6 +5,37 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Corrigido
+
+- **Tela preta em toda cave.** Regressão introduzida na mesma entrega do chão
+  novo. `this.floorLayer.setTint(biome.palette.ground)` no fim do `renderMap`
+  estourava um `TypeError`.
+
+  `Phaser.GameObjects.Container` **não tem `setTint`**: os mixins dele são
+  AlphaSingle, BlendMode, ComputedSize, Depth, Mask, PostPipeline, Transform e
+  Visible, sem Tint. A exceção acontecia depois do fundo já desenhado, então a
+  cena morre ali e sobra uma tela preta com o HUD de React intacto por cima —
+  o HUD é React e o mapa é Phaser, e é por isso que a falha parecia "o jogo
+  não carregou" em vez de "um método não existe".
+
+  Confirmei no navegador: `Container.prototype.setTint` é `undefined` enquanto
+  `Image.prototype.setTint` é `function`.
+
+  O tint agora é posto em cada célula do chão, com a **mesma** cor para todas.
+  Isso não ressuscita a grade: grade nasce de valor *variado* por tile, que cria
+  degrau de luminância na fronteira; uma cor só é aritmeticamente o mesmo que
+  tingir a camada inteira. `fallbackFloor` também foi tingido, senão o atlas
+  cinza apareceria cru ao quebrar a rocha.
+
+  - **10 testes novos** (`test/scene.test.mjs`) por verificação estática do
+    código da cena, porque essa classe de falha não é pegada por build nem por
+    teste de unidade: o build passava, os 36 testes passavam e o console estava
+    limpo. O erro só aparecia com o jogo em execução. O teste central é "nenhum
+    Container recebe `setTint`", e eu confirmei que ele falha se a linha for
+    reintroduzida. Os outros checam o frame config do spritesheet, o tint
+    constante do chão, a ordem do tint contra entrada/saída, e que
+    `palette.ground` existe e é claro o bastante nos quatro biomas.
+
 ### Mudado
 
 - **O chão da cave deixou de ser arte de tile e virou uma superfície
