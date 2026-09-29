@@ -141,12 +141,14 @@ test('bioma sem entrada no registro cai na primeira, e a primeira existe', () =>
 test('a boca é maior que o tile e cobre uma faixa plausível de fundo', () => {
   // A entrada é a única peça alta da cena, e ela fica SEMPRE em `col: 0`, na
   // linha do meio — a borda esquerda do mapa, por `mapGenerator`. Por isso ela
-  // pode ter quase oito linhas de altura sem comer o campo de jogo: o que ela
-  // cobre para cima e para a direita é fundo.
+  // pode ter quatro linhas de altura sem comer o campo de jogo: o que ela cobre
+  // para cima e para a direita é fundo. Medido em `preview-props`: 5 dos 42 tiles
+  // a 1,2x.
   //
-  // O que este teste segura é o outro lado: a boca não pode crescer sem parar. A
-  // 4x o tile ela já cobriria o triângulo de tiles acima do ponto, e a 6x
-  // cobriria a tela inteira em portrait. O teto é 3x.
+  // Este teste segura os dois lados. O piso: abaixo de 1,0 a boca vira um objeto
+  // do tamanho do tile, e a arte por bioma não se justifica. O teto: foi 2,4 e a
+  // captura da Cave 1 mostrou a boca tapando as pedras de três fileiras acima do
+  // seu tile, com o "IN" pequeno dentro do maior objeto da cena.
   const larguraBoca = BASE_TILE_WIDTH * ENTRANCE_DISPLAY;
   const alturaBoca = larguraBoca * getEntranceAspect(BIOMES[0].id);
   const linhas = alturaBoca / (BASE_TILE_HEIGHT / 2);
@@ -158,10 +160,17 @@ test('a boca é maior que o tile e cobre uma faixa plausível de fundo', () => {
   );
 
   assert.ok(
-    linhas <= 12,
+    ENTRANCE_DISPLAY <= 1.5,
+    `a entrada está em ${ENTRANCE_DISPLAY}x o tile, e o teto é 1,5. Acima disso `
+      + `ela cobre ${linhas.toFixed(1)} linhas de fundo e vira o maior objeto da `
+      + `cena.`
+  );
+
+  assert.ok(
+    linhas <= 6,
     `a boca cobre ${linhas.toFixed(1)} linhas de fundo (altura `
       + `${alturaBoca.toFixed(0)}px, avanço ${BASE_TILE_HEIGHT / 2}px). Acima de `
-      + `12 ela toma a tela inteira em portrait.`
+      + `6 ela toma o canto do mapa.`
   );
 
   // E a base tem de ficar dentro do próprio tile, senão o pedestal flutua ou

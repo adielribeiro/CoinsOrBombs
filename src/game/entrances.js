@@ -17,14 +17,28 @@
  * ## Onde a entrada fica
  *
  * Sempre em `col: 0`, na linha do meio, pelo `mapGenerator`. Ou seja: na borda
- * esquerda do mapa. É por isso que uma entrada de 2,4x o tile, que tem quase oito
- * linhas de altura, não come o campo de jogo — o que ela cobre para cima e para a
- * direita é fundo, e o chão que ela esconde é o próprio tile. Isso é medido em
- * `scripts/preview-props.mjs`, não argumento.
+ * esquerda do mapa. É por isso que a entrada pode ter quatro linhas de altura sem
+ * comer o campo de jogo — o que ela cobre para cima e para a direita é fundo, e o
+ * chão que ela esconde é o próprio tile. Isso é medido em
+ * `scripts/preview-props.mjs`, não argumento: 5 dos 42 tiles a 1,2x, e eram 7 a
+ * 2,4x.
  */
 
-/** Largura da entrada, em múltiplos da largura do tile. */
-export const ENTRANCE_DISPLAY = 2.4;
+/**
+ * Largura da entrada, em múltiplos da largura do tile.
+ *
+ * Foi 2,4 e voltou para 1,2 pela mesma razão que a rocha tem teto: 2,4 é um
+ * terço da largura da tela, e numa tela real a boca tapava o bioma inteiro em vez
+ * de marcar a entrada dele. Na captura da Cave 1 a 2,4x ela cobria as pedras de
+ * três fileiras acima do seu tile, e o "IN" ficava pequeno dentro de um arco
+ * que era o maior objeto da cena.
+ *
+ * A 1,2 ela é um pouco mais larga que o tile, que é o que faz a entrada ler
+ * como entrada e não como um objeto posto em cima de um quadrado, e ainda deixa
+ * ver o campo de jogo. Um terço a mais que a 1,05 da arte única: a boca é mais
+ * detalhada hoje, e essa diferença é o que paga a arte por bioma.
+ */
+export const ENTRANCE_DISPLAY = 1.2;
 
 /**
  * Proporção altura por largura, e o tamanho do arquivo de cada uma.

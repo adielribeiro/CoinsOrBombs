@@ -177,8 +177,9 @@ melhor.
 - `node scripts/slice-rocks.mjs` — recorta os sprites de rocha em folhas 4x4 de
   168px, e recorta **pela base**, que é o que faz a rocha assentar no chão.
 - `node scripts/trim-entrances.mjs` — apara e reduz as seis entradas de caverna. A
-  arte de origem tem 1244px de largura para uma peça de 230px na tela; o alvo é
-  480px, que é 2x a largura em CSS, o que uma tela retina renderiza.
+  arte de origem tem 1244px de largura para uma peça de 115px na tela (1,2x o
+  tile). O alvo é 480px: dimensionado quando a entrada estava a 2,4x, e ainda dá
+  espaço para ela crescer sem refazer a arte.
 - `node scripts/trim-props.mjs` — apara a picareta.
 
 Todos os três recusam escrever quando a pasta de origem não está lá, e nenhum

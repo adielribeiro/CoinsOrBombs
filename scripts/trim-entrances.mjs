@@ -15,16 +15,20 @@
 //
 // ## Reduzir
 //
-// A entrada é desenhada com 2,4x a largura do tile, ou 230px na tela. A arte de
-// origem tem 1244px de largura: são 5,4x mais pixels do que a peça ocupa, em um
+// A entrada é desenhada com 1,2x a largura do tile, ou 115px na tela. A arte de
+// origem tem 1244px de largura: são 10,8x mais pixels do que a peça ocupa, em um
 // PNG de 2,1 MB. Os seis arquivos juntos dariam 12,6 MB para algo que, no
-// tamanho em que aparece, é um arco de 230px.
+// tamanho em que aparece, é um arco de 115px.
 //
-// O alvo aqui é `LADO_ALVO`, que é 2x a largura em CSS da peça. Numa tela
-// retina o canvas renderiza a 2x, então 2x é o que cobre o pior caso sem
-// inventar resolução que ninguém vê. Reduzir por média de caixa e não por
-// amostragem de ponto: numa redução de 2,6x o ponto pega um pixel e joga fora
-// cinco, e o contorno da arte fica serrilhado.
+// O alvo aqui é `LADO_ALVO`, escolhido com folga: a entrada é desenhada com
+// 1,2x a largura do tile, ou 115px na tela, e numa tela retina o canvas renderiza
+// a 2x. Com 240px de arquivo a peça já estaria no ponto. Fica em 480 porque foi
+// dimensionado quando a entrada estava a 2,4x, e 480 ainda dá espaço para ela
+// crescer sem refazer a arte.
+//
+// Reduzir por média de caixa e não por amostragem de ponto: numa redução de
+// 2,6x o ponto pega um pixel e joga fora cinco, e o contorno da arte fica
+// serrilhado.
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 
 import { readPng } from './png.mjs';
@@ -33,7 +37,7 @@ import { encodePng } from './png-encode.mjs';
 const ORIGEM = 'C:/Users/adielvale/AppData/Local/Temp/opencode/cavein_zip/cave in';
 const BIOMAS = ['sunstone', 'frost', 'ember', 'ruins', 'wind', 'crystal'];
 
-/** Largura final, em pixels de arquivo. 2x a largura em CSS de 230px. */
+/** Largura final, em pixels de arquivo. Ver a nota sobre `LADO_ALVO`. */
 const LADO_ALVO = 480;
 
 const LIMIAR = 8;

@@ -39,30 +39,38 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
   | bioma | arquivo | na tela | linhas de fundo |
   | --- | --- | --- | --- |
-  | sunstone | 480x404 | 230x194px | 7,9 |
-  | frost | 480x415 | 230x199px | 8,1 |
-  | ember | 480x419 | 230x201px | 8,2 |
-  | ruins | 480x399 | 230x191px | 7,8 |
-  | wind | 480x408 | 230x196px | 8,0 |
-  | crystal | 480x424 | 230x203px | 8,3 |
+  | sunstone | 480x404 | 115x97px | 4,0 |
+  | frost | 480x415 | 115x102px | 4,2 |
+  | ember | 480x419 | 115x103px | 4,2 |
+  | ruins | 480x399 | 115x96px | 4,0 |
+  | wind | 480x408 | 115x100px | 4,1 |
+  | crystal | 480x424 | 115x105px | 4,2 |
 
   A entrada é a única peça alta da cena, e ela **sempre fica em `col: 0`**, na
-  linha do meio — a borda esquerda do mapa, por `mapGenerator`. Por isso ela pode
-  ter quase oito linhas de altura sem comer o campo de jogo. Medido em
-  `preview-props`: cobre 7 dos 42 tiles, e o resto do que ela esconde é fundo.
+  linha do meio — a borda esquerda do mapa, por `mapGenerator`. Por isso ela
+  cresce em altura sem comer o campo de jogo. Medido em `preview-props`: cobre
+  5 dos 42 tiles, e o resto do que ela esconde é fundo.
+
+  - **A entrada passou de 1,05x para 1,2x a largura do tile.** Foi 2,4x primeiro,
+    e a captura da Cave 1 mostrou por que não dá: a 2,4 a boca tapava as pedras
+    de três fileiras acima do seu tile e virava o maior objeto da cena, com o
+    "IN" pequeno dentro do arco. A 1,2 ela é um pouco mais larga que o tile — o
+    que faz a entrada ler como entrada e não como um objeto posto em cima de um
+    quadrado — e ainda deixa ver o campo de jogo. É um terço a mais que a 1,05 da
+    arte única: a boca é mais detalhada hoje, e essa diferença é o que paga a
+    arte por bioma.
 
   - **A proporção é por bioma, e isso não é detalhe.** Medida: de 0,831 (Ruínas, o
     arco mais largo) a 0,883 (Cristal, o mais alto). Com uma constante única, o
     `setDisplaySize` esticaria ou achataria cinco das seis em até 6% — e esticar
     arte é o defeito que o `setDisplaySize` já causou aqui uma vez, quando a rocha
     antiga de 82x80 era esmagada para 80x45.
-  - **A entrada passou de 1,05x para 2,4x a largura do tile.** A arte nova é uma
-    boca inteira, com pedestal e moedas no rodapé; a 1,05x ela ficava pequena
-    demais para o que passou a ser.
-  - **A arte de origem tem 1244px de largura para uma peça de 230px na tela.** São
-    5,4x mais pixels do que a peça ocupa, em um PNG de 2,1 MB. Aparar e reduzir
-    levou os seis arquivos de 12,6 MB para 2,3 MB, sem diferença visível: o alvo
-    é 480px, que é 2x a largura em CSS — o que uma tela retina renderiza.
+  - **A arte de origem tem 1244px de largura para uma peça de 115px na tela.**
+    Aparar e reduzir levou os seis arquivos de 12,6 MB para 2,3 MB, sem
+    diferença visível: o alvo é 480px, o que sobrou com folga quando a entrada
+    estava a 2,4x. A 1,2x o alvo seria 240px e o pacote cairia para perto de
+    0,7 MB — fica de fora desta mudança porque encolher a arte agora só
+   economizaria para o caso de a entrada voltar a crescer.
   - A arte chega num canvas de 1254x1254 **centralizado**, com de 65px a 92px de
     folga transparente embaixo. Como o jogo ancora pela base, essa folga vira
     levitação — foi exatamente o bug que a arte única tinha, com 12,6px.
