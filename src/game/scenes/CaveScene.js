@@ -11,6 +11,7 @@ import {
   toIso
 } from '../config.js';
 import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrameIndex } from '../ground.js';
+import { getLocale, setLocale, t } from '../../i18n/index.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { ROCK_DISPLAY, getRockFrameIndex, getRockJitter, getRockSheetKey } from '../rocks.js';
 import { generateMap } from '../systems/mapGenerator.js';
@@ -90,7 +91,7 @@ export class CaveScene extends Phaser.Scene {
       lobbyReason: null,
       nextCaveAvailable: null,
       outcomeCave: null,
-      lastMessage: 'Quebre uma rocha na beirada da área aberta para começar.'
+      lastMessage: t('msg.intro')
     };
 
     this.purchased = [];
@@ -286,7 +287,17 @@ export class CaveScene extends Phaser.Scene {
       const next = event?.detail ?? {};
       const reducedMotion = Boolean(next.reducedMotion);
 
-      if (this.reducedMotion === reducedMotion) return;
+      // O idioma é resolvido ANTES da saída antecipada, e o motivo é concreto: a
+      // saída existe para não redesenhar o mapa quando o `reducedMotion` não
+      // mudou, e trocar de idioma muda o texto desenhado na cena sem mexer
+      // nesse valor. Com a checagem na frente, a troca de idioma nunca chegaria
+      // a redesenhar, e o "SAÍDA" ficaria na língua anterior em cima de um mapa
+      // já todo traduzido.
+      const idiomaAntes = getLocale();
+      setLocale(next.language);
+      const idiomaMudou = getLocale() !== idiomaAntes;
+
+      if (this.reducedMotion === reducedMotion && !idiomaMudou) return;
 
       this.reducedMotion = reducedMotion;
 
@@ -306,7 +317,7 @@ export class CaveScene extends Phaser.Scene {
     this.onOpenExitLobby = (event) => {
       const nextCave = event?.detail?.nextCave ?? this.metaState.cave + 1;
       const message =
-        event?.detail?.message ?? `Você decidiu seguir para a Cave ${nextCave}.`;
+        event?.detail?.message ?? t('msg.exitToCave', { n: nextCave });
 
       this.openLobby('exit', message, nextCave);
     };
@@ -1042,7 +1053,7 @@ export class CaveScene extends Phaser.Scene {
         // No menu principal o mapa é fundo de tela de título: o texto "SAÍDA"
         // aparecendo por cima da vinheta parecia defeito, não arte.
         if (!this.attractMode) {
-          const marker = this.add.text(point.x, point.y - tileHeight * 1.06, 'SAÍDA', {
+          const marker = this.add.text(point.x, point.y - tileHeight * 1.06, t('scene.markerOut'), {
             fontSize: this.getMarkerFontSize(18),
             color: '#f6fff9',
             fontStyle: 'bold',
@@ -1071,7 +1082,7 @@ export class CaveScene extends Phaser.Scene {
         this.objectLayer.add(frame);
 
         if (!this.attractMode) {
-          const marker = this.add.text(point.x, point.y - tileHeight * 1.02, 'IN', {
+          const marker = this.add.text(point.x, point.y - tileHeight * 1.02, t('scene.markerIn'), {
             fontSize: this.getMarkerFontSize(15),
             color: '#f1fbff',
             fontStyle: 'bold',
@@ -1224,7 +1235,7 @@ export class CaveScene extends Phaser.Scene {
     glow.setDepth(point.y + 11);
     this.objectLayer.add(glow);
 
-    const marker = this.add.text(point.x, point.y - tileHeight * 1.02, 'SAÍDA', {
+    const marker = this.add.text(point.x, point.y - tileHeight * 1.02, t('scene.markerOut'), {
       fontSize: this.getMarkerFontSize(16),
       color: '#f6fff9',
       fontStyle: 'bold',
@@ -1375,7 +1386,7 @@ export class CaveScene extends Phaser.Scene {
 
   handleTileClick(tile) {
     if (tile.type === 'exit') {
-      this.openExitDecision('Você encontrou a saída. Deseja seguir para a próxima cave ou continuar explorando esta?');
+      this.openExitDecision(t('msg.foundExit'));
       return;
     }
 
@@ -1626,7 +1637,7 @@ export class CaveScene extends Phaser.Scene {
         }
       });
 
-      message = `${isBonus ? 'Quebra bônus! ' : ''}Você encontrou ${gain} moeda(s).`;
+      message = `${isBonus ? `${t('msg.coinBonus')} ` : ''}${t('msg.coinFound', { count: gain })}`;
     } else if (revealedContent === 'bomb') {
       this.metaState.bombs += 1;
       this.metaState.bombsRemaining = Math.max(0, (this.metaState.bombsRemaining ?? 0) - 1);
@@ -1650,11 +1661,11 @@ export class CaveScene extends Phaser.Scene {
       this.cameras.main.flash(140, 255, 80, 80);
 
       if (this.metaState.hp <= 0) {
-        this.openLobby('death', 'Você ficou sem vida e voltou ao lobby.');
+        this.openLobby('death', t('msg.deathLobby'));
         return;
       }
 
-      message = `${isBonus ? 'Quebra bônus azarada! ' : ''}Bomba! Vida restante: ${this.metaState.hp}.`;
+      message = `${isBonus ? `${t('msg.unluckyBonus')} ` : ''}${t('msg.bombHit', { n: this.metaState.hp })}`;
     } else if (isRelicContent(revealedContent)) {
       const relic = getRelicById(revealedContent.relicId);
 
@@ -1671,26 +1682,24 @@ export class CaveScene extends Phaser.Scene {
         };
         this.metaState.lastRelicFound = relic.id;
         this.showRelicFoundEffect(rewardPos, relic);
-        message = `${isBonus ? 'Quebra bônus! ' : ''}Você encontrou a relíquia ${relic.name}.`;
+        message = `${isBonus ? `${t('msg.coinBonus')} ` : ''}${t('msg.relicFound', { relic: t(relic.nameKey) })}`;
       } else {
-        message = isBonus ? 'Quebra bônus! A rocha extra estava vazia.' : 'Só pedra e poeira... siga cavando.';
+        message = t(isBonus ? 'msg.emptyBonus' : 'msg.empty');
       }
     } else if (revealedHiddenExit) {
       this.metaState.nextCaveAvailable = this.metaState.cave + 1;
-      message = isBonus
-        ? 'Quebra bônus! Você encontrou a saída escondida. Clique no buraco para decidir se quer sair.'
-        : 'Você encontrou a saída escondida desta cave. Clique no buraco para decidir se quer sair.';
+      message = t(isBonus ? 'msg.exitBonus' : 'msg.exitHidden');
     } else {
-      message = isBonus ? 'Quebra bônus! A rocha extra estava vazia.' : 'Só pedra e poeira... siga cavando.';
+      message = t(isBonus ? 'msg.emptyBonus' : 'msg.empty');
     }
 
     const utilityFound = this.tryCollectRandomUtility(rewardPos);
     if (utilityFound) {
-      extraMessages.push(`Você encontrou um utilitário bônus: ${utilityFound}.`);
+      extraMessages.push(t('msg.utilityDropFound', { name: t(utilityFound) }));
     }
 
     if (this.tryRevealRandomBombBonus()) {
-      extraMessages.push('Uma bomba escondida foi revelada no mapa.');
+      extraMessages.push(t('msg.bombRevealed'));
     }
 
     if (!isBonus) {
@@ -1794,13 +1803,18 @@ export class CaveScene extends Phaser.Scene {
     icon.setDepth(rewardPos.y + 21);
     this.objectLayer.add(icon);
 
-    const utilityValue = this.add.text(rewardPos.x, rewardPos.y - tileHeight * 0.96, '+1 utilitário', {
-      fontSize: this.getMarkerFontSize(16),
-      color: '#dffbff',
-      fontStyle: 'bold',
-      stroke: '#0a4d5d',
-      strokeThickness: this.renderMetrics.isMobileLandscape ? 3 : 4
-    }).setOrigin(0.5);
+    const utilityValue = this.add.text(
+      rewardPos.x,
+      rewardPos.y - tileHeight * 0.96,
+      t('msg.utilityReward'),
+      {
+        fontSize: this.getMarkerFontSize(16),
+        color: '#dffbff',
+        fontStyle: 'bold',
+        stroke: '#0a4d5d',
+        strokeThickness: this.renderMetrics.isMobileLandscape ? 3 : 4
+      }
+    ).setOrigin(0.5);
     utilityValue.setDepth(rewardPos.y + 21);
     this.objectLayer.add(utilityValue);
 
@@ -1851,7 +1865,7 @@ export class CaveScene extends Phaser.Scene {
     icon.setDepth(rewardPos.y + 21);
     this.objectLayer.add(icon);
 
-    const label = this.add.text(rewardPos.x, rewardPos.y - tileHeight * 1.02, relic.name, {
+    const label = this.add.text(rewardPos.x, rewardPos.y - tileHeight * 1.02, t(relic.nameKey), {
       fontSize: this.getMarkerFontSize(14),
       color: '#fff1c5',
       fontStyle: 'bold',
@@ -1883,10 +1897,12 @@ export class CaveScene extends Phaser.Scene {
       return null;
     }
 
+    // A chave, e não o rótulo: quem chama precisa montar a mensagem no idioma do
+    // jogador, e devolver o texto já pronto travaria o utilitário em português.
     const utilityPool = [
-      { id: 'lifePotion', label: 'Poção de Vida', icon: '❤️' },
-      { id: 'revealBomb', label: 'Poção Dedo-Duro', icon: '💣' },
-      { id: 'safePath', label: 'Poção Caminho Seguro', icon: '🧭' }
+      { id: 'lifePotion', nameKey: 'utility.lifePotion.name', icon: '❤️' },
+      { id: 'revealBomb', nameKey: 'utility.revealBomb.name', icon: '💣' },
+      { id: 'safePath', nameKey: 'utility.safePath.name', icon: '🧭' }
     ];
 
     const reward = Phaser.Utils.Array.GetRandom(utilityPool);
@@ -1903,7 +1919,7 @@ export class CaveScene extends Phaser.Scene {
       this.showUtilityFoundEffect(rewardPos, reward);
     }
 
-    return reward.label;
+    return reward.nameKey;
   }
 
   tryRevealRandomBombBonus() {
@@ -1945,20 +1961,20 @@ export class CaveScene extends Phaser.Scene {
     const currentCount = this.metaState.utilities?.[type] ?? 0;
 
     if (currentCount <= 0) {
-      this.notify('Você não tem esse utilitário na mochila.');
+      this.notify(t('msg.utilityMissing'));
       return;
     }
 
     if (type === 'lifePotion') {
       if (this.metaState.hp >= this.metaState.maxHp) {
-        this.notify('Sua vida já está cheia — a poção foi guardada.');
+        this.notify(t('msg.lifeFull'));
         return;
       }
 
       this.metaState.hp = Math.min(this.metaState.maxHp, this.metaState.hp + 1);
       this.consumeUtility(type);
       this.pulseHudPill('heart');
-      this.setMessage(`Poção de vida usada. Vida atual: ${this.metaState.hp}/${this.metaState.maxHp}.`);
+      this.setMessage(t('msg.lifeUsed', { hp: this.metaState.hp, max: this.metaState.maxHp }));
       this.syncUI();
       return;
     }
@@ -1967,7 +1983,7 @@ export class CaveScene extends Phaser.Scene {
       const hiddenBomb = this.findHiddenBombTile();
 
       if (!hiddenBomb) {
-        this.notify('Nenhuma bomba escondida restante nesta cave.');
+        this.notify(t('msg.noBombsLeft'));
         return;
       }
 
@@ -1976,7 +1992,7 @@ export class CaveScene extends Phaser.Scene {
       this.hoveredRockTile = null;
       this.renderMap();
       this.pulseHudPill('risk');
-      this.setMessage('Poção dedo-duro usada. Uma bomba foi revelada no mapa.');
+      this.setMessage(t('msg.revealUsed'));
       this.syncUI();
       return;
     }
@@ -1985,14 +2001,14 @@ export class CaveScene extends Phaser.Scene {
       const success = this.revealSafePath();
 
       if (!success) {
-        this.notify('Não há rota sem bomba até a saída nesta cave.');
+        this.notify(t('msg.noSafeRoute'));
         return;
       }
 
       this.consumeUtility(type);
       this.hoveredRockTile = null;
       this.renderMap();
-      this.setMessage('Poção caminho seguro usada. A rota verde até a saída foi revelada.');
+      this.setMessage(t('msg.safePathUsed'));
       this.syncUI();
     }
   }

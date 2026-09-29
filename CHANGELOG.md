@@ -5,7 +5,97 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- **O jogo fala dez idiomas.** Português, inglês, espanhol, francês, alemão,
+  italiano, polonês, hindi, chinês simplificado e japonês, com seletor no menu
+  principal.
+
+  A troca vale na hora, sem reiniciar, e a escolha é salva junto das outras
+  configurações. Em quem nunca escolheu, o idioma é o **do navegador**:
+  `readStoredLocale` devolve o que está salvo, senão o que `navigator.languages`
+  pede, senão português.
+
+  - **A detecção casa por prefixo, e não por igualdade.** O navegador diz
+    `en-GB`, `pt-PT`, `zh-HK`, e o jogo tem `en`, `pt-BR`, `zh-CN`. Com igualdade
+    exata, todo mundo cairia no português — que é exatamente o caso do jogador
+    que não entende nada. E a lista de preferências inteira é varrida na ordem:
+    navegador em `[ja, en]` é japonês.
+  - **O item novo fica no menu principal, ao lado de Configurações**, abrindo uma
+    tela só com a lista. A lista mostra o nome **no próprio idioma** primeiro e
+    o nome em português ao lado, menor: "Alemão" não ajuda quem não lê português
+    a achar "Deutsch". A tela rola até a opção em uso, senão quem está nas duas
+    últimas posições abre e não vê qual está marcado.
+  - **O idioma sobrevive a "Reiniciar progresso".** O botão é sobre a run, não
+    sobre como a pessoa lê. O modo desenvolvedor sobrevive pelo mesmo motivo.
+
+- **O conjunto de texto foi todo para chaves**, e a lista é de **193 chaves**:
+  HUD, menu, configurações, seleção de bioma, lobby, loja, pausa, decisão de
+  saída, rotação, avisos de tela cheia, mensagens de partida, mensagens de
+  quebra, mensagens de utilitário, os três utilitários, as seis melhorias, os
+  seis biomas, as seis relíquias e os quatro objetivos.
+
+  `progression.js` guarda a chave ao lado do texto em português — `nameKey` ao
+  lado de `name` — e a tela usa a chave. O português fica como referência para
+  quem lê o código, e é a fonte da verdade do conjunto.
+
+  - **O dicionário de português é a fonte da verdade, e não um entre dez.** O
+    teste de conjunto falha se um idioma tiver chave a mais ou a menos. Sem
+    isso, traduzir nove idiomas vira nove fontes de buraco silencioso: a chave
+    que ninguém traduziu não dá erro, ela mostra o nome da chave.
+  - **A chave que falta aparece com o nome, nunca vazia.** O `t()` devolve
+    `[fr] lobby.proxmaCave`. Devolver `''` esconderia o erro; devolver a chave
+    deixa o buraco visível na tela e o teste aponta o nome exato.
+  - **Placeholder sem valor fica como está.** `Cave {n}` continua `Cave {n}`, e
+    não vira `Cave undefined`.
+
+- **Plural por idioma, de verdade.** Cinco chaves mudam de forma com o número,
+  e o polonês é o caso que justifica o mecanismo: `one` para 1, `few` para 2 a 4
+  (exceto 12 a 14) e `many` para o resto — 1 *jaskinia*, 3 *jaskinie*, 5
+  *jaskiń*. Errar a categoria entrega um substantivo na declaração errada, que o
+  leitor polonês percebe na hora. Chinês e japonês não têm plural, então
+  declaram `other` uma vez só.
+
+  A escolha da forma cai em cadeia: categoria → `other` → primeira forma
+  presente. É o que impede `undefined` na tela quando um idioma não tem a
+  categoria pedida.
+
+  - A descrição das melhorias tem **dois** números, a chance e a quantidade, e a
+    plural tem que ser da **quantidade**. Mandar `chance` no lugar trocaria
+    "+2 moedas" por "+20 moedas" no polonês, porque 20 é outra categoria.
+
+- **17 testes de i18n**, que são o que segura nove traduções à mão:
+  conjuntos iguais, placeholders iguais, formas de plural presentes, texto em
+  português que sobrou, mensagem vazia, espaço sobrando nas pontas, regra do
+  polonês e do resto, detecção por prefixo, ordem da lista de preferências,
+  interpolação, chave desconhecida, idioma desconhecido, e duas checagens de
+  conteúdo: que `nameKey` de bioma, relíquia e objetivo aponta para chave
+  existente, e que cada idioma traduziu pelo menos 70% do conteúdo.
+
 ### Corrigido
+
+- **O HUD se sobrepunha abaixo de ~420px de largura, e a causa era
+  `justify-self: center`.** O cluster de vitais era dimensionado pelo conteúdo e
+  centrado na coluna; quando o conteúdo é maior que a coluna, ele transborda dos
+  dois lados em vez de encolher. Medido com a janela em 400px: a coluna do meio
+  media 120px e os cinco pills de vida mediam 173px, então o bloco saía 26px para
+  cada lado e passava por cima do cluster da esquerda.
+
+  Não é efeito de idioma — em português e em chinês a medição é a mesma — mas a
+  correção entrou junto porque o `nowrap` dos rótulos, que era necessário para o
+  pior caso do chinês, só produz o resultado certo com o `stretch`.
+
+  - **`white-space: nowrap` no rótulo do pill.** Sem esta regra o rótulo quebrava
+    quando o pill era espremido: em português "MOEDAS" virava "MOEDA / S", e em
+    chinês e japonês — que não têm palavra, só ideograma — virava uma letra por
+    linha. Com dez idiomas, o pior caso deixou de ser hipotético.
+  - O cluster de vitais rola na horizontal quando não cabe, e a barra de rolagem
+    é escondida: parece um gesto e não um controle.
+
+- **`useMemo` não estava importado no `App.jsx`, e o build e os 107 testes
+  passaram mesmo assim.** O navegador pegou: tela branca com o HUD de React por
+  cima e um `ReferenceError` no console. Build e teste não pegam hook faltando
+  em JSX.
 
 - **As rochas flutuavam, e a causa não era a arte.** Era o fatiador.
 
@@ -91,6 +181,13 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   em 9 dos 12 frames da Mina Solar sem nenhum outro teste reclamar.
 
 ### Removido
+
+- **`describeFullscreenError` devolvia a frase pronta, e agora devolve a chave.**
+  O arquivo descreve a falha do navegador e não sabe nada sobre idioma; as quatro
+  mensagens eram as últimas quatro em português num jogo de dez idiomas. O teste
+  que cobria isso afirmava sobre o texto em português e passou a resolver a chave,
+  o que prova duas coisas de uma vez — que a chave existe e que a mensagem é
+  acionável.
 
 - **Quatro sprites de arte levitante da Galeria de Vento**: `wind_01`, `wind_04`,
   `wind_05` e `wind_10`.

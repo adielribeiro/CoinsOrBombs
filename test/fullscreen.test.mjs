@@ -11,6 +11,7 @@ import {
   onFullscreenChange,
   toggleFullscreen
 } from '../src/game/fullscreen.js';
+import { createTranslator } from '../src/i18n/index.js';
 
 /**
  * O módulo lê `document`/`navigator`/`screen` de forma tardia, então dá para
@@ -234,19 +235,34 @@ test('onFullscreenChange devolve um unsubscribe', () => {
   assert.ok(listeners.includes('-fullscreenchange'));
 });
 
-test('cada falha tem uma mensagem acionavel e distinta', () => {
+test('cada falha tem uma chave de mensagem distinta e traduzida', () => {
   const ios = describeFullscreenError({ reason: 'ios' });
   const unsupported = describeFullscreenError({ reason: 'unsupported' });
   const gesture = describeFullscreenError({ reason: 'gesture' });
   const denied = describeFullscreenError(new Error('qualquer'));
 
-  assert.match(ios.message, /Tela de Início/, 'no iOS a saida util e instalar o app');
-  assert.match(unsupported.message, /não oferece tela cheia/);
-  assert.match(gesture.message, /Tela cheia/);
-  assert.match(denied.message, /botão de tela cheia/);
+  // A chave, e não o texto: este arquivo descreve a falha do navegador, e o texto
+  // que o jogador lê é traduzido onde ele aparece. O teste passa a resolver a
+  // chave, o que prova duas coisas de uma vez — que a chave existe e que a
+  // mensagem dela é acionável.
+  const traduzir = createTranslator('pt-BR');
+
+  assert.match(traduzir(ios.messageKey), /Tela de Início/, 'no iOS a saída útil é instalar o app');
+  assert.match(traduzir(unsupported.messageKey), /não oferece tela cheia/);
+  assert.match(traduzir(gesture.messageKey), /Tela cheia/);
+  assert.match(traduzir(denied.messageKey), /botão de tela cheia/);
+
+  // Nenhuma das quatro pode devolver o nome da chave: é o que aconteceria se a
+  // chave tivesse sido renomeada no dicionário sem ninguém atualizar aqui.
+  for (const falha of [ios, unsupported, gesture, denied]) {
+    assert.doesNotMatch(traduzir(falha.messageKey), /^\[/, `a chave ${falha.messageKey} não existe`);
+  }
 
   const codes = new Set([ios.code, unsupported.code, gesture.code, denied.code]);
   assert.equal(codes.size, 4, 'as quatro causas precisam ser distinguíveis na UI');
+
+  const chaves = new Set([ios.messageKey, unsupported.messageKey, gesture.messageKey, denied.messageKey]);
+  assert.equal(chaves.size, 4, 'as quatro causas precisam de textos diferentes');
 });
 
 test('sem document a biblioteca degrada sem quebrar', () => {

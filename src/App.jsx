@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createGame } from './game/createGame.js';
 import {
   describeFullscreenError,
@@ -11,6 +11,13 @@ import {
   onFullscreenChange,
   toggleFullscreen
 } from './game/fullscreen.js';
+import {
+  LOCALES,
+  createTranslator,
+  readStoredLocale,
+  setLocale,
+  t as tNoCarregamento
+} from './i18n/index.js';
 import {
   BIOMES,
   RELIC_CATALOG,
@@ -48,8 +55,6 @@ const createImprovementState = () => ({
 
 const firstBiome = getBiomeForCave(1);
 
-const INTRO_MESSAGE = 'Quebre uma rocha na beirada da área aberta para começar.';
-
 const initialState = {
   screen: 'cave',
   cave: 1,
@@ -71,7 +76,10 @@ const initialState = {
   lobbyReason: null,
   nextCaveAvailable: null,
   outcomeCave: null,
-  lastMessage: INTRO_MESSAGE,
+  // Valor padrão apenas: `buildResetState` sobrescreve `lastMessage` logo abaixo.
+  // A chave resolve no idioma que o módulo de i18n já carregou do storage, e isso
+  // não importa justamente porque o valor nunca chega a ser exibido.
+  lastMessage: tNoCarregamento('msg.intro'),
   ...createImprovementState()
 };
 
@@ -86,33 +94,41 @@ const initialState = {
  * competia com a arte do fundo em vez de informar.
  *
  * Os tons seguem o ícone: rosa para vida, âmbar para bomba, ciano para bússola.
+ *
+ * Isto é uma FUNÇÃO e não uma constante, por causa do `t`. Um catálogo montado
+ * no carregamento do módulo resolveria nome e descrição uma vez, no idioma de
+ * quem abriu o jogo, e ficaria preso nisso para sempre: trocar de idioma
+ * deixaria a loja e a barra de utilitários em português com o resto da tela
+ * traduzida. Resolver no render é o que faz a troca valer na hora.
  */
-const utilityCatalog = [
-  {
-    id: 'lifePotion',
-    icon: '❤️',
-    name: 'Poção de Vida',
-    description: 'Recupera 1 ponto de vida durante a run.',
-    cost: 10,
-    tone: '#ff5f7e'
-  },
-  {
-    id: 'revealBomb',
-    icon: '💣',
-    name: 'Poção Dedo-Duro',
-    description: 'Revela uma bomba escondida no mapa atual.',
-    cost: 35,
-    tone: '#ffb23c'
-  },
-  {
-    id: 'safePath',
-    icon: '🧭',
-    name: 'Poção Caminho Seguro',
-    description: 'Mostra a rota segura até a saída da cave atual.',
-    cost: 80,
-    tone: '#3ddcff'
-  }
-];
+function buildUtilityCatalog(t) {
+  return [
+    {
+      id: 'lifePotion',
+      icon: '❤️',
+      name: t('utility.lifePotion.name'),
+      description: t('utility.lifePotion.description'),
+      cost: 10,
+      tone: '#ff5f7e'
+    },
+    {
+      id: 'revealBomb',
+      icon: '💣',
+      name: t('utility.revealBomb.name'),
+      description: t('utility.revealBomb.description'),
+      cost: 35,
+      tone: '#ffb23c'
+    },
+    {
+      id: 'safePath',
+      icon: '🧭',
+      name: t('utility.safePath.name'),
+      description: t('utility.safePath.description'),
+      cost: 80,
+      tone: '#3ddcff'
+    }
+  ];
+}
 
 const BIOME_ACCENT_COLORS = {
   sunstone: '#ffc26b',
@@ -149,6 +165,13 @@ const TOTAL_CAVES = BIOMES[BIOMES.length - 1].endCave;
  * `reducedMotion` e `showGrid` saíram daqui junto com os interruptores. As duas
  * agora são derivadas: a animação reduzida vem de `prefers-reduced-motion` e a
  * grade fica sempre desligada. Ver `buildSceneSettings`.
+ *
+ * `language` não tem um valor fixo aqui, e essa é a diferença em relação às
+ * outras três. As três são decisões do jogador com um padrão razoável; o idioma
+ * depende de uma informação que só o navegador tem — o idioma que a pessoa lê.
+ * `readStoredLocale` resolve a ordem: o que foi salvo, senão o que o navegador
+ * pede, senão português. Escrever `'pt-BR'` aqui sobrescreveria a detecção com um
+ * literal, e o navegador em espanhol receberia português sem nunca perguntar.
  */
 const DEFAULT_SETTINGS = {
   persistProgress: true,
@@ -182,6 +205,13 @@ function readSettings() {
   for (const chave of CHAVES_DE_SETTINGS_REMOVIDAS) {
     delete limpo[chave];
   }
+
+  // O idioma é resolvido DEPOIS do merge, e nunca a partir dele. Um valor
+  // salvo que não existe mais no jogo — idioma removido numa atualização, ou
+  // storage editado à mão — é ignorado, e a detecção do navegador assume. Sem
+  // isso o estado descreveria um idioma que nenhuma cadeia sabe traduzir, e o
+  // `createTranslator` cairia no português calado em vez de detectar.
+  limpo.language = readStoredLocale(SETTINGS_STORAGE_KEY);
 
   return limpo;
 }
@@ -235,7 +265,7 @@ function getRewardVisual(track) {
   return visuals[track] ?? { icon: '✨', accent: 'default' };
 }
 
-function buildRewardCatalog(state) {
+function buildRewardCatalog(state, t) {
   const rewards = [];
 
   // pickaxePower é limitado a 5 (1 base + 4 upgrades). O catálogo antigo
@@ -246,11 +276,11 @@ function buildRewardCatalog(state) {
     rewards.push({
       id: `pickaxe_${nextPickaxe}`,
       track: 'pickaxe',
-      name: `Picareta ${tierLabel(nextPickaxe)}`,
+      name: t('reward.pickaxe.name', { tier: tierLabel(nextPickaxe) }),
       description:
         nextPickaxe === 1
-          ? '+1 nível de picareta: rochas quebram com 1 clique a menos.'
-          : `+1 nível de picareta. Requer Picareta ${tierLabel(nextPickaxe - 1)}.`,
+          ? t('reward.pickaxe.first')
+          : t('reward.pickaxe.next', { tier: tierLabel(nextPickaxe - 1) }),
       apply: (currentState) => ({
         ...currentState,
         pickaxeUpgradeLevel: nextPickaxe,
@@ -265,8 +295,8 @@ function buildRewardCatalog(state) {
     rewards.push({
       id: `vitality_${nextVitality}`,
       track: 'vitality',
-      name: `Vitalidade ${tierLabel(nextVitality)}`,
-      description: '+1 vida máxima. Próxima cave começa com vida cheia.',
+      name: t('reward.vitality.name', { tier: tierLabel(nextVitality) }),
+      description: t('reward.vitality.description'),
       apply: (currentState) => ({
         ...currentState,
         vitalityLevel: nextVitality,
@@ -281,8 +311,11 @@ function buildRewardCatalog(state) {
     rewards.push({
       id: `coins_${nextCoins}`,
       track: 'coins',
-      name: `Moedas ${tierLabel(nextCoins)}`,
-      description: `${nextCoins * 1}% de chance de coletar +${nextCoins} moeda(s).`,
+      name: t('reward.coins.name', { tier: tierLabel(nextCoins) }),
+      // `count` é a QUANTIDADE e `chance` é a probabilidade. A plural tem que
+      // seguir a quantidade: mandar `chance` no lugar trocaria "+2 moedas" por
+      // "+20 moedas" no polonês, porque 20 é uma categoria diferente de 2.
+      description: t('reward.coins.description', { chance: nextCoins * 1, count: nextCoins }),
       apply: (currentState) => ({
         ...currentState,
         coinBonusLevel: nextCoins,
@@ -297,8 +330,8 @@ function buildRewardCatalog(state) {
     rewards.push({
       id: `rocks_${nextRocks}`,
       track: 'rocks',
-      name: `Rochas ${tierLabel(nextRocks)}`,
-      description: `${nextRocks * 1}% de chance de quebrar +${nextRocks} rocha(s).`,
+      name: t('reward.rocks.name', { tier: tierLabel(nextRocks) }),
+      description: t('reward.rocks.description', { chance: nextRocks * 1, count: nextRocks }),
       apply: (currentState) => ({
         ...currentState,
         rockBonusLevel: nextRocks,
@@ -317,10 +350,8 @@ function buildRewardCatalog(state) {
     rewards.push({
       id: `utility_${nextUtility}`,
       track: 'utility',
-      name: `Utilitário ${tierLabel(nextUtility)}`,
-      description: `${Math.round(
-        nextChance * 100
-      )}% de chance de coletar 1 utilitário aleatório ao quebrar uma rocha.`,
+      name: t('reward.utility.name', { tier: tierLabel(nextUtility) }),
+      description: t('reward.utility.description', { chance: Math.round(nextChance * 100) }),
       apply: (currentState) => ({
         ...currentState,
         utilityDropLevel: nextUtility,
@@ -334,8 +365,8 @@ function buildRewardCatalog(state) {
     rewards.push({
       id: `bomb_${nextBomb}`,
       track: 'bomb',
-      name: `Bombas ${tierLabel(nextBomb)}`,
-      description: `${nextBomb * 1}% de chance de revelar 1 bomba aleatória ao quebrar uma rocha.`,
+      name: t('reward.bomb.name', { tier: tierLabel(nextBomb) }),
+      description: t('reward.bomb.description', { chance: nextBomb * 1 }),
       apply: (currentState) => ({
         ...currentState,
         bombRevealLevel: nextBomb,
@@ -347,8 +378,8 @@ function buildRewardCatalog(state) {
   return rewards;
 }
 
-function pickRewardOptions(state, amount = 3) {
-  return shuffle(buildRewardCatalog(state)).slice(0, amount);
+function pickRewardOptions(state, t, amount = 3) {
+  return shuffle(buildRewardCatalog(state, t)).slice(0, amount);
 }
 
 function isCoarsePointerDevice() {
@@ -479,12 +510,52 @@ export default function App() {
   const [biomeSelectContext, setBiomeSelectContext] = useState('menu');
   const [selectedBiomeId, setSelectedBiomeId] = useState(firstBiome.id);
   const [pendingBiomeState, setPendingBiomeState] = useState(null);
-  const [settings, setSettings] = useState(() => readSettings());  const [hudHeight, setHudHeight] = useState(0);
+  const [settings, setSettings] = useState(() => readSettings());
+  const [hudHeight, setHudHeight] = useState(0);
+  const [showLanguage, setShowLanguage] = useState(false);
+  const languageModalRef = useRef(null);
   const [profile, setProfile] = useState(() => readStorage(PROFILE_STORAGE_KEY, { bestCave: 1 }));
   const [isFullscreen, setIsFullscreen] = useState(() => isFullscreenActive());
   const [fullscreenNotice, setFullscreenNotice] = useState(null);
   const [toast, setToast] = useState(null);
   const [pulsingPill, setPulsingPill] = useState(null);
+
+  /**
+   * O tradutor do componente, preso ao idioma escolhido.
+   *
+   * `useMemo` e não a variável de módulo do i18n porque o render precisa ler o
+   * idioma NOVO já na primeira passada. Se o render usasse o idioma do módulo, a
+   * troca só apareceria depois de um efeito — e nenhum efeito redesenha por si
+   * só, então a tela ficaria mostrando metade em português e metade no idioma
+   * novo até o jogador clicar em alguma coisa.
+   *
+   * O `setLocale` do efeito abaixo existe para o outro lado: a cena do Phaser
+   * pede texto em dezenas de lugares sem tradutor na mão, e lê o do módulo.
+   */
+  const t = useMemo(() => createTranslator(settings.language), [settings.language]);
+  const utilityCatalog = useMemo(() => buildUtilityCatalog(t), [t]);
+
+  useEffect(() => {
+    setLocale(settings.language);
+  }, [settings.language]);
+
+  /**
+   * Rola a lista de idiomas até a opção que está em uso.
+   *
+   * A lista tem dez itens e a caixa tem altura de cerca de seis. Sem isto, quem
+   * está no fim da lista — japonês e chinês ficam nas duas últimas posições —
+   * abre a tela e não vê qual está marcado, a não ser que role até o fim. E o
+   * que a tela precisa responder primeiro é "qual é o meu?".
+   *
+   * `nearest` e não `center`: em telas largas, centralizar a opção atual jogaria
+   * a lista inteira para fora de vista, que é o oposto do que se quer.
+   */
+  useEffect(() => {
+    if (!showLanguage) return;
+
+    const selecionada = languageModalRef.current?.querySelector('.language-option.selected');
+    selecionada?.scrollIntoView({ block: 'nearest' });
+  }, [showLanguage, settings.language]);
 
   /**
    * A pausa só faz sentido com uma run em andamento. No lobby a cena já está
@@ -588,6 +659,7 @@ export default function App() {
 
       if (showUtilityShopModal) setShowUtilityShopModal(false);
       else if (showBiomeSelect) setShowBiomeSelection(null);
+      else if (showLanguage) setShowLanguage(false);
       else if (showSettings) setShowSettings(false);
       else if (showInfoModal) setShowInfoModal(false);
       else if (showExitDecision) setShowExitDecision(false);
@@ -600,6 +672,7 @@ export default function App() {
   }, [
     showUtilityShopModal,
     showBiomeSelect,
+    showLanguage,
     showSettings,
     showInfoModal,
     showExitDecision,
@@ -712,7 +785,7 @@ export default function App() {
       setShowUtilityShopModal(false);
       setShowExitDecision(false);
       setRewardRefreshCost(10);
-      setRewardOptions(pickRewardOptions(mergedState, 3));
+      setRewardOptions(pickRewardOptions(mergedState, t, 3));
     };
 
     const handlePlayerDead = (event) => {
@@ -834,7 +907,7 @@ export default function App() {
     const baseState = stateRef.current;
     const biome = getBiomeForCave(targetCave);
     const progress = getBiomeProgress(targetCave);
-    const message = customMessage ?? `Você entrou na Cave ${progress.label} de ${biome.name}.`;
+    const message = customMessage ?? t('msg.enterCave', { cave: progress.label, biome: t(biome.nameKey) });
 
     return normalizeProgressState({
       ...initialState,
@@ -908,7 +981,10 @@ export default function App() {
     if (biomeSelectContext === 'menu') {
       const nextState = buildBiomeStartState(
         selectedBiome.startCave,
-        `Você entrou na Cave ${getBiomeProgress(selectedBiome.startCave).label} de ${selectedBiome.name}.`
+        t('msg.enterCave', {
+          cave: getBiomeProgress(selectedBiome.startCave).label,
+          biome: t(selectedBiome.nameKey)
+        })
       );
 
       closeBiomeSelection();
@@ -934,7 +1010,7 @@ export default function App() {
     if (rewardOptions.length === 0) return;
     if (baseState.coins < rewardRefreshCost) return;
 
-    const catalog = buildRewardCatalog(baseState);
+    const catalog = buildRewardCatalog(baseState, t);
 
     if (catalog.length === 0) return;
 
@@ -962,7 +1038,7 @@ export default function App() {
     const nextState = normalizeProgressState({
       ...baseState,
       coins: baseState.coins - rewardRefreshCost,
-      lastMessage: `Melhorias renovadas por ${rewardRefreshCost} moedas.`
+      lastMessage: t('msg.reroll', { n: rewardRefreshCost })
     });
 
     syncLocalState(nextState);
@@ -985,7 +1061,7 @@ export default function App() {
         ...baseState.utilities,
         [utility.id]: (baseState.utilities?.[utility.id] ?? 0) + 1
       },
-      lastMessage: `${utility.name} adicionada à mochila da run.`
+      lastMessage: t('msg.utilityAdded', { name: utility.name })
     });
 
     syncLocalState(nextState);
@@ -1016,7 +1092,7 @@ export default function App() {
         ...baseState.utilities,
         [utility.id]: Math.max(0, owned - 1)
       },
-      lastMessage: `${utility.name} vendida por ${resaleValue} moedas.`
+      lastMessage: t('msg.utilitySold', { name: utility.name, n: resaleValue })
     });
 
     syncLocalState(nextState);
@@ -1048,7 +1124,7 @@ export default function App() {
       new CustomEvent('cob-open-exit-lobby', {
         detail: {
           nextCave: baseState.nextCaveAvailable ?? baseState.cave + 1,
-          message: `Você decidiu seguir para a próxima cave.`
+          message: t('msg.chooseNextCave')
         }
       })
     );
@@ -1074,8 +1150,15 @@ export default function App() {
       nextCaveAvailable: null,
       outcomeCave: null,
       lastMessage: reward
-        ? `${reward.name} escolhida. Vida restaurada. Você entrou na Cave ${getBiomeProgress(targetCave).label} de ${nextBiome.name}.`
-        : `Você entrou na Cave ${getBiomeProgress(targetCave).label} de ${nextBiome.name}. Vida restaurada.`
+        ? t('msg.rewardChosen', {
+            reward: reward.name,
+            cave: getBiomeProgress(targetCave).label,
+            biome: t(nextBiome.nameKey)
+          })
+        : t('msg.enterCave', {
+            cave: getBiomeProgress(targetCave).label,
+            biome: t(nextBiome.nameKey)
+          })
     });
 
     if (maybeOpenBiomeSelection(nextState, 'transition')) {
@@ -1094,9 +1177,7 @@ export default function App() {
     const baseState = stateRef.current;
     const biomeStartCave = targetCave ?? getBiomeStartCave(baseState.cave ?? 1);
     const biome = getBiomeForCave(biomeStartCave);
-    const message =
-      customMessage ??
-      'Você foi derrotado. As melhorias voltaram ao início do bioma atual, mas suas moedas, objetivos e relíquias foram mantidos.';
+    const message = customMessage ?? t('msg.defeat');
 
     return normalizeProgressState({
       ...initialState,
@@ -1227,52 +1308,52 @@ export default function App() {
               */}
               <div className="hud-cluster">
                 <div className="hud-pill">
-                  <span>CAVE</span>
+                  <span>{t('hud.cave')}</span>
                   <strong>{activeProgress.label}</strong>
                 </div>
 
                 <div className="hud-pill hud-pill-wide">
-                  <span>BIOMA</span>
-                  <strong>{activeBiome.name}</strong>
+                  <span>{t('hud.biome')}</span>
+                  <strong>{t(activeBiome.nameKey)}</strong>
                 </div>
               </div>
 
               <div className="hud-cluster hud-cluster-vitals">
                 <div
                   className={`hud-pill hud-pill-heart ${pulsingPill === 'heart' ? 'pulsing' : ''}`}
-                  title="Vida atual"
+                  title={t('hud.titleLife')}
                 >
-                  <span>HP</span>
+                  <span>{t('hud.hp')}</span>
                   <strong>
                     {gameState.hp}/{gameState.maxHp}
                   </strong>
                 </div>
 
-                <div className="hud-pill" title="Moedas acumuladas nesta run">
-                  <span>MOEDAS</span>
+                <div className="hud-pill" title={t('hud.titleCoins')}>
+                  <span>{t('hud.coins')}</span>
                   <strong>{gameState.coins}</strong>
                 </div>
 
                 <div
                   className={`hud-pill hud-pill-risk ${pulsingPill === 'risk' ? 'pulsing' : ''}`}
-                  title="Bombas ainda escondidas nesta cave"
+                  title={t('hud.titleBombs')}
                 >
-                  <span>BOMBAS</span>
+                  <span>{t('hud.bombs')}</span>
                   <strong>{gameState.bombsRemaining ?? 0}</strong>
                 </div>
 
-                <div className="hud-pill" title="Relíquias na coleção">
-                  <span>RELÍQUIAS</span>
+                <div className="hud-pill" title={t('hud.titleRelics')}>
+                  <span>{t('hud.relics')}</span>
                   <strong>{totalRelics}</strong>
                 </div>
 
-                <div className="hud-pill" title="Nível da picareta">
-                  <span>PICARETA</span>
+                <div className="hud-pill" title={t('hud.titlePickaxe')}>
+                  <span>{t('hud.pickaxe')}</span>
                   <strong>{gameState.pickaxeLevel}</strong>
                 </div>
               </div>
 
-              <div className="utility-bar" role="group" aria-label="Utilitários da run">
+              <div className="utility-bar" role="group" aria-label={t('hud.utilitiesAria')}>
                 {utilityCatalog.map((utility) => {
                   const count = gameState.utilities?.[utility.id] ?? 0;
                   const isSelected = selectedUtility === utility.id;
@@ -1289,8 +1370,8 @@ export default function App() {
                         onClick={() => setSelectedUtility(isSelected ? null : utility.id)}
                         disabled={count <= 0}
                         aria-pressed={isSelected}
-                        aria-label={`${utility.name} (${count} na mochila). ${utility.description}`}
-                        title={`${utility.name} · ${count}`}
+                        aria-label={t('hud.utilityAria', { name: utility.name, count, description: utility.description })}
+                        title={t('hud.utilityTitle', { name: utility.name, count })}
                       >
                         <span className="utility-icon" aria-hidden="true">
                           {utility.icon}
@@ -1300,7 +1381,7 @@ export default function App() {
 
                       {isSelected && count > 0 && (
                         <button className="utility-use-btn" type="button" onClick={() => useUtility(utility.id)}>
-                          Usar
+                          {t('hud.use')}
                         </button>
                       )}
                     </div>
@@ -1341,8 +1422,12 @@ export default function App() {
         */}
         {fullscreenNotice && (
           <div className="fullscreen-notice" role="status">
-            <span>{fullscreenNotice.message}</span>
-            <button type="button" onClick={() => setFullscreenNotice(null)} aria-label="Fechar aviso">
+            <span>{t(fullscreenNotice.messageKey)}</span>
+            <button
+              type="button"
+              onClick={() => setFullscreenNotice(null)}
+              aria-label={t('fullscreen.closeNotice')}
+            >
               ✕
             </button>
           </div>
@@ -1351,18 +1436,18 @@ export default function App() {
         {showExitDecision && showGameHud && !showLobby && (
           <div className="exit-decision-overlay">
             <div className="exit-decision-modal">
-              <div className="result-badge win">SAÍDA ENCONTRADA</div>
+              <div className="result-badge win">{t('exit.badge')}</div>
 
-              <h2>O que deseja fazer?</h2>
+              <h2>{t('exit.question')}</h2>
               <p>{gameState.lastMessage}</p>
 
               <div className="exit-decision-actions">
                 <button className="primary-btn next-cave-btn" type="button" onClick={chooseNextCaveFromExit}>
-                  Próxima cave
+                  {t('exit.nextCave')}
                 </button>
 
                 <button className="ghost-btn utility-lobby-btn" type="button" onClick={continueExploringCurrentCave}>
-                  Continuar na cave atual
+                  {t('exit.keepExploring')}
                 </button>
               </div>
             </div>
@@ -1375,8 +1460,8 @@ export default function App() {
             className={`fullscreen-toggle ${isFullscreen ? 'active' : ''}`}
             onClick={handleToggleFullscreen}
             aria-pressed={isFullscreen}
-            aria-label={isFullscreen ? 'Sair da tela cheia' : 'Entrar em tela cheia'}
-            title={isFullscreen ? 'Sair da tela cheia (Esc)' : 'Tela cheia'}
+            aria-label={t(isFullscreen ? 'fullscreen.exit' : 'fullscreen.enter')}
+            title={t(isFullscreen ? 'fullscreen.exitWithKey' : 'fullscreen.enter')}
           >
             <span aria-hidden="true">{isFullscreen ? '⤢' : '⤡'}</span>
           </button>
@@ -1387,10 +1472,14 @@ export default function App() {
             <div className="lobby-modal lobby-modal-modern">
               <div className={`result-hero ${isDeathLobby ? 'death' : 'win'}`}>
                 <div className={`result-badge ${isDeathLobby ? 'death' : 'win'}`}>
-                  {isDeathLobby ? 'DERROTA' : 'VITÓRIA'}
+                  {t(isDeathLobby ? 'lobby.defeatBadge' : 'lobby.victoryBadge')}
                 </div>
 
-                <h1>{isDeathLobby ? 'Você foi derrotado' : `Cave ${getBiomeProgress(resolvedOutcomeCave).label} concluída`}</h1>
+                <h1>
+                  {isDeathLobby
+                    ? t('lobby.defeatTitle')
+                    : t('lobby.clearTitle', { cave: getBiomeProgress(resolvedOutcomeCave).label })}
+                </h1>
 
                 <p className="result-hero-message">{gameState.lastMessage}</p>
 
@@ -1399,7 +1488,7 @@ export default function App() {
                     <span>🪙</span>
                     <div className="hero-inline-copy">
                       <strong>{gameState.coins}</strong>
-                      <small>Moedas</small>
+                      <small>{t('lobby.coins')}</small>
                     </div>
                   </div>
 
@@ -1409,7 +1498,7 @@ export default function App() {
                       <strong>
                         {gameState.hp}/{gameState.maxHp}
                       </strong>
-                      <small>Vida</small>
+                      <small>{t('lobby.life')}</small>
                     </div>
                   </div>
 
@@ -1417,7 +1506,7 @@ export default function App() {
                     <span>⛏️</span>
                     <div className="hero-inline-copy">
                       <strong>Nv. {gameState.pickaxeLevel}</strong>
-                      <small>Picareta</small>
+                      <small>{t('lobby.pickaxe')}</small>
                     </div>
                   </div>
 
@@ -1425,7 +1514,7 @@ export default function App() {
                     <span>🗺️</span>
                     <div className="hero-inline-copy">
                       <strong>{getBiomeProgress(resolvedOutcomeCave).label}</strong>
-                      <small>Cave</small>
+                      <small>{t('hud.cave')}</small>
                     </div>
                   </div>
 
@@ -1433,7 +1522,7 @@ export default function App() {
                     <span>⬇️</span>
                     <div className="hero-inline-copy">
                       <strong>{isDeathLobby ? `1/${currentBiomeTotal}` : nextProgress.label}</strong>
-                      <small>Próxima</small>
+                      <small>{t('lobby.next')}</small>
                     </div>
                   </div>
                 </div>
@@ -1444,8 +1533,8 @@ export default function App() {
                   <div className="lobby-section-card">
                     <div className="section-title-wrap section-title-wrap-inline">
                       <div>
-                        <h2>Escolha sua melhoria</h2>
-                        <p>Escolha 1 melhoria para a próxima cave.</p>
+                        <h2>{t('lobby.chooseUpgrade')}</h2>
+                        <p>{t('lobby.chooseUpgradeSub')}</p>
                       </div>
 
                       <button
@@ -1454,14 +1543,14 @@ export default function App() {
                         onClick={rerollRewards}
                         disabled={noRewardsLeft || gameState.coins < rewardRefreshCost}
                       >
-                        {gameState.coins >= rewardRefreshCost ? `Trocar · ${rewardRefreshCost}` : `Faltam ${rewardRefreshCost - gameState.coins}`}
+                        {gameState.coins >= rewardRefreshCost
+                          ? t('lobby.reroll', { n: rewardRefreshCost })
+                          : t('lobby.rerollMissing', { n: rewardRefreshCost - gameState.coins })}
                       </button>
                     </div>
 
                     {noRewardsLeft ? (
-                      <p className="empty-text">
-                        Todas as trilhas de melhoria já chegaram ao máximo nesta run.
-                      </p>
+                      <p className="empty-text">{t('lobby.noUpgradesLeft')}</p>
                     ) : (
                       <div className="reward-line-grid">
                         {rewardOptions.map((reward) => {
@@ -1492,7 +1581,7 @@ export default function App() {
                       onClick={continueToNextCave}
                       disabled={!noRewardsLeft && !selectedRewardId}
                     >
-                      Próxima cave
+                      {t('lobby.nextCave')}
                     </button>
 
                     <button
@@ -1500,7 +1589,7 @@ export default function App() {
                       type="button"
                       onClick={() => setShowUtilityShopModal(true)}
                     >
-                      Loja utilitários
+                      {t('lobby.utilityShop')}
                     </button>
 
                     <button
@@ -1508,7 +1597,7 @@ export default function App() {
                       type="button"
                       onClick={() => setShowInfoModal(true)}
                     >
-                      Informações
+                      {t('common.info')}
                     </button>
                   </div>
                 </>
@@ -1517,11 +1606,11 @@ export default function App() {
               {isDeathLobby && (
                 <div className="lobby-bottom-actions">
                   <button className="primary-btn next-cave-btn" type="button" onClick={retryRun}>
-                    Tentar novamente
+                    {t('lobby.retry')}
                   </button>
 
                   <button className="ghost-btn utility-lobby-btn" type="button" onClick={backToMainMenu}>
-                    Menu principal
+                    {t('lobby.mainMenu')}
                   </button>
                 </div>
               )}
@@ -1534,8 +1623,8 @@ export default function App() {
             <div className="utility-shop-modal" onClick={(event) => event.stopPropagation()}>
               <div className="utility-shop-modal-header">
                 <div>
-                  <h2>Loja de utilitários</h2>
-                  <p>Compre consumíveis para usar durante a próxima exploração.</p>
+                  <h2>{t('shop.title')}</h2>
+                  <p>{t('shop.subtitle')}</p>
                 </div>
 
                 <button
@@ -1543,7 +1632,7 @@ export default function App() {
                   type="button"
                   onClick={() => setShowUtilityShopModal(false)}
                 >
-                  Fechar
+                  {t('common.close')}
                 </button>
               </div>
 
@@ -1558,7 +1647,7 @@ export default function App() {
                         <span className="utility-shop-pill-icon">{utility.icon}</span>
                         <div className="utility-shop-pill-text">
                           <strong>{utility.name}</strong>
-                          <small>Na mochila: {owned}</small>
+                          <small>{t('shop.inBag', { n: owned })}</small>
                         </div>
                       </div>
 
@@ -1571,7 +1660,9 @@ export default function App() {
                           onClick={() => buyUtility(utility)}
                           disabled={!canBuy}
                         >
-                          {canBuy ? `Comprar · ${utility.cost}` : `Faltam ${utility.cost - gameState.coins}`}
+                          {canBuy
+                            ? t('shop.buy', { n: utility.cost })
+                            : t('shop.missing', { n: utility.cost - gameState.coins })}
                         </button>
 
                         <button
@@ -1580,7 +1671,9 @@ export default function App() {
                           onClick={() => sellUtility(utility)}
                           disabled={owned <= 0}
                         >
-                          {owned > 0 ? `Vender · ${Math.max(1, Math.floor(utility.cost / 2))}` : 'Sem itens'}
+                          {owned > 0
+                            ? t('shop.sell', { n: Math.max(1, Math.floor(utility.cost / 2)) })
+                            : t('shop.empty')}
                         </button>
                       </div>
                     </div>
@@ -1592,19 +1685,19 @@ export default function App() {
         )}
 
         {pauseOpen && (
-          <div className="pause-overlay" role="dialog" aria-modal="true" aria-label="Jogo pausado">
+          <div className="pause-overlay" role="dialog" aria-modal="true" aria-label={t('pause.aria')}>
             <div className="pause-panel">
-              <span className="pause-kicker">Pausado</span>
+              <span className="pause-kicker">{t('pause.kicker')}</span>
 
               <h2 className="pause-title">
-                {activeBiome.name} · {activeProgress.label}
+                {t('pause.title', { biome: t(activeBiome.nameKey), cave: activeProgress.label })}
               </h2>
 
-              <p className="pause-message">Cave congelada.</p>
+              <p className="pause-message">{t('pause.message')}</p>
 
               <div className="pause-actions">
                 <button className="menu-primary-btn compact" type="button" onClick={() => setShowPause(false)}>
-                  Continuar
+                  {t('pause.continue')}
                 </button>
 
                 <button
@@ -1615,12 +1708,12 @@ export default function App() {
                     backToMainMenu();
                   }}
                 >
-                  Ir para o menu
+                  {t('pause.toMenu')}
                 </button>
               </div>
 
               <span className="pause-hint">
-                <kbd>Esc</kbd> continua
+                <kbd>Esc</kbd> {t('pause.hint')}
               </span>
             </div>
           </div>
@@ -1636,23 +1729,25 @@ export default function App() {
             */}
             <div className="menu-rail">
               <div className="menu-lockup">
-                <span className="menu-kicker">ArchangelSoft</span>
+                <span className="menu-kicker">{t('menu.kicker')}</span>
                 <h1 className="menu-title">
                   Coins<span className="menu-title-or">or</span>Bombs
                 </h1>
                 <span className="menu-tagline">
-                  {TOTAL_CAVES} caves · {BIOMES.length} biomas · nenhuma segunda chance
+                  {t('menu.taglineCaves', { count: TOTAL_CAVES })} ·{' '}
+                  {t('menu.taglineBiomes', { count: BIOMES.length })} ·{' '}
+                  {t('menu.taglineTail')}
                 </span>
               </div>
 
-              <nav className="menu-actions" aria-label="Menu principal">
+              <nav className="menu-actions" aria-label={t('menu.mainAria')}>
                 <button
                   className="menu-item"
                   type="button"
                   onClick={() => openBiomeSelection({ context: 'menu', biomeId: activeBiome.id })}
                 >
                   <span className="menu-item-bar" aria-hidden="true" />
-                  <span className="menu-item-label">Entrar</span>
+                  <span className="menu-item-label">{t('menu.enter')}</span>
                 </button>
 
                 <button
@@ -1661,7 +1756,16 @@ export default function App() {
                   onClick={() => setShowSettings(true)}
                 >
                   <span className="menu-item-bar" aria-hidden="true" />
-                  <span className="menu-item-label">Configurações</span>
+                  <span className="menu-item-label">{t('menu.settings')}</span>
+                </button>
+
+                <button
+                  className="menu-item"
+                  type="button"
+                  onClick={() => setShowLanguage(true)}
+                >
+                  <span className="menu-item-bar" aria-hidden="true" />
+                  <span className="menu-item-label">{t('language.title')}</span>
                 </button>
 
                 <button
@@ -1670,12 +1774,48 @@ export default function App() {
                   onClick={() => setShowInfoModal(true)}
                 >
                   <span className="menu-item-bar" aria-hidden="true" />
-                  <span className="menu-item-label">Informações</span>
+                  <span className="menu-item-label">{t('menu.info')}</span>
                 </button>
               </nav>
 
               <div className="menu-foot">
                 <span className="menu-foot-item">v{GAME_VERSION}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showLanguage && showMenu && (
+          <div className="menu-settings-backdrop" onClick={() => setShowLanguage(false)}>
+            <div className="menu-settings-modal language-modal" ref={languageModalRef} onClick={(event) => event.stopPropagation()}>
+              <h2>{t('language.title')}</h2>
+              <p className="language-hint">{t('language.hint')}</p>
+
+              <div className="language-list" role="radiogroup" aria-label={t('language.title')}>
+                {LOCALES.map((locale) => {
+                  const ativo = locale.id === settings.language;
+
+                  return (
+                    <button
+                      key={locale.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={ativo}
+                      className={`language-option ${ativo ? 'selected' : ''}`}
+                      onClick={() => setSettings((current) => ({ ...current, language: locale.id }))}
+                    >
+                      <span className="language-option-native">{locale.nativeName}</span>
+                      <span className="language-option-name">{locale.name}</span>
+                      {ativo && <span className="language-option-mark">{t('language.current')}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="settings-actions">
+                <button className="menu-primary-btn compact" type="button" onClick={() => setShowLanguage(false)}>
+                  {t('common.back')}
+                </button>
               </div>
             </div>
           </div>
@@ -1700,11 +1840,15 @@ export default function App() {
             <div className="menu-settings-modal biome-select-modal" onClick={(event) => event.stopPropagation()}>
               <div className="menu-info-head biome-select-head">
                 <div>
-                  <h2>{biomeSelectContext === 'menu' ? 'Selecione um bioma' : 'Próximo bioma'}</h2>
+                  <h2>
+                    {t(biomeSelectContext === 'menu' ? 'biomeSelect.title.menu' : 'biomeSelect.title.next')}
+                  </h2>
                 </div>
 
                 <span className="biome-select-subtle">
-                  {settings.developerMode ? 'Modo desenvolvedor' : `Melhor cave ${gameState.bestCave}`}
+                  {settings.developerMode
+                    ? t('biomeSelect.devMode')
+                    : t('biomeSelect.bestCave', { n: gameState.bestCave })}
                 </span>
               </div>
 
@@ -1720,24 +1864,24 @@ export default function App() {
                   const unlockedByDev = settings.developerMode && !isBiomeCompleted(biome, gameState.bestCave ?? 1)
                     && (gameState.bestCave ?? 1) < biome.unlockCave;
                   const statusLabel = !unlocked
-                    ? 'Bloqueado'
+                    ? t('biomeSelect.status.locked')
                     : unlockedByDev
-                      ? 'Dev'
+                      ? t('biomeSelect.status.dev')
                       : completed
-                        ? 'Concluído'
+                        ? t('biomeSelect.status.completed')
                         : selectable
-                          ? 'Disponível'
-                          : 'Visitado';
+                          ? t('biomeSelect.status.available')
+                          : t('biomeSelect.status.visited');
 
                   // Só o bioma bloqueado ganha texto: é o único caso em que o
                   // jogador precisa saber o que falta. Os demais já têm badge
                   // dizendo o estado, e a frase só ocupava espaço.
                   let description = null;
 
-                  if (!unlocked) {
-                    description = `Cave ${getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave}`;
-                  } else if (unlockedByDev) {
-                    description = `Cave ${getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave}`;
+                  if (!unlocked || unlockedByDev) {
+                    const caveDeDesbloqueio =
+                      getBiomeForCave(biome.unlockCave - 1)?.endCave ?? biome.unlockCave;
+                    description = t('biomeSelect.unlockAt', { n: caveDeDesbloqueio });
                   }
 
                   return (
@@ -1750,11 +1894,11 @@ export default function App() {
                       disabled={!selectable}
                     >
                       <div className="biome-card-top">
-                        <strong>{biome.name}</strong>
+                        <strong>{t(biome.nameKey)}</strong>
                         <span className="biome-status-badge">{statusLabel}</span>
                       </div>
 
-                      <span className="biome-card-range">{biome.rangeLabel}</span>
+                      <span className="biome-card-range">{t(biome.rangeKey)}</span>
                       {description && <p>{description}</p>}
                     </button>
                   );
@@ -1763,11 +1907,11 @@ export default function App() {
 
               <div className="biome-select-actions">
                 <button className="menu-primary-btn compact" type="button" onClick={confirmBiomeSelection}>
-                  {biomeSelectContext === 'menu' ? 'Começar neste bioma' : 'Entrar no bioma'}
+                  {t(biomeSelectContext === 'menu' ? 'biomeSelect.start' : 'biomeSelect.enter')}
                 </button>
 
                 <button className="menu-secondary-btn compact" type="button" onClick={closeBiomeSelection}>
-                  {biomeSelectContext === 'menu' ? 'Fechar' : 'Voltar'}
+                  {t(biomeSelectContext === 'menu' ? 'common.close' : 'common.back')}
                 </button>
               </div>
             </div>
@@ -1777,7 +1921,7 @@ export default function App() {
         {showSettings && showMenu && (
           <div className="menu-settings-backdrop" onClick={() => setShowSettings(false)}>
             <div className="menu-settings-modal" onClick={(event) => event.stopPropagation()}>
-              <h2>Configurações</h2>
+              <h2>{t('settings.title')}</h2>
 
               <label className="settings-toggle">
                 <input
@@ -1788,13 +1932,11 @@ export default function App() {
                   }
                 />
                 <span>
-                  <strong>Tela cheia ao começar</strong>
+                  <strong>{t('settings.fullscreen')}</strong>
                   {/* Esta descrição fica porque o caso é do navegador, não da
                       opção: no iPhone o botão simplesmente não funciona, e sem
                       dizer isso o jogador acha que a configuração quebrou. */}
-                  {needsPwaHint && (
-                    <small>No iPhone e no iPad o Safari não tem tela cheia — instale pela Tela de Início.</small>
-                  )}
+                  {needsPwaHint && <small>{t('settings.fullscreenPwaHint')}</small>}
                 </span>
               </label>
 
@@ -1807,7 +1949,7 @@ export default function App() {
                   }
                 />
                 <span>
-                  <strong>Lembrar melhor cave</strong>
+                  <strong>{t('settings.rememberCave')}</strong>
                 </span>
               </label>
 
@@ -1820,13 +1962,13 @@ export default function App() {
                   }
                 />
                 <span>
-                  <strong>Modo desenvolvedor</strong>
+                  <strong>{t('settings.devMode')}</strong>
                 </span>
               </label>
 
               {settings.developerMode && (
                 <p className="settings-dev-note">
-                  {unlockedBiomes.length} de {BIOMES.length} biomas liberados
+                  {t('settings.devNote', { unlocked: unlockedBiomes.length, total: BIOMES.length })}
                 </p>
               )}
 
@@ -1837,16 +1979,18 @@ export default function App() {
                   uma pergunta que o jogador fez no sistema e que o jogo
                   respeitou. */}
               <div className="settings-line">
-                <span>Entrada</span>
-                <strong>{prefersReducedMotion() ? 'Reduzida' : 'Animada'}</strong>
+                <span>{t('settings.input')}</span>
+                <strong>{t(prefersReducedMotion() ? 'settings.inputReduced' : 'settings.inputAnimated')}</strong>
               </div>
               <div className="settings-line">
-                <span>Orientação recomendada</span>
-                <strong>{isCoarsePointer ? 'Paisagem' : 'Paisagem (desktop)'}</strong>
+                <span>{t('settings.orientation')}</span>
+                <strong>
+                  {t(isCoarsePointer ? 'settings.orientationLandscape' : 'settings.orientationLandscapeDesktop')}
+                </strong>
               </div>
 
               <div className="settings-line">
-                <span>Melhor cave registrada</span>
+                <span>{t('settings.bestCaveRecorded')}</span>
                 <strong>
                   {profile.bestCave ?? 1} · {bestCaveProgress.label}
                 </strong>
@@ -1854,7 +1998,7 @@ export default function App() {
 
               <div className="settings-actions">
                 <button className="menu-primary-btn compact" type="button" onClick={() => setShowSettings(false)}>
-                  Fechar
+                  {t('common.close')}
                 </button>
 
                 <button
@@ -1864,11 +2008,17 @@ export default function App() {
                     setProfile({ bestCave: 1 });
                     // O modo desenvolvedor sobrevive ao reset: o botão se
                     // chama "Reiniciar progresso", e desligar a ferramenta de
-                    // teste no meio de uma sessão seria surpresa.
-                    setSettings((current) => ({ ...DEFAULT_SETTINGS, developerMode: current.developerMode }));
+                    // teste no meio de uma sessão seria surpresa. O idioma
+                    // sobrevive pelo mesmo motivo, e por um segundo: reiniciar
+                    // o progresso é sobre a run, não sobre como a pessoa lê.
+                    setSettings((current) => ({
+                      ...DEFAULT_SETTINGS,
+                      developerMode: current.developerMode,
+                      language: current.language
+                    }));
                   }}
                 >
-                  Reiniciar progresso
+                  {t('common.resetProgress')}
                 </button>
               </div>
             </div>
@@ -1879,33 +2029,33 @@ export default function App() {
         {showInfoModal && (
           <div className="menu-settings-backdrop" onClick={() => setShowInfoModal(false)}>
             <div className="menu-settings-modal info-modal" onClick={(event) => event.stopPropagation()}>
-              <h2>Informações da Progressão</h2>
+              <h2>{t('info.title')}</h2>
 
               <section className="menu-info-card">
                 <div className="menu-info-head">
-                  <h2>Biomas desbloqueados</h2>
+                  <h2>{t('info.biomesUnlocked')}</h2>
                   <span>
                     {settings.developerMode
-                      ? `Modo desenvolvedor · melhor cave ${gameState.bestCave}`
-                      : `Melhor cave ${gameState.bestCave}`}
+                      ? t('info.devModeBestCave', { n: gameState.bestCave })
+                      : t('biomeSelect.bestCave', { n: gameState.bestCave })}
                   </span>
                 </div>
 
                 <div className="menu-chip-row">
                   {unlockedBiomes.map((biome) => (
                     <span key={biome.id} className="menu-chip">
-                      {biome.name}
+                      {t(biome.nameKey)}
                     </span>
                   ))}
                 </div>
 
                 <div className="menu-summary-grid">
                   <div>
-                    <span>Bioma atual</span>
-                    <strong>{activeBiome.name}</strong>
+                    <span>{t('info.currentBiome')}</span>
+                    <strong>{t(activeBiome.nameKey)}</strong>
                   </div>
                   <div>
-                    <span>Cave atual</span>
+                    <span>{t('info.currentCave')}</span>
                     <strong>{activeProgress.label}</strong>
                   </div>
                 </div>
@@ -1913,7 +2063,7 @@ export default function App() {
 
               <section className="menu-info-card">
                 <div className="menu-info-head">
-                  <h2>Objetivos</h2>
+                  <h2>{t('info.objectives')}</h2>
                   <span>{currentObjectives.filter((item) => item.completed).length}/{currentObjectives.length}</span>
                 </div>
 
@@ -1921,12 +2071,12 @@ export default function App() {
                   {currentObjectives.map((objective) => (
                     <div key={objective.id} className={`objective-card ${objective.completed ? 'completed' : ''}`}>
                       <div className="objective-card-head">
-                        <strong>{objective.label}</strong>
+                        <strong>{t(objective.labelKey)}</strong>
                         <span>
                           {Math.min(objective.value, objective.target)}/{objective.target}
                         </span>
                       </div>
-                      <p>{objective.description}</p>
+                      <p>{t(objective.descriptionKey)}</p>
                       <div className="objective-progress-bar">
                         <span style={{ width: `${objective.progress * 100}%` }} />
                       </div>
@@ -1937,16 +2087,16 @@ export default function App() {
 
               <section className="menu-info-card">
                 <div className="menu-info-head">
-                  <h2>Relíquias</h2>
-                  <span>Total {totalRelics}</span>
+                  <h2>{t('info.relics')}</h2>
+                  <span>{t('info.totalRelics', { n: totalRelics })}</span>
                 </div>
 
                 <div className="relic-grid compact">
                   {relicEntries.map((relic) => (
                     <div key={relic.id} className={`relic-card ${(gameState.collection?.[relic.id] ?? 0) > 0 ? 'owned' : ''}`}>
                       <span className="relic-icon">{relic.icon}</span>
-                      <strong>{relic.name}</strong>
-                      <small>{relic.description}</small>
+                      <strong>{t(relic.nameKey)}</strong>
+                      <small>{t(relic.descriptionKey)}</small>
                       <span className="relic-count">x{gameState.collection?.[relic.id] ?? 0}</span>
                     </div>
                   ))}
@@ -1957,7 +2107,7 @@ export default function App() {
                   botão_someava abaixo da dobra. */}
               <div className="modal-actions">
                 <button className="menu-primary-btn compact" type="button" onClick={() => setShowInfoModal(false)}>
-                  Fechar
+                  {t('common.close')}
                 </button>
               </div>
             </div>
@@ -1965,7 +2115,7 @@ export default function App() {
         )}
 
         {entryPhase === ENTRY_PHASE.PLAYING && isCoarsePointer && !showRotateLock && (
-          <div className="rotate-device-hint">Gire o celular para jogar melhor em modo paisagem.</div>
+          <div className="rotate-device-hint">{t('rotate.hint')}</div>
         )}
 
         {showRotateGate && (
@@ -1974,12 +2124,8 @@ export default function App() {
               <div className="rotate-lock-icon" aria-hidden="true">
                 📱
               </div>
-              <h2>Gire o celular</h2>
-              <p>
-                {entryPhase === ENTRY_PHASE.PLAYING
-                  ? 'Para continuar jogando, use o dispositivo no modo paisagem.'
-                  : 'Use o dispositivo no modo paisagem para liberar o menu.'}
-              </p>
+              <h2>{t('rotate.title')}</h2>
+              <p>{t(entryPhase === ENTRY_PHASE.PLAYING ? 'rotate.playing' : 'rotate.menu')}</p>
             </div>
           </div>
         )}

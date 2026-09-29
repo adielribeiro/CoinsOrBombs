@@ -535,8 +535,27 @@ button {
 }
 
 .hud-cluster-vitals {
-  justify-self: center;
+  /*
+   * `stretch`, e não `center`.
+   *
+   * Com `center`, o item é dimensionado pelo CONTEÚDO e centrado na coluna — e
+   * quando o conteúdo é maior que a coluna, ele transborda dos dois lados em vez
+   * de encolher. Era isso que produzia a sobreposição: a coluna do meio media
+   * 188px e os cinco pills de vida mediam 356px, então o bloco inteiro saía 84px
+   * para cada lado e passava por cima do cluster da esquerda. Medido por
+   * `getBoundingClientRect` com a janela em 415px, e em português tanto quanto
+   * em chinês: não é efeito de idioma.
+   *
+   * `stretch` prende o bloco na coluna, e o `overflow-x: auto` herdado do
+   * `nowrap` dos rótulos faz o conteúdo restolar dentro dela.
+   */
+  justify-self: stretch;
   justify-content: center;
+  /* `safe` existe para o caso de conteúdo maior que a caixa: sem ele, o
+     `overflow: auto` com `center` deixa a parte esquerda inalcançável, porque o
+     transbordo começa antes da origem do scroll. Navegadores que não conhecem
+     `safe` usam a linha de cima, que é o comportamento antigo. */
+  justify-content: safe center;
   gap: 18px;
 }
 
@@ -565,6 +584,14 @@ button {
   text-transform: uppercase;
   color: var(--ink-faint);
   line-height: 1;
+  /*
+   * `nowrap` aqui não é um detalhe de layout, é o que impede o HUD de virar
+   * uma coluna de letras. O rótulo vivia sem esta regra e quebrava quando o
+   * pill era espremido: em português "MOEDAS" virava "MOEDA / S", e em chinês e
+   * japonês — que não têm palavra, só ideograma — virava uma letra por linha.
+   * Com dez idiomas, o pior caso deixou de ser hipotético.
+   */
+  white-space: nowrap;
 }
 
 .hud-pill strong {
@@ -573,6 +600,23 @@ button {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
+  white-space: nowrap;
+}
+
+/*
+ * Em tela estreita os sete pills do HUD não cabem na largura, e o que a grade
+ * `minmax(0, 1fr)` faz é espremê-los até o rótulo quebrar. Rolando na horizontal
+ * o conteúdo continua inteiro e legível, e o jogador arrasta. Esconder a barra
+ * de rolagem é o que faz parecer um gesto e não um controle.
+ */
+.hud-cluster-vitals {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hud-cluster-vitals::-webkit-scrollbar {
+  display: none;
 }
 
 .hud-pill-heart strong {
@@ -1623,6 +1667,83 @@ button {
 .biome-card.selected .biome-status-badge {
   border-color: color-mix(in srgb, var(--biome-accent) 45%, transparent);
   color: var(--ink);
+}
+
+/* Tela de idioma */
+
+.language-modal {
+  width: min(460px, 100%);
+}
+
+.language-hint {
+  margin: 4px 0 16px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+/*
+ * A lista é um `role="radiogroup"` com `role="radio"` em cada item, e não uma
+ * fileira de botões: o teclado precisa percorrer com as setas e o leitor de tela
+ * precisa dizer quantas opções existem. O `aria-checked` é o que carrega o estado
+ * selecionado — a classe `.selected` é só a aparência.
+ */
+.language-list {
+  display: grid;
+  gap: 6px;
+  max-height: min(52dvh, 420px);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.language-option {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.language-option:hover {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.language-option.selected {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/*
+ * O nome nativo vem PRIMEIRO e em corpo maior, e o nome em português vai ao lado,
+ * menor. A ordem não é estética: quem abriu essa tela talvez não leia português,
+ * e é o nome no próprio idioma que ele precisa reconhecer primeiro.
+ */
+.language-option-native {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.language-option-name {
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+.language-option-mark {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  white-space: nowrap;
 }
 
 /* Informações, objetivos, relíquias */

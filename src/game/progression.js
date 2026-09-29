@@ -8,15 +8,24 @@
  * `unlockCave` é a cave que precisa ser CONCLUÍDA para liberar o bioma, então
  * o segundo bioma abre ao terminar a 10, o terceiro ao terminar a 20, e assim
  * por diante.
+ *
+ * `nameKey` e `rangeKey` são a CHAVE de tradução, e `name`/`rangeLabel` são o
+ * texto em português. A chave é o que a tela usa; o português fica como
+ * referência para quem lê o código e para o teste, que compara a chave com o
+ * dicionário. O nome não é resolvido aqui de propósito: esta lista é montada uma
+ * vez no carregamento do módulo, e resolver o texto nela congelaria o idioma de
+ * quem abriu o jogo.
  */
 export const BIOMES = [
   {
     id: 'sunstone',
     name: 'Mina Solar',
+    nameKey: 'biome.sunstone.name',
     unlockCave: 1,
     startCave: 1,
     endCave: 10,
     rangeLabel: 'Caves 1-10',
+    rangeKey: 'biome.sunstone.range',
     backgroundKey: 'cave_bg_sunstone',
     relicId: 'amber_fang',
     relicChance: 0.12,
@@ -42,10 +51,12 @@ export const BIOMES = [
   {
     id: 'frost',
     name: 'Gruta de Gelo',
+    nameKey: 'biome.frost.name',
     unlockCave: 10,
     startCave: 11,
     endCave: 20,
     rangeLabel: 'Caves 11-20',
+    rangeKey: 'biome.frost.range',
     backgroundKey: 'cave_bg_frost',
     relicId: 'frost_bloom',
     relicChance: 0.14,
@@ -71,10 +82,12 @@ export const BIOMES = [
   {
     id: 'ember',
     name: 'Profundezas Rubras',
+    nameKey: 'biome.ember.name',
     unlockCave: 20,
     startCave: 21,
     endCave: 30,
     rangeLabel: 'Caves 21-30',
+    rangeKey: 'biome.ember.range',
     backgroundKey: 'cave_bg_ember',
     relicId: 'ember_core',
     relicChance: 0.16,
@@ -100,10 +113,12 @@ export const BIOMES = [
   {
     id: 'ruins',
     name: 'Ruínas Abissais',
+    nameKey: 'biome.ruins.name',
     unlockCave: 30,
     startCave: 31,
     endCave: 40,
     rangeLabel: 'Caves 31-40',
+    rangeKey: 'biome.ruins.range',
     backgroundKey: 'cave_bg_ruins',
     relicId: 'ruin_tablet',
     relicChance: 0.18,
@@ -129,10 +144,12 @@ export const BIOMES = [
   {
     id: 'wind',
     name: 'Galeria de Vento',
+    nameKey: 'biome.wind.name',
     unlockCave: 40,
     startCave: 41,
     endCave: 50,
     rangeLabel: 'Caves 41-50',
+    rangeKey: 'biome.wind.range',
     backgroundKey: 'cave_bg_wind',
     relicId: 'gust_shell',
     relicChance: 0.2,
@@ -161,10 +178,12 @@ export const BIOMES = [
   {
     id: 'crystal',
     name: 'Câmara de Cristal',
+    nameKey: 'biome.crystal.name',
     unlockCave: 50,
     startCave: 51,
     endCave: 60,
     rangeLabel: 'Caves 51-60',
+    rangeKey: 'biome.crystal.range',
     backgroundKey: 'cave_bg_crystal',
     relicId: 'prism_core',
     relicChance: 0.24,
@@ -195,43 +214,55 @@ export const RELIC_CATALOG = {
     id: 'amber_fang',
     icon: '🦴',
     name: 'Presa Âmbar',
+    nameKey: 'relic.amber_fang.name',
     biomeId: 'sunstone',
-    description: 'Fragmento fóssil perdido na Mina Solar.'
+    description: 'Fragmento fóssil perdido na Mina Solar.',
+    descriptionKey: 'relic.amber_fang.description',
   },
   frost_bloom: {
     id: 'frost_bloom',
     icon: '❄️',
     name: 'Flor de Gelo',
+    nameKey: 'relic.frost_bloom.name',
     biomeId: 'frost',
-    description: 'Cristal orgânico raro das cavernas congeladas.'
+    description: 'Cristal orgânico raro das cavernas congeladas.',
+    descriptionKey: 'relic.frost_bloom.description',
   },
   ember_core: {
     id: 'ember_core',
     icon: '🔥',
     name: 'Núcleo Incandescente',
+    nameKey: 'relic.ember_core.name',
     biomeId: 'ember',
-    description: 'Rocha viva aquecida no coração das profundezas.'
+    description: 'Rocha viva aquecida no coração das profundezas.',
+    descriptionKey: 'relic.ember_core.description',
   },
   ruin_tablet: {
     id: 'ruin_tablet',
     icon: '📜',
     name: 'Placa das Ruínas',
+    nameKey: 'relic.ruin_tablet.name',
     biomeId: 'ruins',
-    description: 'Inscrição ancestral trazida das Ruínas Abissais.'
+    description: 'Inscrição ancestral trazida das Ruínas Abissais.',
+    descriptionKey: 'relic.ruin_tablet.description',
   },
   gust_shell: {
     id: 'gust_shell',
     icon: '🐚',
     name: 'Concha de Rajada',
+    nameKey: 'relic.gust_shell.name',
     biomeId: 'wind',
-    description: 'Casco oco que canta quando o vento passa.'
+    description: 'Casco oco que canta quando o vento passa.',
+    descriptionKey: 'relic.gust_shell.description',
   },
   prism_core: {
     id: 'prism_core',
     icon: '💎',
     name: 'Núcleo de Prisma',
+    nameKey: 'relic.prism_core.name',
     biomeId: 'crystal',
-    description: 'Coração da Câmara de Cristal.'
+    description: 'Coração da Câmara de Cristal.',
+    descriptionKey: 'relic.prism_core.description',
   }
 };
 
@@ -239,28 +270,36 @@ export const OBJECTIVE_CATALOG = [
   {
     id: 'rocks',
     label: 'Britador',
+    labelKey: 'objective.rocks.label',
     description: 'Quebre 40 rochas no total.',
+    descriptionKey: 'objective.rocks.description',
     target: 40,
     statKey: 'totalRocksBroken'
   },
   {
     id: 'coins',
     label: 'Garimpeiro',
+    labelKey: 'objective.coins.label',
     description: 'Colete 80 moedas no total.',
+    descriptionKey: 'objective.coins.description',
     target: 80,
     statKey: 'totalCoinsCollected'
   },
   {
     id: 'caves',
     label: 'Explorador',
+    labelKey: 'objective.caves.label',
     description: 'Conclua 8 caves.',
+    descriptionKey: 'objective.caves.description',
     target: 8,
     statKey: 'totalCavesCleared'
   },
   {
     id: 'relics',
     label: 'Curador',
+    labelKey: 'objective.relics.label',
     description: 'Encontre 4 relíquias.',
+    descriptionKey: 'objective.relics.description',
     target: 4,
     statKey: 'totalRelicsFound'
   }

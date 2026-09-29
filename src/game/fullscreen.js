@@ -138,34 +138,26 @@ export function onFullscreenChange(handler) {
  * Converte a falha em algo que a UI consiga explicar. Sem isto o jogador
  * só vê "algo deu errado" e não sabe que precisa girar o celular, instalar
  * o app, ou que o navegador simplesmente não permite.
+ *
+ * Devolve a CHAVE da mensagem, e não o texto. Este arquivo não sabe nada sobre
+ * idioma — ele descreve a falha do navegador, e o texto que o jogador lê é
+ * traduzido no ponto onde ele é mostrado. Devolver a frase pronta faria estas
+ * quatro mensagens serem as últimas quatro em português num jogo de dez idiomas.
  */
 export function describeFullscreenError(failure) {
   const reason = failure?.reason;
 
   if (reason === 'ios') {
-    return {
-      code: 'ios',
-      message:
-        'No iPhone e no iPad o Safari não tem tela cheia. Adicione o jogo à Tela de Início para jogar sem a barra do navegador.'
-    };
+    return { code: 'ios', messageKey: 'fullscreen.error.ios' };
   }
 
   if (reason === 'unsupported') {
-    return {
-      code: 'unsupported',
-      message: 'Este navegador não oferece tela cheia para a web. Nada foi alterado.'
-    };
+    return { code: 'unsupported', messageKey: 'fullscreen.error.unsupported' };
   }
 
   if (reason === 'gesture') {
-    return {
-      code: 'gesture',
-      message: 'O navegador recusou a tela cheia. Toque em "Tela cheia" para tentar de novo.'
-    };
+    return { code: 'gesture', messageKey: 'fullscreen.error.gesture' };
   }
 
-  return {
-    code: 'denied',
-    message: 'Não foi possível entrar em tela cheia. Use o botão de tela cheia no canto inferior.'
-  };
+  return { code: 'denied', messageKey: 'fullscreen.error.denied' };
 }

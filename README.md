@@ -117,6 +117,43 @@ mapa: a moeda subindo com o valor, a explosão com o flash de câmera, a
 relíquia dourada, o tremor da rocha, o `-N` flutuando com os cliques que
 faltam, e o contorno vermelho quando você clica numa rocha ainda cercada.
 
+## Idiomas
+
+O jogo fala **dez idiomas**: Português (Brasil), Inglês, Espanhol, Francês, Alemão,
+Italiano, Polonês, Hindi, Chinês (simplificado) e Japonês. O seletor é o item
+**Idioma** no menu principal, e a troca vale na hora, sem reiniciar.
+
+Quem nunca escolheu recebe o idioma **do navegador**. A detecção casa por
+prefixo — `en-GB` encontra `en`, `pt-PT` encontra `pt-BR`, `zh-HK` encontra
+`zh-CN` — e varre a lista de preferências do navegador na ordem, então alguém com
+navegador em `[ja, en]` vê japonês. Se nada casar, fica em português.
+
+A lista mostra o nome **no próprio idioma** primeiro e o nome em português ao
+lado, menor, porque quem abre essa tela talvez ainda não saiba ler português.
+
+### Como o texto está organizado
+
+- `src/i18n/index.js` — o registro de idiomas, a detecção, o interpolador e as
+  regras de plural.
+- `src/i18n/locales/<id>.js` — um arquivo por idioma.
+- **`src/i18n/locales/pt-BR.js` é a fonte da verdade do conjunto de chaves.** As
+  chaves novas entram lá primeiro, e `test/i18n.test.mjs` exige que os outros
+  nove tenham exatamente o mesmo conjunto. Sem isso, traduzir nove idiomas vira
+  nove fontes de buraco silencioso: a chave que ninguém traduziu não dá erro, ela
+  mostra o nome da chave na tela.
+
+Uma chave que falta **aparece com o nome**, no formato `[fr] lobby.proxmaCave`.
+Devolver string vazia esconderia o erro; devolver a chave deixa o buraco visível.
+
+Plural é por idioma, de verdade. Cinco chaves mudam de forma com o número, e o
+polonês é o caso que justifica o mecanismo: `one` para 1, `few` para 2 a 4
+(exceto 12 a 14) e `many` para o resto — 1 *jaskinia*, 3 *jaskinie*, 5 *jaskiń*.
+Chinês e japonês não têm plural e declaram uma forma só.
+
+`progression.js` guarda a chave de tradução ao lado do texto em português
+(`nameKey` ao lado de `name`) e a tela usa a chave. Nada resolve texto no módulo:
+um nome resolvido no carregamento ficaria preso no idioma de quem abriu o jogo.
+
 ## Configurações
 
 - **Tela cheia ao começar** — entra em tela cheia ao iniciar a run. Ligado por
@@ -124,6 +161,9 @@ faltam, e o contorno vermelho quando você clica numa rocha ainda cercada.
 - **Lembrar melhor cave** — salva o recorde em `localStorage`.
 - **Modo desenvolvedor** — libera os seis biomas de uma vez, para pular direto
   para qualquer ambiente sem jogar a progressão inteira.
+
+O idioma e o modo desenvolvedor sobrevivem a **Reiniciar progresso**: o botão é
+sobre a run, não sobre como a pessoa lê.
 
 ### Sobre a animação reduzida
 
