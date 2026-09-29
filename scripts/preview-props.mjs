@@ -25,10 +25,10 @@ import {
   BASE_TILE_HEIGHT,
   BASE_TILE_WIDTH,
   CAVE_ENTRANCE_BASE,
-  CAVE_ENTRANCE_WIDTH,
   PICKAXE_DISPLAY,
   toIso
 } from '../src/game/config.js';
+import { ENTRANCE_DISPLAY, getEntranceAspect, getEntranceKey } from '../src/game/entrances.js';
 import { ROCK_DISPLAY, ROCK_CELL_SIZE, ROCK_SHEET_COLUMNS, getRockVariantCount } from '../src/game/rocks.js';
 import { readPng } from './png.mjs';
 import { encodePng } from './png-encode.mjs';
@@ -43,7 +43,7 @@ const TILE_H = BASE_TILE_HEIGHT;
 // --- arte -----------------------------------------------------------------
 
 const fundo = await readPng(`public/assets/cave_bg_${BIOME}.png`);
-const boca = await readPng('public/assets/cave_entrance.png');
+const boca = await readPng(`public/assets/${getEntranceKey(BIOME)}.png`);
 const picareta = await readPng('public/assets/pickaxe_lvl1.png');
 const folha = await readPng(`public/assets/rocks_${BIOME}.png`);
 
@@ -182,9 +182,10 @@ for (const c of celulas) {
   desenhaLosango(c.x, c.y);
 
   if (c.col === entrada.col && c.row === entrada.row) {
-    // Exatamente o bloco de `renderMap`, com as mesmas constantes.
-    const larguraBoca = Math.round(TILE_W * CAVE_ENTRANCE_WIDTH);
-    const alturaBoca = Math.round((larguraBoca * 113) / 156);
+    // Exatamente o bloco de `renderMap`, com as mesmas constantes e a proporção
+    // do bioma — que agora é uma por bioma, e não uma só.
+    const larguraBoca = Math.round(TILE_W * ENTRANCE_DISPLAY);
+    const alturaBoca = Math.round(larguraBoca * getEntranceAspect(BIOME));
     objetos.push({
       tipo: 'boca',
       col: c.col,
@@ -273,7 +274,7 @@ await writeFile('props-preview.png', encodePng(largura, altura, out));
 
 console.log(`props-preview.png ${largura}x${altura}  (bioma ${BIOME})`);
 console.log(`  tile ${TILE_W}x${TILE_H}`);
-console.log(`  boca   ${Math.round(TILE_W * CAVE_ENTRANCE_WIDTH)}x${Math.round((Math.round(TILE_W * CAVE_ENTRANCE_WIDTH) * 113) / 156)}  base +${(TILE_H * CAVE_ENTRANCE_BASE).toFixed(1)}px do centro`);
+console.log(`  boca   ${Math.round(TILE_W * ENTRANCE_DISPLAY)}x${Math.round(Math.round(TILE_W * ENTRANCE_DISPLAY) * getEntranceAspect(BIOME))}  base +${(TILE_H * CAVE_ENTRANCE_BASE).toFixed(1)}px do centro  (proporcao ${getEntranceAspect(BIOME).toFixed(4)})`);
 console.log(`  rocha  ${Math.round(TILE_W * ROCK_DISPLAY)}x${Math.round(TILE_W * ROCK_DISPLAY)}  base +${(TILE_H * 0.3).toFixed(1)}px do centro`);
 console.log(`  picareta ${Math.round(TILE_W * PICKAXE_DISPLAY)}x${Math.round(TILE_W * PICKAXE_DISPLAY)}`);
 console.log('');
@@ -302,3 +303,39 @@ for (const [tipo, lista] of Object.entries(assentados)) {
 console.log('');
 console.log('  dispersao perto de 0 = todas as PECAS assentam na mesma linha.');
 console.log('  dispersao alta = cada peca flutua numa altura diferente.');
+console.log('');
+
+// --- quanto a boca come do mapa ---------------------------------------------
+// A boca é a única peça alta da cena, e é a que pode esconder o campo de jogo. A
+// medida conta quantos TILES de chão ficam sob o pixels opacos da boca — não
+// quantos a caixa de exibição cobre, que é maior que o desenho.
+const bocaObj = objetos.find((o) => o.tipo === 'boca');
+
+if (bocaObj) {
+  const esq = bocaObj.x - bocaObj.largura / 2;
+  const topo = bocaObj.base - bocaObj.altura;
+  const mascarados = new Set();
+
+  for (let py = Math.max(0, Math.floor(topo)); py < Math.min(altura, Math.ceil(bocaObj.base)); py += 1) {
+    for (let px = Math.max(0, Math.floor(esq)); px < Math.min(largura, Math.ceil(esq + bocaObj.largura)); px += 1) {
+      if (!amostra(bocaObj.img, (px + 0.5 - esq) / bocaObj.largura, (py + 0.5 - topo) / bocaObj.altura)) continue;
+
+      // Qual tile de chão está sob este pixel? O losango do tile é o inverso do
+      // mapeamento isométrico, e o teste é o mesmo do chão: o ponto precisa cair
+      // dentro do losango do tile.
+      for (const cell of celulas) {
+        const d = { x: (px + 0.5 - cell.x) / (TILE_W / 2), y: (py + 0.5 - cell.y) / (TILE_H / 2) };
+        if (Math.abs(d.x) + Math.abs(d.y) <= 1) mascarados.add(`${cell.col},${cell.row}`);
+      }
+    }
+  }
+
+  const total = celulas.length;
+  const linhas = bocaObj.altura / (TILE_H / 2);
+
+  console.log(`  boca: ${bocaObj.largura}x${bocaObj.altura}px, ${linhas.toFixed(1)} linhas de fundo`);
+  console.log(`  tiles de chao sob o desenho da boca: ${mascarados.size} de ${total} `
+    + `(${(mascarados.size / total * 100).toFixed(0)}%)`);
+  console.log(`  a entrada fica em col 0, linha do meio: e a borda do mapa, entao o que`);
+  console.log(`  ela cobre para cima e para a direita e fundo, nao campo de jogo.`);
+}

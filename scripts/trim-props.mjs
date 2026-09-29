@@ -1,4 +1,4 @@
-// Apara a arte da boca da caverna e da picareta pelo conteúdo, e mede.
+// Apara a arte da picareta pelo conteúdo, e mede.
 //
 //   node scripts/trim-props.mjs
 //
@@ -9,11 +9,11 @@
 // ela vira espaço vazio entre o rodapé da peça e o chão, e a peça passa a
 // flutuar por um valor que depende da arte, não do jogo.
 //
-// Para a boca isso dava 12,6px de levitação constante. Aparar resolve na origem
-// e deixa a proporção do arquivo ser a proporção real, em vez de uma
-// constante que alguém mediu uma vez e esqueceu.
+// A boca da caverna NÃO é tratada aqui. Ela virou uma arte por bioma, e quem corta
+// as seis é `scripts/trim-entrances.mjs` — que também as reduz, porque a arte de
+// origem tem 1244px de largura para uma peça que ocupa 230px na tela.
 //
-// Depois de aparar, o script imprime as dimensões de cada arquivo. O teste em
+// Depois de aparar, o script imprime as dimensões do arquivo. O teste em
 // `test/props.test.mjs` compara com o que o `CaveScene` assume, que é a forma
 // de uma medição parada no código não voltar a divergir da arte.
 import { writeFile } from 'node:fs/promises';
@@ -21,10 +21,9 @@ import { writeFile } from 'node:fs/promises';
 import { readPng } from './png.mjs';
 import { encodePng } from './png-encode.mjs';
 
-const ALVOS = [
-  { arquivo: 'public/assets/cave_entrance.png', nome: 'boca' },
-  { arquivo: 'public/assets/pickaxe_lvl1.png', nome: 'picareta' }
-];
+// A boca saiu daqui: ela virou uma arte por bioma, e quem corta as seis é
+// `scripts/trim-entrances.mjs`. Este script cuida só do que ainda é peça única.
+const ALVOS = [{ arquivo: 'public/assets/pickaxe_lvl1.png', nome: 'picareta' }];
 
 // O limiar é 8, o mesmo do fatiador: a borda de uma arte pintada tem o alfa
 // subindo devagar, e um limiar baixo puxa para dentro um halo quase

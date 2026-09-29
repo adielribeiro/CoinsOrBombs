@@ -2,9 +2,7 @@ import Phaser from 'phaser';
 import {
   BASE_TILE_HEIGHT,
   BASE_TILE_WIDTH,
-  CAVE_ENTRANCE_ASPECT,
   CAVE_ENTRANCE_BASE,
-  CAVE_ENTRANCE_WIDTH,
   PICKAXE_ASPECT,
   PICKAXE_DISPLAY,
   getTileMetrics,
@@ -12,6 +10,8 @@ import {
 } from '../config.js';
 import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrameIndex } from '../ground.js';
 import { getLocale, setLocale, t } from '../../i18n/index.js';
+import { ensureBackdrop, getBackdropKey, isBackdropReady } from '../backdrops.js';
+import { ENTRANCE_DISPLAY, getEntranceAspect, getEntranceForBiome } from '../entrances.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { ROCK_DISPLAY, getRockFrameIndex, getRockJitter, getRockSheetKey } from '../rocks.js';
 import { generateMap } from '../systems/mapGenerator.js';
@@ -649,16 +649,68 @@ export class CaveScene extends Phaser.Scene {
     return this.getMapBoundsForMetrics(originX, originY, tileWidth, tileHeight);
   }
 
-  drawCaveWalls(bounds) {
-    const biome = this.mapData?.biome ?? getBiomeForCave(this.metaState.cave);
-    const background = this.add.image(this.scale.width / 2, this.scale.height / 2, biome.backgroundKey ?? 'cave_bg');
+  /**
+   * Desenha a arte de fundo do bioma, e garante que ela esteja carregada.
+   *
+   * O fundo é 4K (1672x941) e cada um dos seis vale 2,9 MB, então só o do bioma
+   * atual é carregado — ver `backdrops.js`. A consequência é que aqui pode não
+   * haver textura ainda, e são dois desfechos possíveis:
+   *
+   * - **Tem textura**: desenha, e é o caminho normal depois do primeiro quadro de
+   *   cada bioma.
+   * - **Não tem**: pede o arquivo e pinta um retângulo com `palette.background`,
+   *   a cor de fundo do próprio bioma. O redesenho chega no `complete`.
+   *
+   * A alternativa a esse retângulo é deixar o `add.image` rodar sem a textura, e
+   * o Phaser mostra o placeholder de textura ausente: a caixa preta com o X
+   * verde. Um retângulo da cor da caverna por meio segundo é melhor que uma
+   * caixa com X, e é por isso que a verificação vem ANTES do `add.image`.
+   */
+  drawBiomeBackdrop(biome, depth, alpha) {
+    if (!ensureBackdrop(this, biome.id, () => this.refreshBackdrop())) {
+      const placeholder = this.add.rectangle(
+        this.scale.width / 2,
+        this.scale.height / 2,
+        this.scale.width,
+        this.scale.height,
+        biome.palette.background,
+        1
+      );
+
+      placeholder.setDepth(depth);
+      this.backgroundLayer.add(placeholder);
+      return;
+    }
+
+    const background = this.add.image(this.scale.width / 2, this.scale.height / 2, getBackdropKey(biome.id));
     const coverScale = Math.max(this.scale.width / background.width, this.scale.height / background.height);
 
     background.setScale(coverScale);
     background.clearTint();
-    background.setAlpha(1);
-    background.setDepth(-1000);
+    background.setAlpha(alpha);
+    background.setDepth(depth);
     this.backgroundLayer.add(background);
+  }
+
+  /**
+   * Redesenha quando um fundo que estava faltando chega.
+   *
+   * Passa pelo mesmo caminho do render completo, e não por um redesenho
+   * "parcial": o fundo é a camada de baixo, e qualquer coisa desenhada por cima
+   * dele precisa ser redesenhada junto, senão o placeholder fica por cima do
+   * mapa. `renderMap` já limpa as três camadas, então chamar o método certo de
+   * primeira vez é o que evita o duplo trabalho.
+   */
+  refreshBackdrop() {
+    if (this.pendingResponsiveRefreshes?.length) this.clearResponsiveRefreshQueue();
+
+    if (this.metaState.inLobby) this.renderLobbyBackdrop();
+    else this.renderMap();
+  }
+
+  drawCaveWalls(bounds) {
+    const biome = this.mapData?.biome ?? getBiomeForCave(this.metaState.cave);
+    this.drawBiomeBackdrop(biome, -1000, 1);
 
     const edgeShade = this.add.graphics();
     edgeShade.fillStyle(biome.palette.edge, 0.26);
@@ -745,12 +797,7 @@ export class CaveScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
 
-    const background = this.add.image(width / 2, height / 2, biome.backgroundKey ?? 'cave_bg');
-    const coverScale = Math.max(width / background.width, height / background.height);
-
-    background.setScale(coverScale);
-    background.setDepth(-1000);
-    this.backgroundLayer.add(background);
+    this.drawBiomeBackdrop(biome, -1000, 1);
 
     // Vinheta mais forte que a da cave: o texto do menu precisa de contraste,
     // e a arte do bioma é clara em alguns pontos.
@@ -1067,19 +1114,30 @@ export class CaveScene extends Phaser.Scene {
       }
 
       if (tile.type === 'entrance') {
-        // A boca é um arco com entulho no rodapé, então ela é ancorada na BASE e
-        // posicionada na linha do chão, como as rochas. A versão anterior usava
-        // `setScale` com origem no centro e subia o sprite da linha do chão:
-        // a boca ficava inteira flutuando acima do tile.
-        const larguraBoca = Math.round(tileWidth * CAVE_ENTRANCE_WIDTH);
-        // A altura vem da proporção da arte, senão o arco sai achatado num tile
-        // que é duas vezes mais largo que alto.
-        const alturaBoca = Math.round(larguraBoca * CAVE_ENTRANCE_ASPECT);
-        const frame = this.add
-          .image(point.x, point.y + tileHeight * CAVE_ENTRANCE_BASE, 'cave_entrance')
-          .setOrigin(0.5, 1)
-          .setDisplaySize(larguraBoca, alturaBoca);
-        this.objectLayer.add(frame);
+        // Uma boca por bioma, com o material do lugar no arco e no pedestal.
+        // A proporção também é por bioma: measurei de 0,831 (Ruínas) a 0,883
+        // (Cristal), e com uma constante única o `setDisplaySize` esticaria ou
+        // achataria cinco das seis em até 6%.
+        const entrada = getEntranceForBiome(biome.id);
+
+        // A arte pode não ter chegado ainda: ela é carregada por bioma, junto
+        // com o fundo. Sem este guarda, o `add.image` cairia no placeholder de
+        // textura ausente do Phaser — a caixa preta com X verde. O tile fica
+        // vazio por meio segundo e o redesenho chega junto com o fundo.
+        if (this.textures.exists(entrada.key)) {
+          const larguraBoca = Math.round(tileWidth * ENTRANCE_DISPLAY);
+          const alturaBoca = Math.round(larguraBoca * getEntranceAspect(biome.id));
+
+          // Ancorada na BASE e na linha do chão, como as rochas. Com `setScale`
+          // e origem no centro, a boca ficava inteira flutuando acima do tile.
+          const frame = this.add
+            .image(point.x, point.y + tileHeight * CAVE_ENTRANCE_BASE, entrada.key)
+            .setOrigin(0.5, 1)
+            .setDisplaySize(larguraBoca, alturaBoca);
+
+          frame.setDepth(point.y - 1);
+          this.objectLayer.add(frame);
+        }
 
         if (!this.attractMode) {
           const marker = this.add.text(point.x, point.y - tileHeight * 1.02, t('scene.markerIn'), {

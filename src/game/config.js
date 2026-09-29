@@ -2,27 +2,15 @@ export const BASE_MAP_SCALE = 1.12;
 export const BASE_TILE_WIDTH = Math.round(86 * BASE_MAP_SCALE);
 export const BASE_TILE_HEIGHT = Math.round(44 * BASE_MAP_SCALE);
 
-/**
- * Largura da boca da caverna, em múltiplos da largura do tile.
+/*
+ * A boca da caverna mudou de tamanho, de proporção e de quantidade: deixou de
+ * ser uma arte só e passou a ter uma por bioma, e os números que vivem aqui
+ * desceram para `entrances.js`.
  *
- * 1,05 é um pouco mais larga que o tile, e é isso que faz a entrada ler como
- * uma entrada e não como um objeto posto em cima de um quadrado. A arte é um
- * arco de 156x113, e a largura é que manda: a altura vem da proporção, senão a
- * boca fica achatada ou esticada.
+ * O que fica em `config.js` é o que não é da entrada: onde a base dela assenta.
+ * A largura e a proporção são por bioma, e estão em `src/game/entrances.js`, com
+ * o tamanho do arquivo ao lado para o teste comparar as três coisas.
  */
-export const CAVE_ENTRANCE_WIDTH = 1.05;
-
-/**
- * Proporção da boca: altura por largura, da arte já aparada.
- *
- * 156x113 é a medida de `public/assets/cave_entrance.png` depois de
- * `scripts/trim-props.mjs`. A arte de origem vinha num canvas de 168x168
- * CENTRALIZADO, com 29px de folga transparente embaixo — e como a boca é
- * ancorada na base, essa folga aparecia na tela como 12,6px de levitação.
- * Aparar resolve na origem; esta constante é a proporção do arquivo, e o teste
- * em `test/props.test.mjs` compara as duas para elas não divergirem de novo.
- */
-export const CAVE_ENTRANCE_ASPECT = 113 / 156;
 
 /**
  * Onde a base da boca da caverna assenta, em frações da altura do tile.
@@ -31,6 +19,9 @@ export const CAVE_ENTRANCE_ASPECT = 113 / 156;
  * menos de 1px e some. O que não pode é a versão antiga: `setScale` com origem no
  * centro, com a arte acima da linha do chão, que deixava a boca inteira flutuando
  * porque o arco tem entulho e terra no rodapé.
+ *
+ * Com a entrada nova o rodapé é uma base de pedra assentada, e não uma linha de
+ * terra: 0,28 continua sendo o ponto em que o pedestal toca o chão.
  */
 export const CAVE_ENTRANCE_BASE = 0.28;
 

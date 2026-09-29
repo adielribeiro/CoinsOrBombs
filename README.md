@@ -154,6 +154,43 @@ Chinês e japonês não têm plural e declaram uma forma só.
 (`nameKey` ao lado de `name`) e a tela usa a chave. Nada resolve texto no módulo:
 um nome resolvido no carregamento ficaria preso no idioma de quem abriu o jogo.
 
+## Imagens e peso do pacote
+
+O pacote de assets tem 26 MB em disco, mas o boot baixa 9,7 MB. A diferença é
+carregamento por bioma: os seis fundos 4K (17,3 MB) e as seis entradas de caverna
+(2,3 MB) só vêm quando o jogador entra naquele bioma. O primeiro — Mina Solar —
+entra no boot, porque é a caverna da tela de título.
+
+| | tamanho |
+| --- | --- |
+| boot (primeira visita) | 9,7 MB |
+| por bioma, sob demanda | 16,3 MB (5 fundos + 5 entradas) |
+| total em disco | 26,0 MB |
+
+Enquanto o fundo do bioma não chega, o renderizador pinta a cor do bioma no
+lugar. A alternativa é o sprite cair no placeholder de textura ausente do Phaser
+— a caixa preta com X verde — e um retângulo da cor da caverna por meio segundo é
+melhor.
+
+### Fatiando a arte
+
+- `node scripts/slice-rocks.mjs` — recorta os sprites de rocha em folhas 4x4 de
+  168px, e recorta **pela base**, que é o que faz a rocha assentar no chão.
+- `node scripts/trim-entrances.mjs` — apara e reduz as seis entradas de caverna. A
+  arte de origem tem 1244px de largura para uma peça de 230px na tela; o alvo é
+  480px, que é 2x a largura em CSS, o que uma tela retina renderiza.
+- `node scripts/trim-props.mjs` — apara a picareta.
+
+Todos os três recusam escrever quando a pasta de origem não está lá, e nenhum
+regenera arte que não é derivada. As entradas são carregadas **junto** com o
+fundo, no mesmo pedido: o fundo é 2,9 MB e a entrada 380 KB, e separadas seriam
+dois ciclos de rede para ganhar nada.
+
+`src/game/entrances.js` guarda a chave, a proporção e o tamanho do arquivo de
+cada entrada. A proporção **é por bioma** — medida, vai de 0,831 (Ruínas) a
+0,883 (Cristal) — e `test/props.test.mjs` compara as três coisas com o PNG em
+disco, que é o que impede a constante de divergir da arte sem ninguém avisar.
+
 ## Configurações
 
 - **Tela cheia ao começar** — entra em tela cheia ao iniciar a run. Ligado por

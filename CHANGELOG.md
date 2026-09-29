@@ -7,6 +7,84 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Fundos em 4K, um por bioma, carregados por bioma.** Os seis `cave_bg_*.png`
+  passaram de 768x512 e 1536x1024 para **1672x941**, com o mesmo desenho e muito
+  mais detalhe.
+
+  Carregá-los todos no boot levava o pacote de 14,8 MB para 36,8 MB, para um fundo
+  que o jogador vê um de cada vez. Então **só o fundo do bioma atual é baixado**,
+  e só o primeiro entra no boot:
+
+  | | antes | depois |
+  | --- | --- | --- |
+  | boot (primeira visita) | 14,8 MB | **9,7 MB** |
+  | por bioma, sob demanda | — | 16,3 MB (5 fundos + 5 entradas) |
+  | total em disco | 14,8 MB | 26,0 MB |
+
+  O boot **caiu** 5,1 MB, e não subiu: o pacote antigo carregava 7,9 MB de fundo
+  para mostrar um.
+
+  - A tela de título não espera nada: o `BootScene` carrega o fundo da Mina Solar
+    junto com o resto, e ela é a caverna da cave 1.
+  - Enquanto o fundo do bioma não chega, o renderizador pinta a cor do bioma no
+    lugar. A alternativa é o `add.image` cair no placeholder de textura ausente do
+    Phaser — a caixa preta com X verde. Um retângulo da cor da caverna por meio
+    segundo é melhor, e o redesenho chega no `complete`.
+  - `ensureBackdrop` é uma função só, e é ela que decide entre "está pronto?" e
+    "o que falta?". Quando eram dois lugares independentes, o `renderMap` passava
+    pela verificação e caía no acesso seguinte sem a textura.
+
+- **A entrada da caverna virou uma arte por bioma.** Seis bocas, com o material do
+  lugar no arco, no pedestal e no entulho, em vez de uma boca única de madeira.
+
+  | bioma | arquivo | na tela | linhas de fundo |
+  | --- | --- | --- | --- |
+  | sunstone | 480x404 | 230x194px | 7,9 |
+  | frost | 480x415 | 230x199px | 8,1 |
+  | ember | 480x419 | 230x201px | 8,2 |
+  | ruins | 480x399 | 230x191px | 7,8 |
+  | wind | 480x408 | 230x196px | 8,0 |
+  | crystal | 480x424 | 230x203px | 8,3 |
+
+  A entrada é a única peça alta da cena, e ela **sempre fica em `col: 0`**, na
+  linha do meio — a borda esquerda do mapa, por `mapGenerator`. Por isso ela pode
+  ter quase oito linhas de altura sem comer o campo de jogo. Medido em
+  `preview-props`: cobre 7 dos 42 tiles, e o resto do que ela esconde é fundo.
+
+  - **A proporção é por bioma, e isso não é detalhe.** Medida: de 0,831 (Ruínas, o
+    arco mais largo) a 0,883 (Cristal, o mais alto). Com uma constante única, o
+    `setDisplaySize` esticaria ou achataria cinco das seis em até 6% — e esticar
+    arte é o defeito que o `setDisplaySize` já causou aqui uma vez, quando a rocha
+    antiga de 82x80 era esmagada para 80x45.
+  - **A entrada passou de 1,05x para 2,4x a largura do tile.** A arte nova é uma
+    boca inteira, com pedestal e moedas no rodapé; a 1,05x ela ficava pequena
+    demais para o que passou a ser.
+  - **A arte de origem tem 1244px de largura para uma peça de 230px na tela.** São
+    5,4x mais pixels do que a peça ocupa, em um PNG de 2,1 MB. Aparar e reduzir
+    levou os seis arquivos de 12,6 MB para 2,3 MB, sem diferença visível: o alvo
+    é 480px, que é 2x a largura em CSS — o que uma tela retina renderiza.
+  - A arte chega num canvas de 1254x1254 **centralizado**, com de 65px a 92px de
+    folga transparente embaixo. Como o jogo ancora pela base, essa folga vira
+    levitação — foi exatamente o bug que a arte única tinha, com 12,6px.
+
+- **12 testes de `backdrops` e `entrances`**, com uma cena falsa que substitui o
+  Phaser. Eles cobrem a lógica de carga: quando pedir, quando não pedir, quando
+  liberar o pedido, e o que fazer quando o arquivo falha.
+
+  **A cena falsa existe porque o caminho de carga não é verificável no navegador
+  deste ambiente**: a aba fica com `visibilityState === 'hidden'`, o
+  `requestAnimationFrame` é estrangulado, o `BootScene` nunca termina o preload e
+  o `CaveScene.create()` nunca registra os ouvintes. O que a cena falsa **não**
+  cobre é se o Phaser realmente baixa o arquivo — e isso fica registrado como
+  limite, não escondido.
+
+  O que ela pegou: `ensureBackdrop` devolvia `true` — "já está tudo pronto" —
+  para uma cena vazia, e portanto **nunca pedia a arte**. O sintoma seria o
+  bioma em cinza para sempre, sem erro, sem aviso, sem placeholder. A guarda que
+  decidia isso era uma cadeia de acessos numa linha só; extrair `exists` para uma
+  variável antes do teste resolveu, e a forma curta está explicada no código
+  porque é o único ponto do arquivo onde esse tipo de erro é silencioso.
+
 - **O jogo fala dez idiomas.** Português, inglês, espanhol, francês, alemão,
   italiano, polonês, hindi, chinês simplificado e japonês, com seletor no menu
   principal.
@@ -73,6 +151,28 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   existente, e que cada idioma traduziu pelo menos 70% do conteúdo.
 
 ### Corrigido
+
+- **`ensureBackdrop` devolvia "está tudo pronto" para uma cena vazia**, e
+  portanto **nunca pedia a arte do bioma**. O sintoma seria o bioma em cinza para
+  sempre — sem erro, sem aviso, sem placeholder, porque o renderizador acreditava
+  que a textura estava lá.
+
+  A guarda que decidia isso era uma cadeia de acessos numa linha só
+  (`typeof scene?.texturas?.exists !== 'function'`). Extrair `exists` para uma
+  variável antes do teste resolveu, e é a forma que ficou.
+
+  **Não consigo explicar o mecanismo, e isso é o que me preocupa.** A linha
+  isolada, num arquivo de quinze linhas sem nenhuma importação, devolve o
+  resultado certo. Com o mesmo texto dentro do módulo, devolvia `true`. Passei
+  por `typeof` sem `?.`, por `!x !== 'function'` (que é erro de precedência de
+  verdade, e compreendi depois), por `.every`, por laço explícito, e só a forma
+  com a variável extraída passou. Procurei o mesmo padrão no resto do `src` e
+  sobraram três ocorrências, todas de dois níveis e nenhuma no caminho de carga.
+
+  O que fica registrado: a forma com a variável é a que está testada, e o
+  comentário no código diz que é o único ponto do arquivo onde esse tipo de erro
+  é silencioso. Se aparecer o mesmo sintoma em outro lugar — arte que não carrega,
+  sem aviso — o primeiro lugar para olhar é uma guarda composta.
 
 - **O HUD se sobrepunha abaixo de ~420px de largura, e a causa era
   `justify-self: center`.** O cluster de vitais era dimensionado pelo conteúdo e

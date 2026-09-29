@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { existsSync, statSync } from 'node:fs';
 
 import { generateMap, getBombDensity } from '../src/game/systems/mapGenerator.js';
 import { findSafeRoute, getNeighbors4, isFrontierRock } from '../src/game/systems/helpers.js';
 import { BIOMES, getBiomeForCave, getBiomeProgress } from '../src/game/progression.js';
 import { GROUND_TEXTURE_KEYS, SOIL_BY_BIOME, groundColorAt } from '../src/game/ground.js';
+import { BIOMA_INICIAL, getBackdropKey } from '../src/game/backdrops.js';
 
 const TOTAL_CAVES = BIOMES.at(-1).endCave;
 const SAMPLES_PER_CAVE = 40;
@@ -22,6 +24,15 @@ const SAMPLES_PER_CAVE = 40;
  */
 const bootSceneSource = await readFile(
   new URL('../src/game/scenes/BootScene.js', import.meta.url),
+  'utf8'
+);
+
+/**
+ * Fonte do `backdrops.js`, pelo mesmo motivo do BootScene: ele virou o lugar onde
+ * a lista de fundos mora, porque o boot deixou de carregar os seis.
+ */
+const backdropsSource = await readFile(
+  new URL('../src/game/backdrops.js', import.meta.url),
   'utf8'
 );
 
@@ -330,15 +341,27 @@ test('os biomas são 10 caves, sequenciais e sem buraco entre eles', () => {
 test('todo bioma tem chão, fundo e decoração próprios', () => {
   // Um bioma sem atlas de chão ou sem fundo quebraria ao entrar nele, e o
   // sintoma seria o chão ou a tela preta — o mesmo dos bugs anteriores.
+  //
+  // O fundo NÃO é mais carregado no boot: ele vem por bioma, em `backdrops.js`.
+  // Então a afirmação mudou de "o BootScene carrega esta chave" para "a chave
+  // está registrada e o arquivo existe" — que é o que ainda tem de ser verdade
+  // para o bioma entrar sem cair no placeholder de textura ausente.
   const boot = bootSceneSource;
+  const backdrops = backdropsSource;
 
   for (const biome of BIOMES) {
     assert.ok(GROUND_TEXTURE_KEYS[biome.id], `${biome.id} sem atlas de chão`);
     assert.ok(SOIL_BY_BIOME[biome.id], `${biome.id} sem material de solo`);
     assert.ok(biome.backgroundKey, `${biome.id} sem chave de fundo`);
     assert.ok(
-      boot.includes(`'${biome.backgroundKey}'`),
-      `${biome.id} tem o fundo ${biome.backgroundKey}, que o BootScene não carrega`
+      backdrops.includes(`'${biome.backgroundKey}'`),
+      `${biome.id} tem o fundo ${biome.backgroundKey}, que o backdrops.js não `
+        + `registra — e sem registro ele nunca seria pedido`
+    );
+    assert.ok(
+      existsSync(new URL(`../public/assets/${biome.backgroundKey}.png`, import.meta.url)),
+      `${biome.id} registra o fundo ${biome.backgroundKey}, mas o arquivo não `
+        + `existe. O placeholder de textura ausente apareceria ao entrar nele.`
     );
     assert.ok(biome.palette.ground > 0, `${biome.id} sem cor de chão`);
     assert.ok(biome.relicId, `${biome.id} sem relíquia`);
@@ -346,6 +369,43 @@ test('todo bioma tem chão, fundo e decoração próprios', () => {
     assert.ok(
       boot.includes(`'${biome.primaryDeco}'`),
       `${biome.id} usa ${biome.primaryDeco}, que o BootScene não carrega`
+    );
+  }
+});
+
+test('só o fundo do primeiro bioma é carregado no boot', () => {
+  // Este é o teste que segura a decisão de não carregar os seis. Os fundos em 4K
+  // somam 17,3 MB; carregá-los todos levaria o boot de 9,7 MB para 26,0 MB.
+  // Sem esta afirmação, alguém reintroduz o laço dos seis "para simplificar" e
+  // não tem nada que reclame.
+  //
+  // A verificação é pela chave RESOLVIDA, e não por string no fonte. O BootScene
+  // pede `getBackdropKey(BIOMA_INICIAL)`, então procurar a chave literal não
+  // encontraria nada — e um teste que passa por acidente é pior que um teste
+  // que não existe.
+  const boot = bootSceneSource;
+
+  assert.ok(
+    boot.includes('getBackdropKey(BIOMA_INICIAL)'),
+    'o BootScene não pede o fundo pela função. A lista de seis voltou a ser ' +
+      'escrita à mão, e o boot voltou a pesar 26 MB.'
+  );
+
+  const doBoot = getBackdropKey(BIOMA_INICIAL);
+  const inicial = BIOMES.find((b) => b.id === BIOMA_INICIAL);
+
+  assert.ok(inicial, `BIOMA_INICIAL é "${BIOMA_INICIAL}", que não é bioma nenhum`);
+  assert.equal(doBoot, inicial.backgroundKey, 'o boot pede um fundo de outro bioma');
+
+  for (const biome of BIOMES) {
+    if (biome.id === BIOMA_INICIAL) continue;
+
+    assert.ok(
+      !boot.includes(`assets/${biome.backgroundKey}.png`),
+      `${biome.id} tem ${biome.backgroundKey} (${(
+        statSync(new URL(`../public/assets/${biome.backgroundKey}.png`, import.meta.url)).size
+        / 1024 / 1024
+      ).toFixed(1)} MB) e o BootScene carrega. Cada fundo entra por demanda, em ensureBackdrop.`
     );
   }
 });

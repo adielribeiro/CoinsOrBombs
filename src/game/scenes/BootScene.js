@@ -6,6 +6,8 @@ import {
   GROUND_TEXTURE_KEYS
 } from '../ground.js';
 import { ROCK_CELL_SIZE, getRockSheetKey, getRockVariantCount } from '../rocks.js';
+import { BIOMA_INICIAL, getBackdropKey } from '../backdrops.js';
+import { getEntranceKey } from '../entrances.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -75,14 +77,21 @@ export class BootScene extends Phaser.Scene {
     this.load.image('deco_tracks', 'assets/deco_tracks.png');
 
     // Special
-    this.load.image('cave_entrance', 'assets/cave_entrance.png');
     this.load.image('exit_glow', 'assets/exit_glow.png');
-    this.load.image('cave_bg_sunstone', 'assets/cave_bg_sunstone.png');
-    this.load.image('cave_bg_frost', 'assets/cave_bg_frost.png');
-    this.load.image('cave_bg_ember', 'assets/cave_bg_ember.png');
-    this.load.image('cave_bg_ruins', 'assets/cave_bg_ruins.png');
-    this.load.image('cave_bg_wind', 'assets/cave_bg_wind.png');
-    this.load.image('cave_bg_crystal', 'assets/cave_bg_crystal.png');
+
+    /**
+     * Fundo e entrada: SÓ do primeiro bioma.
+     *
+     * A versão anterior carregava os seis fundos e uma entrada, o que levava o
+     * pacote de boot de 14,8 MB para 36,8 MB. Os fundos em 4K somam 17,3 MB e as
+     * seis entradas 2,3 MB, para uma tela que mostra um de cada vez.
+     *
+     * O primeiro bioma entra porque é o da tela de título: sem ele, o menu
+     * apareceria com um retângulo da cor da caverna até o fundo chegar. Os outros
+     * cinco entram por demanda, em `ensureBackdrop`, no `backdrops.js`.
+     */
+    this.load.image(getBackdropKey(BIOMA_INICIAL), `assets/${getBackdropKey(BIOMA_INICIAL)}.png`);
+    this.load.image(getEntranceKey(BIOMA_INICIAL), `assets/${getEntranceKey(BIOMA_INICIAL)}.png`);
 
     // Biome decorations
     this.load.image('deco_gold_pile', 'assets/deco_gold_pile.png');
