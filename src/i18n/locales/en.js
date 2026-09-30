@@ -16,6 +16,31 @@ export default {
   'menu.info': 'Info',
   'menu.mainAria': 'Main menu',
 
+  // --- jogos salvos --------------------------------------------------------
+  'saves.title': 'Choose a game',
+  'saves.subtitle': 'Each game keeps its own cave, coins, relics and collection.',
+  'saves.newGame': 'New game',
+  'saves.nameLabel': 'Game name',
+  'saves.namePlaceholder': 'My game',
+  'saves.create': 'Create and play',
+  'saves.empty': 'No games yet.',
+  'saves.emptyHint': 'Name your first game to get started.',
+  'saves.play': 'Play',
+  'saves.rename': 'Rename',
+  'saves.renameTitle': 'Rename game',
+  'saves.saveName': 'Save name',
+  'saves.delete': 'Delete',
+  'saves.deleteTitle': 'Delete game',
+  'saves.deleteConfirm': 'Delete \"{name}\"? Its coins, relics and cave will be lost. This cannot be undone.',
+  'saves.playedOn': 'Played on {date}',
+  'saves.current': 'In progress',
+  'saves.nameTaken': 'A game with that name already exists. You can still use it.',
+  'saves.ariaList': 'Saved games',
+  'saves.relics': {
+    one: '{count} relic',
+    other: '{count} relics'
+  },
+
   // --- language screen ----------------------------------------------------
   'language.title': 'Language',
   'language.hint': 'Takes effect right away, no restart needed.',
@@ -69,7 +94,7 @@ export default {
   'settings.title': 'Settings',
   'settings.fullscreen': 'Fullscreen on start',
   'settings.fullscreenPwaHint': 'Safari on iPhone and iPad has no fullscreen — install it from the Home Screen.',
-  'settings.rememberCave': 'Remember best cave',
+  'settings.rememberRun': 'Remember my progress',
   'settings.devMode': 'Developer mode',
   'settings.devNote': '{unlocked} of {total} biomes unlocked',
   'settings.input': 'Input',

@@ -314,6 +314,26 @@ export function createStatsState() {
   };
 }
 
+/**
+ * O inventário de utilidades, zerado.
+ *
+ * Estava definido dentro do `App.jsx`, ao lado das outras fábricas de estado
+ * vazio — e foi para aqui quando os jogos salvos passaram a precisar dela.
+ * `saves.js` hidrata um save, e hidratar precisa de um inventário vazio para
+ * completar o que o save não trouxer; um `undefined` nessa chave viraria
+ * `undefined` na tela.
+ *
+ * A chave é a identidade da utility no jogo inteiro. Trocar o nome aqui troca em
+ * todos os saves, então o nome é parte do formato.
+ */
+export function createUtilityInventory() {
+  return {
+    lifePotion: 0,
+    revealBomb: 0,
+    safePath: 0
+  };
+}
+
 export function createCollectionState() {
   return Object.values(RELIC_CATALOG).reduce((acc, relic) => {
     acc[relic.id] = 0;

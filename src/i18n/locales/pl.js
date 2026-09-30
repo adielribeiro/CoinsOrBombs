@@ -29,6 +29,32 @@ export default {
   'menu.info': 'Informacje',
   'menu.mainAria': 'Menu główne',
 
+  // --- jogos salvos --------------------------------------------------------
+  'saves.title': 'Wybierz zapis',
+  'saves.subtitle': 'Każdy zapis ma własną jaskinię, monety, relikwie i kolekcję.',
+  'saves.newGame': 'Nowy zapis',
+  'saves.nameLabel': 'Nazwa zapisu',
+  'saves.namePlaceholder': 'Mój zapis',
+  'saves.create': 'Utwórz i graj',
+  'saves.empty': 'Nie ma jeszcze żadnych zapisów.',
+  'saves.emptyHint': 'Nazwij pierwszy zapis, aby zacząć.',
+  'saves.play': 'Graj',
+  'saves.rename': 'Zmień nazwę',
+  'saves.renameTitle': 'Zmień nazwę zapisu',
+  'saves.saveName': 'Zapisz nazwę',
+  'saves.delete': 'Usuń',
+  'saves.deleteTitle': 'Usuń zapis',
+  'saves.deleteConfirm': 'Usunąć „{name}”? Monety, relikwie i jaskinia tego zapisu zostaną utracone. Nie można tego cofnąć.',
+  'saves.playedOn': 'Ostatnio grane {date}',
+  'saves.current': 'W toku',
+  'saves.nameTaken': 'Zapis o tej nazwie już istnieje. Możesz go mimo to użyć.',
+  'saves.ariaList': 'Zapisane gry',
+  'saves.relics': {
+    one: '{count} relikt',
+    few: '{count} relikty',
+    many: '{count} reliktów'
+  },
+
   // --- ekran języka -------------------------------------------------------
   'language.title': 'Język',
   'language.hint': 'Zmiana działa od razu, bez restartu.',
@@ -85,7 +111,7 @@ export default {
   'settings.fullscreen': 'Pełny ekran na starcie',
   'settings.fullscreenPwaHint':
     'Safari na iPhone i iPad nie ma pełnego ekranu — zainstaluj z ekranu głównego.',
-  'settings.rememberCave': 'Zapamiętaj najlepszą jaskinię',
+  'settings.rememberRun': 'Zapamiętaj mój postęp',
   'settings.devMode': 'Tryb dewelopera',
   'settings.devNote': 'Odblokowane biome: {unlocked} z {total}',
   'settings.input': 'Wejście',

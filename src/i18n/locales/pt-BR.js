@@ -30,6 +30,35 @@ export default {
   'menu.info': 'Informações',
   'menu.mainAria': 'Menu principal',
 
+  // --- jogos salvos --------------------------------------------------------
+  // A tela que aparece ao clicar em "Entrar". Cada card é uma run inteira: a
+  // caverna em que a pessoa parou, as moedas, as relíquias e a coleção ficam
+  // gravadas separadas das outras, como um mundo do Minecraft.
+  'saves.title': 'Escolher um jogo',
+  'saves.subtitle': 'Cada jogo guarda sua caverna, moedas, relíquias e coleção.',
+  'saves.newGame': 'Novo jogo',
+  'saves.nameLabel': 'Nome do jogo',
+  'saves.namePlaceholder': 'Meu jogo',
+  'saves.create': 'Criar e jogar',
+  'saves.empty': 'Nenhum jogo ainda.',
+  'saves.emptyHint': 'Dê um nome ao primeiro jogo para começar.',
+  'saves.play': 'Jogar',
+  'saves.rename': 'Renomear',
+  'saves.renameTitle': 'Renomear jogo',
+  'saves.saveName': 'Salvar nome',
+  'saves.delete': 'Apagar',
+  'saves.deleteTitle': 'Apagar jogo',
+  'saves.deleteConfirm':
+    'Apagar "{name}"? As moedas, as relíquias e a caverna deste jogo se perdem. Não dá para desfazer.',
+  'saves.relics': {
+    one: '{count} relíquia',
+    other: '{count} relíquias'
+  },
+  'saves.playedOn': 'Jogado em {date}',
+  'saves.current': 'Em andamento',
+  'saves.nameTaken': 'Já existe um jogo com esse nome. Pode usar assim mesmo.',
+  'saves.ariaList': 'Jogos salvos',
+
   // --- tela de idioma -----------------------------------------------------
   'language.title': 'Idioma',
   'language.hint': 'A troca vale na hora, sem reiniciar.',
@@ -86,7 +115,7 @@ export default {
   'settings.fullscreen': 'Tela cheia ao começar',
   'settings.fullscreenPwaHint':
     'No iPhone e no iPad o Safari não tem tela cheia — instale pela Tela de Início.',
-  'settings.rememberCave': 'Lembrar melhor cave',
+  'settings.rememberRun': 'Lembrar meu progresso',
   'settings.devMode': 'Modo desenvolvedor',
   'settings.devNote': '{unlocked} de {total} biomas liberados',
   'settings.input': 'Entrada',

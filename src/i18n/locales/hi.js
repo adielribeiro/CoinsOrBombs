@@ -26,6 +26,31 @@ export default {
   'menu.info': 'जानकारी',
   'menu.mainAria': 'मुख्य मेन्यू',
 
+  // --- jogos salvos --------------------------------------------------------
+  'saves.title': 'खेल चुनें',
+  'saves.subtitle': 'हर खेल अपनी गुफा, सिक्के, अवशेष और संग्रह अलग रखता है।',
+  'saves.newGame': 'नया खेल',
+  'saves.nameLabel': 'खेल का नाम',
+  'saves.namePlaceholder': 'मेरा खेल',
+  'saves.create': 'बनाएं और खेलें',
+  'saves.empty': 'अभी कोई खेल नहीं।',
+  'saves.emptyHint': 'शुरू करने के लिए पहले खेल को एक नाम दें।',
+  'saves.play': 'खेलें',
+  'saves.rename': 'नाम बदलें',
+  'saves.renameTitle': 'खेल का नाम बदलें',
+  'saves.saveName': 'नाम सहेजें',
+  'saves.delete': 'मिटाएं',
+  'saves.deleteTitle': 'खेल मिटाएं',
+  'saves.deleteConfirm': '\"{name}\" मिटा दें? इस खेल के सिक्के, अवशेष और गुफा खो जाएंगे। यह वापस नहीं लाया जा सकता।',
+  'saves.playedOn': '{date} को खेला गया',
+  'saves.current': 'चल रहा है',
+  'saves.nameTaken': 'इस नाम का खेल पहले से मौजूद है। आप फिर भी इसका उपयोग कर सकते हैं।',
+  'saves.ariaList': 'सहेजे गए खेल',
+  'saves.relics': {
+    one: '{count} अवशेष',
+    other: '{count} अवशेष'
+  },
+
   // --- भाषा स्क्रीन --------------------------------------------------------
   'language.title': 'भाषा',
   'language.hint': 'बदलाव तुरंत लागू होता है, दोबारा शुरू करने की ज़रूरत नहीं।',
@@ -81,7 +106,7 @@ export default {
   'settings.fullscreen': 'शुरू होते ही फ़ुलस्क्रीन',
   'settings.fullscreenPwaHint':
     'iPhone और iPad पर Safari में फ़ुलस्क्रीन नहीं होता — होम स्क्रीन से इंस्टॉल करें।',
-  'settings.rememberCave': 'सबसे अच्छी Cave याद रखें',
+  'settings.rememberRun': 'मेरी प्रगति याद रखें',
   'settings.devMode': 'डेवलपर मोड',
   'settings.devNote': '{total} में से {unlocked} Biome खुले',
   'settings.input': 'इनपुट',

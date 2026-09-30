@@ -16,6 +16,31 @@ export default {
   'menu.info': 'Info',
   'menu.mainAria': 'Menu principale',
 
+  // --- jogos salvos --------------------------------------------------------
+  'saves.title': 'Scegli una partita',
+  'saves.subtitle': 'Ogni partita salva la sua caverna, le monete, le reliquie e la collezione.',
+  'saves.newGame': 'Nuova partita',
+  'saves.nameLabel': 'Nome della partita',
+  'saves.namePlaceholder': 'La mia partita',
+  'saves.create': 'Crea e gioca',
+  'saves.empty': 'Ancora nessuna partita.',
+  'saves.emptyHint': 'Dai un nome alla prima partita per iniziare.',
+  'saves.play': 'Gioca',
+  'saves.rename': 'Rinomina',
+  'saves.renameTitle': 'Rinomina partita',
+  'saves.saveName': 'Salva nome',
+  'saves.delete': 'Elimina',
+  'saves.deleteTitle': 'Elimina partita',
+  'saves.deleteConfirm': 'Eliminare \"{name}\"? Le monete, le reliquie e la caverna di questa partita andranno perse. Non si può annullare.',
+  'saves.playedOn': 'Giocata il {date}',
+  'saves.current': 'In corso',
+  'saves.nameTaken': 'Esiste già una partita con questo nome. Puoi usarlo comunque.',
+  'saves.ariaList': 'Partite salvate',
+  'saves.relics': {
+    one: '{count} reliquia',
+    other: '{count} reliquie'
+  },
+
   // --- schermata della lingua ---------------------------------------------
   'language.title': 'Lingua',
   'language.hint': 'La cambio ha effetto subito, senza riavvio.',
@@ -71,7 +96,7 @@ export default {
   'settings.fullscreen': 'Schermo intero all’avvio',
   'settings.fullscreenPwaHint':
     'Safari su iPhone e iPad non ha lo schermo intero: installalo dalla schermata Home.',
-  'settings.rememberCave': 'Ricorda la miglior grotta',
+  'settings.rememberRun': 'Ricorda i miei progressi',
   'settings.devMode': 'Modalità sviluppatore',
   'settings.devNote': '{unlocked} di {total} biomi sbloccati',
   'settings.input': 'Input',

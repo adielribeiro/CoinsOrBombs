@@ -16,6 +16,31 @@ export default {
   'menu.info': 'Información',
   'menu.mainAria': 'Menú principal',
 
+  // --- jogos salvos --------------------------------------------------------
+  'saves.title': 'Elegir una partida',
+  'saves.subtitle': 'Cada partida guarda su propia cueva, monedas, reliquias y colección.',
+  'saves.newGame': 'Nueva partida',
+  'saves.nameLabel': 'Nombre de la partida',
+  'saves.namePlaceholder': 'Mi partida',
+  'saves.create': 'Crear y jugar',
+  'saves.empty': 'Todavía no hay partidas.',
+  'saves.emptyHint': 'Ponle nombre a la primera partida para empezar.',
+  'saves.play': 'Jugar',
+  'saves.rename': 'Renombrar',
+  'saves.renameTitle': 'Renombrar partida',
+  'saves.saveName': 'Guardar nombre',
+  'saves.delete': 'Borrar',
+  'saves.deleteTitle': 'Borrar partida',
+  'saves.deleteConfirm': '¿Borrar \"{name}\"? Perderás sus monedas, reliquias y cueva. No se puede deshacer.',
+  'saves.playedOn': 'Jugado el {date}',
+  'saves.current': 'En curso',
+  'saves.nameTaken': 'Ya existe una partida con ese nombre. Puedes usarlo igual.',
+  'saves.ariaList': 'Partidas guardadas',
+  'saves.relics': {
+    one: '{count} reliquia',
+    other: '{count} reliquias'
+  },
+
   // --- pantalla de idioma -------------------------------------------------
   'language.title': 'Idioma',
   'language.hint': 'El cambio se aplica al momento, sin reiniciar.',
@@ -71,7 +96,7 @@ export default {
   'settings.fullscreen': 'Pantalla completa al empezar',
   'settings.fullscreenPwaHint':
     'Safari en iPhone e iPad no tiene pantalla completa: instálalo desde la pantalla de inicio.',
-  'settings.rememberCave': 'Recordar la mejor cueva',
+  'settings.rememberRun': 'Recordar mi progreso',
   'settings.devMode': 'Modo desarrollador',
   'settings.devNote': '{unlocked} de {total} biomas desbloqueados',
   'settings.input': 'Entrada',

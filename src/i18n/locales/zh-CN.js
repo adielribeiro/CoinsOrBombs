@@ -23,6 +23,30 @@ export default {
   'menu.info': '信息',
   'menu.mainAria': '主菜单',
 
+  // --- jogos salvos --------------------------------------------------------
+  'saves.title': '选择存档',
+  'saves.subtitle': '每个存档单独保存自己的洞穴、金币、遗物和收藏。',
+  'saves.newGame': '新游戏',
+  'saves.nameLabel': '存档名称',
+  'saves.namePlaceholder': '我的存档',
+  'saves.create': '创建并开始',
+  'saves.empty': '还没有存档。',
+  'saves.emptyHint': '给第一个存档起个名字，就能开始了。',
+  'saves.play': '开始游戏',
+  'saves.rename': '重命名',
+  'saves.renameTitle': '重命名存档',
+  'saves.saveName': '保存名称',
+  'saves.delete': '删除',
+  'saves.deleteTitle': '删除存档',
+  'saves.deleteConfirm': '确定删除“{name}”？这个存档的金币、遗物和洞穴都会消失，无法撤销。',
+  'saves.playedOn': '游玩于 {date}',
+  'saves.current': '进行中',
+  'saves.nameTaken': '已经有同名的存档了。仍然可以用这个名字。',
+  'saves.ariaList': '已保存的存档',
+  'saves.relics': {
+    other: '{count} 件遗物'
+  },
+
   // --- 语言界面 ------------------------------------------------------------
   'language.title': '语言',
   'language.hint': '切换立即生效，无需重新开始。',
@@ -76,7 +100,7 @@ export default {
   'settings.title': '设置',
   'settings.fullscreen': '开始时进入全屏',
   'settings.fullscreenPwaHint': 'iPhone 和 iPad 上的 Safari 没有全屏功能，请从主屏幕安装。',
-  'settings.rememberCave': '记住最好成绩的 Cave',
+  'settings.rememberRun': '记住我的进度',
   'settings.devMode': '开发者模式',
   'settings.devNote': '已解锁 {unlocked}/{total} 个 Biome',
   'settings.input': '输入',

@@ -16,6 +16,31 @@ export default {
   'menu.info': 'Infos',
   'menu.mainAria': 'Menu principal',
 
+  // --- jogos salvos --------------------------------------------------------
+  'saves.title': 'Choisir une partie',
+  'saves.subtitle': 'Chaque partie garde sa caverne, ses pièces, ses reliques et sa collection.',
+  'saves.newGame': 'Nouvelle partie',
+  'saves.nameLabel': 'Nom de la partie',
+  'saves.namePlaceholder': 'Ma partie',
+  'saves.create': 'Créer et jouer',
+  'saves.empty': 'Aucune partie pour le moment.',
+  'saves.emptyHint': 'Donnez un nom à la première partie pour commencer.',
+  'saves.play': 'Jouer',
+  'saves.rename': 'Renommer',
+  'saves.renameTitle': 'Renommer la partie',
+  'saves.saveName': 'Enregistrer le nom',
+  'saves.delete': 'Supprimer',
+  'saves.deleteTitle': 'Supprimer la partie',
+  'saves.deleteConfirm': 'Supprimer « {name} » ? Ses pièces, ses reliques et sa caverne seront perdues. Action irréversible.',
+  'saves.playedOn': 'Jouée le {date}',
+  'saves.current': 'En cours',
+  'saves.nameTaken': 'Une partie porte déjà ce nom. Vous pouvez quand même l’utiliser.',
+  'saves.ariaList': 'Parties enregistrées',
+  'saves.relics': {
+    one: '{count} relique',
+    other: '{count} reliques'
+  },
+
   // --- écran de langue ----------------------------------------------------
   'language.title': 'Langue',
   'language.hint': 'Le changement est immédiat, sans redémarrage.',
@@ -72,7 +97,7 @@ export default {
   'settings.fullscreen': 'Plein écran au démarrage',
   'settings.fullscreenPwaHint':
     'Safari sur iPhone et iPad n’a pas de plein écran — installez-le depuis l’écran d’accueil.',
-  'settings.rememberCave': 'Mémoriser la meilleure grotte',
+  'settings.rememberRun': 'Mémoriser ma progression',
   'settings.devMode': 'Mode développeur',
   'settings.devNote': '{unlocked} biomes sur {total} débloqués',
   'settings.input': 'Entrées',

@@ -15,6 +15,7 @@ import { introJaVista, marcarIntroVista } from './game/intro.js';
 import {
   LOCALES,
   createTranslator,
+  getLocale,
   readStoredLocale,
   setLocale,
   t as tNoCarregamento
@@ -24,6 +25,7 @@ import {
   RELIC_CATALOG,
   createCollectionState,
   createStatsState,
+  createUtilityInventory,
   getBiomeForCave,
   getBiomeProgress,
   getBiomeStartCave,
@@ -31,13 +33,19 @@ import {
   getTotalRelics,
   getUnlockedBiomes
 } from './game/progression.js';
+import {
+  apagarJogo,
+  criarJogo,
+  estadoInicial,
+  gravarEstadoDoJogo,
+  lerJogo,
+  listarJogos,
+  marcarUltimoJogado,
+  migrarPerfilAntigo,
+  normalizarNome,
+  renomearJogo
+} from './game/saves.js';
 import './styles/app.css';
-
-const createUtilityInventory = () => ({
-  lifePotion: 0,
-  revealBomb: 0,
-  safePath: 0
-});
 
 const createImprovementState = () => ({
   pickaxeUpgradeLevel: 0,
@@ -474,6 +482,68 @@ function normalizeProgressState(state) {
   };
 }
 
+/**
+ * O estado completo de um jogo que foi acabado de carregar.
+ *
+ * O save traz só o progresso (`PERSISTENTE` em `saves.js`). O estado de tela vem
+ * do `initialState`, e isso não é detalhe: quem abre um jogo entra na caverna
+ * dele, e não numa tela de vitória que ficou aberta no momento em que salvou —
+ * nem preso num lobby de derrota que ele já resolvendo.
+ *
+ * O `initialState` entra como base justamente por causa disso. O caminho inverso,
+ * começar pelo save e completar o resto, devolveria um estado sem `screen` nem
+ * `inLobby`, e o primeiro `if` da tela cairia num estado indefinido.
+ */
+function montarEstadoCarregado(carregado, traduzir) {
+  const cave = Number.isFinite(carregado?.cave) ? carregado.cave : 1;
+  const biome = getBiomeForCave(cave);
+
+  return normalizeProgressState({
+    ...initialState,
+    ...carregado,
+    cave,
+    biomeId: carregado?.biomeId ?? biome.id,
+    biomeName: carregado?.biomeName ?? biome.name,
+    // A mensagem que o save traz é do instante em que ele foi gravado, e pode ser
+    // uma de derrota. A de entrada é a mesma que a seleção de bioma mostrava.
+    lastMessage: traduzir('msg.enterCave', {
+      cave: getBiomeProgress(cave).label,
+      biome: traduzir(biome.nameKey)
+    })
+  });
+}
+
+/**
+ * A data de um save, no formato do idioma em uso.
+ *
+ * `Intl` e não uma data montada à mão: o formato da data muda por idioma, e a
+ * forma curta é a que cabe no card. Se `Intl` não existir ou o dado vier
+ * corrompido, a card segue sem data — uma data errada é pior do que nenhuma.
+ */
+function formatarDataDeJogo(instante, localeId) {
+  if (!Number.isFinite(instante) || instante <= 0) return '';
+
+  try {
+    return new Intl.DateTimeFormat(localeId, { dateStyle: 'medium' }).format(new Date(instante));
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Já existe um jogo com esse nome?
+ *
+ * Comparar sem normalizar daria dois "Jogo 1" com nomes diferentes só por causa de
+ * um espaço ou de maiúsculas, e a pessoa não acharia nenhum dos dois. Nomes
+ * repetidos são permitidos — o Minecraft deixa —, então isto é um aviso e não um
+ * bloqueio.
+ */
+function nomeDeJogoRepetido(lista, nome, idIgnorado = null) {
+  const alvo = normalizarNome(nome, lista.length).toLocaleLowerCase();
+
+  return lista.some((jogo) => jogo.id !== idIgnorado && jogo.name.toLocaleLowerCase() === alvo);
+}
+
 function getBiomeAccentColor(biomeId) {
   return BIOME_ACCENT_COLORS[biomeId] ?? '#8df0b0';
 }
@@ -511,6 +581,35 @@ export default function App() {
   const [biomeSelectContext, setBiomeSelectContext] = useState('menu');
   const [selectedBiomeId, setSelectedBiomeId] = useState(firstBiome.id);
   const [pendingBiomeState, setPendingBiomeState] = useState(null);
+
+  /**
+   * Os jogos salvos, e o jogo em andamento.
+   *
+   * A migração roda dentro do inicializador em vez de um efeito, para o primeiro
+   * render já mostrar o jogo migrado. Ela é idempotente — só age quando não
+   * existe jogo nenhum — então rodar duas vezes, como o StrictMode faz em
+   * desenvolvimento, não cria um "Jogo 1" duplicado.
+   *
+   * `activeSaveId` é o slot que o `gameState` atual pertence. Sem ele não há para
+   * onde gravar, e é por ele que a tela de jogos sabe qual marcar como "em
+   * andamento".
+   */
+  const [saves, setSaves] = useState(() => {
+    migrarPerfilAntigo(null);
+    return listarJogos(null);
+  });
+  const [activeSaveId, setActiveSaveId] = useState(null);
+  const [showSaves, setShowSaves] = useState(false);
+  const [saveNameDraft, setSaveNameDraft] = useState('');
+
+  /**
+   * A edição em andamento na lista de jogos.
+   *
+   * `{ tipo: 'renomear' | 'apagar', id, nome }`, ou `null`. Fica dentro da tela de
+   * jogos em vez de virar outro modal: renomear é uma edição de um campo da lista,
+   * e uma terceira camada por cima da lista esconderia a lista.
+   */
+  const [saveEdit, setSaveEdit] = useState(null);
   const [settings, setSettings] = useState(() => readSettings());
   const [hudHeight, setHudHeight] = useState(0);
   const [showLanguage, setShowLanguage] = useState(false);
@@ -660,6 +759,7 @@ export default function App() {
 
       if (showUtilityShopModal) setShowUtilityShopModal(false);
       else if (showBiomeSelect) setShowBiomeSelection(null);
+      else if (showSaves) setShowSaves(false);
       else if (showLanguage) setShowLanguage(false);
       else if (showSettings) setShowSettings(false);
       else if (showInfoModal) setShowInfoModal(false);
@@ -673,6 +773,7 @@ export default function App() {
   }, [
     showUtilityShopModal,
     showBiomeSelect,
+    showSaves,
     showLanguage,
     showSettings,
     showInfoModal,
@@ -691,6 +792,35 @@ export default function App() {
     window.dispatchEvent(new CustomEvent('cob-settings', { detail: buildSceneSettings(settings) }));
   }, [settings]);
 
+  /**
+   * Grava o progresso no jogo em andamento.
+   *
+   * Antes, isto escrevia um `profile` único com o `bestCave`. Agora cada jogo tem
+   * o seu save, e é nele que a run inteira é gravada — moedas, relíquias, coleção
+   * e estatísticas, não só a caverna mais longe.
+   *
+   * A dependência é o `gameState` inteiro, e não o `bestCave`: o save precisa
+   * carregar a run em qualquer ponto, e um save só com a caverna mais distante
+   * perderia as moedas de quem fechou uma caverna e saiu do menu.
+   *
+   * Gravar a cada mudança de estado é o que se espera de um save: o custo é uma
+   * escrita de poucos kilobytes por ação, e a alternativa — gravar só ao sair —
+   * perde tudo numa aba fechada no meio da caverna.
+   */
+  useEffect(() => {
+    if (!settings.persistProgress) return;
+    if (!activeSaveId) return;
+
+    gravarEstadoDoJogo(null, activeSaveId, gameState);
+  }, [settings.persistProgress, activeSaveId, gameState]);
+
+  /**
+   * O `profile` continua sendo escrito, com o `bestCave` do jogo em andamento.
+   *
+   * Ele não decide mais nada no jogo — o destravamento é por jogo, e o save de cada
+   * slot carrega o seu. Fica como registro do quanto a pessoa chegou, e é a fonte
+   * da migração para quem vier de uma versão sem slots.
+   */
   useEffect(() => {
     if (!settings.persistProgress) return;
 
@@ -976,6 +1106,140 @@ export default function App() {
     setEntryPhase(ENTRY_PHASE.PLAYING);
   };
 
+  /**
+   * Abre a tela de jogos.
+   *
+   * A lista é relida na hora, e não tirada do estado. O save é mudado fora do
+   * React de propósito — a cena do Phaser grava direto no storage quando uma
+   * run avança, e essa escrita não passa por nenhum `setState`. Uma lista cacheada
+   * mostraria o progresso de como o jogo estava na última vez que a tela abriu.
+   */
+  const abrirListaDeJogos = () => {
+    setSaves(listarJogos(null));
+    setShowSaves(true);
+    setShowSettings(false);
+    setShowInfoModal(false);
+    setShowBiomeSelect(false);
+    setShowLanguage(false);
+  };
+
+  const fecharListaDeJogos = () => {
+    setShowSaves(false);
+    setSaveNameDraft('');
+  };
+
+  /**
+   * Troca o jogo em andamento sem abrir a caverna.
+   *
+   * É o que faz o card highlighting e o botão de renomear não trocarem a run que
+   * a pessoa está jogando. Abrir a caverna é `entrarNoJogo`.
+   */
+  const carregarJogo = (id) => {
+    const carregado = lerJogo(null, id);
+
+    if (!carregado) return;
+
+    setActiveSaveId(id);
+    marcarUltimoJogado(null, id);
+    syncLocalState(montarEstadoCarregado(carregado, t));
+  };
+
+  /**
+   * Entra no jogo escolhido, direto na caverna em que ele parou.
+   *
+   * Não passa pela seleção de bioma: o save já sabe em que caverna está, e pedir
+   * de novo seria um clique a mais na ação que a pessoa mais repete.
+   */
+  const entrarNoJogo = (id) => {
+    const carregado = lerJogo(null, id);
+
+    if (!carregado) return;
+
+    setActiveSaveId(id);
+    marcarUltimoJogado(null, id);
+    syncLocalState(montarEstadoCarregado(carregado, t));
+
+    setShowSaves(false);
+    setSaveNameDraft('');
+    setShowSettings(false);
+    setSaves(listarJogos(null));
+
+    finalizeCaveEntry(stateRef.current, { playIntro: true });
+  };
+
+  /**
+   * Entra no jogo escolhido, mas pela seleção de bioma.
+   *
+   * É o caminho que preserva a troca de bioma a partir do menu. O jogo já está
+   * carregado em `stateRef`, e `buildBiomeStartState` carrega moedas, coleção e
+   * estatísticas dele para o bioma escolhido.
+   */
+  const trocarBiomaDoJogo = (id) => {
+    const carregado = lerJogo(null, id);
+
+    if (!carregado) return;
+
+    setActiveSaveId(id);
+    marcarUltimoJogado(null, id);
+    syncLocalState(montarEstadoCarregado(carregado, t));
+
+    setShowSaves(false);
+    setSaveNameDraft('');
+    setSaves(listarJogos(null));
+
+    openBiomeSelection({ context: 'menu', biomeId: carregado.biomeId });
+  };
+
+  /**
+   * Cria um jogo novo com o nome digitado e entra nele.
+   *
+   * Um jogo novo começa na primeira caverna, e o destravamento é por jogo — então
+   * a Mina Solar é a única opção. Passar pela seleção de bioma aqui mostraria uma
+   * tela com uma escolha só.
+   *
+   * O `bestCave` do jogo em andamento é copiado para o novo. Recomeçar de
+   * propósito não pode custar a progressão: o `bestCave` é o que destrava os
+   * biomas, e um slot novo sem ele obrigaria a refazer as dez primeiras cavernas
+   * só para chegar no gelo.
+   */
+  const criarEEntrar = () => {
+    const herdado = stateRef.current;
+    const id = criarJogo(null, saveNameDraft, {
+      cave: 1,
+      estado: { ...estadoInicial(1), bestCave: herdado.bestCave ?? 1 }
+    });
+
+    setActiveSaveId(id);
+    setSaveNameDraft('');
+    setShowSaves(false);
+    setSaves(listarJogos(null));
+
+    const criado = lerJogo(null, id);
+    if (!criado) return;
+
+    syncLocalState(montarEstadoCarregado(criado, t));
+    finalizeCaveEntry(stateRef.current, { playIntro: true });
+  };
+
+  const renomearJogoSalvo = (id, nome) => {
+    if (!renomearJogo(null, id, nome)) return;
+
+    setSaves(listarJogos(null));
+    setSaveEdit(null);
+  };
+
+  const apagarJogoSalvo = (id) => {
+    if (!apagarJogo(null, id)) return;
+
+    // O jogo apagado era o em andamento: sem save, o `gameState` vira uma run sem
+    // dono. Deixar `activeSaveId` apontando para um id apagado faria toda gravação
+    // seguinte falhar em silêncio.
+    if (activeSaveId === id) setActiveSaveId(null);
+
+    setSaves(listarJogos(null));
+    setSaveEdit(null);
+  };
+
   const openBiomeSelection = ({ context = 'menu', biomeId = null, pendingState = null } = {}) => {
     const fallbackCave = pendingState?.cave ?? stateRef.current.cave ?? 1;
     const resolvedBiome = BIOMES.find((biome) => biome.id === biomeId) ?? getBiomeForCave(fallbackCave);
@@ -984,6 +1248,8 @@ export default function App() {
     setPendingBiomeState(pendingState);
     setBiomeSelectContext(context);
     setShowBiomeSelect(true);
+    setShowSaves(false);
+    setSaveNameDraft('');
     setShowSettings(false);
     setShowInfoModal(false);
     setShowUtilityShopModal(false);
@@ -1293,7 +1559,7 @@ export default function App() {
   const currentBiomeTotal = activeProgress.totalCaves;
   const nextProgress = getBiomeProgress(nextCaveNumber);
   const pendingBiome = pendingBiomeState ? getBiomeForCave(pendingBiomeState.cave) : null;
-  const bestCaveProgress = getBiomeProgress(profile.bestCave ?? 1);
+  const bestCaveProgress = getBiomeProgress(gameState.bestCave ?? 1);
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('cob-hud-inset', { detail: { height: hudHeight } }));
@@ -1777,7 +2043,7 @@ export default function App() {
                 <button
                   className="menu-item"
                   type="button"
-                  onClick={() => openBiomeSelection({ context: 'menu', biomeId: activeBiome.id })}
+                  onClick={abrirListaDeJogos}
                 >
                   <span className="menu-item-bar" aria-hidden="true" />
                   <span className="menu-item-label">{t('menu.enter')}</span>
@@ -1865,6 +2131,204 @@ export default function App() {
               width="1280"
               height="1280"
             />
+          </div>
+        )}
+
+        {showSaves && (
+          <div className="menu-settings-backdrop saves-backdrop" onClick={fecharListaDeJogos}>
+            <div
+              className="menu-settings-modal saves-modal"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t('saves.title')}
+            >
+              <div className="menu-info-head saves-head">
+                <div>
+                  <h2>{t('saves.title')}</h2>
+                  <p className="saves-subtitle">{t('saves.subtitle')}</p>
+                </div>
+              </div>
+
+              <div className="saves-list" aria-label={t('saves.ariaList')}>
+                {saves.length === 0 ? (
+                  <div className="saves-empty">
+                    <p className="saves-empty-title">{t('saves.empty')}</p>
+                    <p className="saves-empty-hint">{t('saves.emptyHint')}</p>
+                  </div>
+                ) : (
+                  saves.map((jogo) => {
+                    const biome = getBiomeForCave(jogo.cave);
+                    const data = formatarDataDeJogo(jogo.playedAt, getLocale());
+                    const renomeando = saveEdit?.tipo === 'renomear' && saveEdit.id === jogo.id;
+                    const apagando = saveEdit?.tipo === 'apagar' && saveEdit.id === jogo.id;
+
+                    return (
+                      <article
+                        key={jogo.id}
+                        className={`saves-card${jogo.id === activeSaveId ? ' is-current' : ''}`}
+                      >
+                        <header className="saves-card-head">
+                          <h3 className="saves-card-name">{jogo.name}</h3>
+
+                          {jogo.id === activeSaveId && (
+                            <span className="saves-badge">{t('saves.current')}</span>
+                          )}
+                        </header>
+
+                        <p className="saves-card-where">
+                          {getBiomeProgress(jogo.cave).label} · {t(biome.nameKey)}
+                        </p>
+
+                        <div className="saves-card-stats">
+                          <span className="saves-chip">
+                            <b>{jogo.coins}</b> {t('hud.coins')}
+                          </span>
+
+                          <span className="saves-chip">
+                            {t('saves.relics', { count: jogo.relics })}
+                          </span>
+
+                          {data && (
+                            <span className="saves-chip is-dim" title={t('saves.playedOn', { date: data })}>
+                              {data}
+                            </span>
+                          )}
+                        </div>
+
+                        {renomeando ? (
+                          <form
+                            className="saves-rename"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              renomearJogoSalvo(jogo.id, saveEdit.nome);
+                            }}
+                          >
+                            <input
+                              className="saves-input"
+                              autoFocus
+                              maxLength={28}
+                              value={saveEdit.nome}
+                              aria-label={t('saves.renameTitle')}
+                              onChange={(event) =>
+                                setSaveEdit((current) => ({ ...current, nome: event.target.value }))
+                              }
+                            />
+
+                            <button className="menu-primary-btn compact" type="submit">
+                              {t('saves.saveName')}
+                            </button>
+
+                            <button
+                              className="ghost-btn"
+                              type="button"
+                              onClick={() => setSaveEdit(null)}
+                            >
+                              {t('common.back')}
+                            </button>
+
+                            {nomeDeJogoRepetido(saves, saveEdit.nome, jogo.id) && (
+                              <p className="saves-warn">{t('saves.nameTaken')}</p>
+                            )}
+                          </form>
+                        ) : (
+                          <div className="saves-card-actions">
+                            <button
+                              className="menu-primary-btn compact"
+                              type="button"
+                              onClick={() => entrarNoJogo(jogo.id)}
+                            >
+                              {t('saves.play')}
+                            </button>
+
+                            <button
+                              className="ghost-btn"
+                              type="button"
+                              onClick={() => trocarBiomaDoJogo(jogo.id)}
+                            >
+                              {t('biomeSelect.title.menu')}
+                            </button>
+
+                            <button
+                              className="ghost-btn"
+                              type="button"
+                              onClick={() =>
+                                setSaveEdit({ tipo: 'renomear', id: jogo.id, nome: jogo.name })
+                              }
+                            >
+                              {t('saves.rename')}
+                            </button>
+
+                            <button
+                              className="ghost-btn is-danger"
+                              type="button"
+                              onClick={() =>
+                                setSaveEdit({ tipo: 'apagar', id: jogo.id, nome: jogo.name })
+                              }
+                            >
+                              {t('saves.delete')}
+                            </button>
+                          </div>
+                        )}
+
+                        {apagando && (
+                          <div className="saves-confirm" role="alertdialog" aria-label={t('saves.deleteTitle')}>
+                            <p>{t('saves.deleteConfirm', { name: jogo.name })}</p>
+
+                            <div className="saves-card-actions">
+                              <button
+                                className="ghost-btn"
+                                type="button"
+                                onClick={() => setSaveEdit(null)}
+                              >
+                                {t('common.back')}
+                              </button>
+
+                              <button
+                                className="ghost-btn is-danger"
+                                type="button"
+                                onClick={() => apagarJogoSalvo(jogo.id)}
+                              >
+                                {t('saves.delete')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })
+                )}
+              </div>
+
+              <form
+                className="saves-new"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  criarEEntrar();
+                }}
+              >
+                <label className="saves-new-label" htmlFor="cob-save-name">
+                  {t('saves.nameLabel')}
+                </label>
+
+                <input
+                  id="cob-save-name"
+                  className="saves-input"
+                  value={saveNameDraft}
+                  maxLength={28}
+                  placeholder={t('saves.namePlaceholder')}
+                  onChange={(event) => setSaveNameDraft(event.target.value)}
+                />
+
+                {nomeDeJogoRepetido(saves, saveNameDraft) && (
+                  <p className="saves-warn">{t('saves.nameTaken')}</p>
+                )}
+
+                <button className="menu-primary-btn" type="submit">
+                  {t('saves.create')}
+                </button>
+              </form>
+            </div>
           </div>
         )}
 
@@ -1982,7 +2446,7 @@ export default function App() {
                   }
                 />
                 <span>
-                  <strong>{t('settings.rememberCave')}</strong>
+                  <strong>{t('settings.rememberRun')}</strong>
                 </span>
               </label>
 
@@ -2025,7 +2489,7 @@ export default function App() {
               <div className="settings-line">
                 <span>{t('settings.bestCaveRecorded')}</span>
                 <strong>
-                  {profile.bestCave ?? 1} · {bestCaveProgress.label}
+                  {gameState.bestCave ?? 1} · {bestCaveProgress.label}
                 </strong>
               </div>
 
@@ -2038,6 +2502,25 @@ export default function App() {
                   className="ghost-btn settings-reset-btn"
                   type="button"
                   onClick={() => {
+                    // O botão reinicia o jogo em andamento, não o perfil global.
+                    // Com o destravamento por jogo, o que trava e destrava é o
+                    // `bestCave` do slot ativo — zerar só o `profile` deixaria os
+                    // biomas liberados e o botão não faria nada visível.
+                    //
+                    // O slot em si sobrevive, com o nome que a pessoa deu: o botão
+                    // se chama "Reiniciar progresso", e apagar o jogo inteiro é a
+                    // ação da tela de jogos, com a confirmação dela.
+                    if (activeSaveId) {
+                      const reiniciado = montarEstadoCarregado(
+                        { ...estadoInicial(1), bestCave: 1 },
+                        t
+                      );
+
+                      gravarEstadoDoJogo(null, activeSaveId, reiniciado);
+                      syncLocalState(reiniciado);
+                      setSaves(listarJogos(null));
+                    }
+
                     setProfile({ bestCave: 1 });
                     // O modo desenvolvedor sobrevive ao reset: o botão se
                     // chama "Reiniciar progresso", e desligar a ferramenta de

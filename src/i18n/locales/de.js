@@ -16,6 +16,31 @@ export default {
   'menu.info': 'Infos',
   'menu.mainAria': 'Hauptmenü',
 
+  // --- jogos salvos --------------------------------------------------------
+  'saves.title': 'Spiel auswählen',
+  'saves.subtitle': 'Jedes Spiel speichert seine eigene Höhle, Münzen, Relikte und Sammlung.',
+  'saves.newGame': 'Neues Spiel',
+  'saves.nameLabel': 'Spielname',
+  'saves.namePlaceholder': 'Mein Spiel',
+  'saves.create': 'Erstellen und spielen',
+  'saves.empty': 'Noch keine Spiele.',
+  'saves.emptyHint': 'Gib dem ersten Spiel einen Namen, um loszulegen.',
+  'saves.play': 'Spielen',
+  'saves.rename': 'Umbenennen',
+  'saves.renameTitle': 'Spiel umbenennen',
+  'saves.saveName': 'Namen speichern',
+  'saves.delete': 'Löschen',
+  'saves.deleteTitle': 'Spiel löschen',
+  'saves.deleteConfirm': '„{name}“ löschen? Die Münzen, Relikte und die Höhle dieses Spiels gehen verloren. Das lässt sich nicht rückgängig machen.',
+  'saves.playedOn': 'Gespielt am {date}',
+  'saves.current': 'Läuft gerade',
+  'saves.nameTaken': 'Es gibt schon ein Spiel mit diesem Namen. Du kannst es trotzdem verwenden.',
+  'saves.ariaList': 'Gespeicherte Spiele',
+  'saves.relics': {
+    one: '{count} Relikt',
+    other: '{count} Relikte'
+  },
+
   // --- Sprachauswahl ------------------------------------------------------
   'language.title': 'Sprache',
   'language.hint': 'Die Umstellung greift sofort, ohne Neustart.',
@@ -71,7 +96,7 @@ export default {
   'settings.fullscreen': 'Beim Start im Vollbild',
   'settings.fullscreenPwaHint':
     'Safari auf iPhone und iPad hat kein Vollbild — installiere es vom Startbildschirm aus.',
-  'settings.rememberCave': 'Beste Höhle merken',
+  'settings.rememberRun': 'Meinen Fortschritt merken',
   'settings.devMode': 'Entwicklermodus',
   'settings.devNote': '{unlocked} von {total} Biomen freigeschaltet',
   'settings.input': 'Eingabe',

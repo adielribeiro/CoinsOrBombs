@@ -23,6 +23,30 @@ export default {
   'menu.info': '情報',
   'menu.mainAria': 'メインメニュー',
 
+  // --- jogos salvos --------------------------------------------------------
+  'saves.title': 'ゲームを選択',
+  'saves.subtitle': '各ゲームは洞窟・コイン・遺物・コレクションをそれぞれ保存します。',
+  'saves.newGame': 'あたらしいゲーム',
+  'saves.nameLabel': 'ゲーム名',
+  'saves.namePlaceholder': 'マイゲーム',
+  'saves.create': '作成してプレイ',
+  'saves.empty': 'まだゲームがありません。',
+  'saves.emptyHint': '最初のゲームに名前をつけて始めましょう。',
+  'saves.play': 'プレイ',
+  'saves.rename': '名前を変更',
+  'saves.renameTitle': 'ゲーム名を変更',
+  'saves.saveName': '名前を保存',
+  'saves.delete': '削除',
+  'saves.deleteTitle': 'ゲームを削除',
+  'saves.deleteConfirm': '「{name}」を削除しますか？このゲームのコイン・遺物・洞窟は失われます。元に戻せません。',
+  'saves.playedOn': 'プレイ日時: {date}',
+  'saves.current': 'プレイ中',
+  'saves.nameTaken': '同じ名前のゲームがすでにあります。そのまま使うこともできます。',
+  'saves.ariaList': '保存されたゲーム',
+  'saves.relics': {
+    other: '遺物 {count} 個'
+  },
+
   // --- 言語画面 ---------------------------------------------------------------
   'language.title': '言語',
   'language.hint': '変更はすぐ反映されます。再起動は不要です。',
@@ -76,7 +100,7 @@ export default {
   'settings.title': '設定',
   'settings.fullscreen': '開始をフルスクリーンで',
   'settings.fullscreenPwaHint': 'iPhone と iPad の Safari にはフルスクリーンがないため、ホーム画面からインストールしてください。',
-  'settings.rememberCave': '最高記録の Cave を記憶する',
+  'settings.rememberRun': '進捗を記憶する',
   'settings.devMode': '開発者モード',
   'settings.devNote': '{total} 個中 {unlocked} 個の Biome が解放済み',
   'settings.input': '入力',

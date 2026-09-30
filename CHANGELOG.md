@@ -5,7 +5,72 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- **Jogos salvos, um por slot, como no Minecraft.** Clicar em **Entrar** na tela de
+  título abre a lista de jogos em vez de ir direto para a seleção de bioma. Cada
+  jogo guarda a run inteira: a caverna em que a pessoa parou, moedas, bombas,
+  picareta, relíquias, coleção e estatísticas. Criar um segundo jogo não apaga o
+  primeiro, e **clicar num jogo já começa a jogar** — direto na caverna em que ele
+  parou, sem passar pela seleção de bioma.
+
+  - **Novo jogo é só um nome.** Clicar em "Novo jogo", digitar o nome e pronto. Um
+    nome vazio ou só com espaços vira "Jogo 1", e o nome tem tamanho limitado.
+  - **Cada card mostra caverna, bioma, moedas, relíquias e a data da última vez.**
+    A lista vem da mais recente para a mais antiga, e o jogo em andamento fica
+    marcado com a barra de acento dos biomas.
+  - **Renomear e apagar, com confirmação.** Apagar mostra o nome do jogo na
+    pergunta e diz que não dá para desfazer.
+  - **A troca de bioma continua existindo**, como botão secundário do card. Ela é a
+    única rota que existia a partir do menu, e tirá-la junto com a seleção de bioma
+    na entrada seria perder uma função junto com um clique.
+
+- **O destravamento de bioma é por jogo.** Um jogo novo começa na Mina Solar mesmo
+  que outro já tenha chegado ao gelo. É a escolha de projeto, e vale registrar a
+  consequência: quem cria um jogo novo joga as dez primeiras cavernas de novo antes
+  de ver o gelo.
+
+  - **Criar um jogo a partir de uma run em andamento copia o `bestCave` dela.** É o
+    que impede que "começar de novo" vire uma punição invisível: o `bestCave` é o
+    que destrava os biomas, e perdê-lo ao criar um slot obrigaria a refazer dez
+    cavernas só para chegar ao mesmo lugar.
+  - **A run continua avançando pelos salvamentos de bioma**, que já ofereciam
+    escolher para onde ir em vez de obrigar a próxima caverna.
+
+- **Quem já jogou não perde nada.** Antes dos slots, o progresso era um `profile`
+  com o `bestCave`. Quem chega a esta versão recebe um jogo migrado com esse
+  progresso, e a migração roda uma vez só. O `profile` antigo **não é apagado** — é
+  a fonte, e apagá-lo antes de a migração ter sucesso trocaria um bug de espaço por
+  um de perda.
+
+- **O botão "Reiniciar progresso" reinicia o jogo em andamento**, não um perfil
+  global. Com o destravamento por jogo, zerar só o `profile` deixava os biomas
+  liberados e o botão não faria nada visível. O slot em si sobrevive, com o nome que
+  a pessoa deu; apagar o jogo inteiro é a ação da tela de jogos, com a confirmação
+  dela.
+
+### Corrigido
+
+- **A contagem de relíquias do card bate com a do HUD.** As duas usavam a mesma
+  palavra e respondiam coisas diferentes: o HUD soma as quantidades, e o card
+  contava os tipos diferentes. Com uma relíquia achada duas vezes, o card dizia "1
+  relíquia" ao lado de um HUD dizendo "2". Agora as duas usam `getTotalRelics`.
+
 ### Mudado
+
+- **O interruptor que era "Lembrar melhor cave" agora é "Lembrar meu progresso".**
+  Ele controlava só o `bestCave` quando o texto foi escrito, e controla a run
+  inteira agora. O texto antigo descrevia uma parte do que o botão faz.
+
+- **O progresso é gravado no jogo em andamento, e não em um perfil único.** A
+  gravação acontece a cada mudança de estado, que é o que se espera de um save: são
+  poucos kilobytes por ação, e gravar só ao sair perderia tudo numa aba fechada no
+  meio da caverna.
+
+- **A leitura da lista é feita do storage a cada abertura, e não de um estado em
+  cache.** O save é mudado fora do React de propósito — a cena do Phaser grava
+  direto no storage quando uma run avança — e essa escrita não passa por nenhum
+  `setState`.
 
 - **O splash da ArchangelSoft aparece uma vez, e não a cada entrada.** Toda vez que
   o jogador saía do menu principal para entrar numa cave, vinha 900ms de tela preta

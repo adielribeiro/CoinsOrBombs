@@ -1622,6 +1622,221 @@ button {
   cursor: not-allowed;
 }
 
+/* ==========================================================================
+   Jogos salvos
+
+   A tela que aparece ao clicar em "Entrar". Reaproveita o modal das
+   configuracoes e o visual do card de bioma, para nao parecer um terceiro lugar
+   do jogo: a mesma borda, o mesmo acento, a mesma tipografia.
+   ========================================================================== */
+
+.saves-backdrop {
+  z-index: 132;
+}
+
+.saves-modal {
+  width: min(760px, 100%);
+  max-height: min(88dvh, 860px);
+  overflow-y: auto;
+  gap: 16px;
+}
+
+.saves-head {
+  align-items: flex-start;
+}
+
+.saves-subtitle {
+  margin: 6px 0 0;
+  color: var(--ink-dim);
+}
+
+.saves-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.saves-empty {
+  padding: 28px 18px;
+  border: 1px dashed var(--line-soft);
+  text-align: center;
+}
+
+.saves-empty-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 17px;
+}
+
+.saves-empty-hint {
+  margin: 6px 0 0;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+}
+
+.saves-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+/* O jogo em andamento leva a mesma barra lateral do card de bioma selecionado.
+   O card de bioma inteiro e clicavel; aqui nao, porque cada acao tem o seu botao
+   -- clicar no card inteiro esconderia qual acao esta embaixo do dedo. */
+.saves-card.is-current {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.saves-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.saves-card-name {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  /* O nome e texto digitado pela pessoa, e nao uma frase do jogo: o padrao e
+     deixar passar uma palavra so. */
+  overflow-wrap: anywhere;
+}
+
+.saves-badge {
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.saves-card-where {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 12.5px;
+}
+
+.saves-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.saves-chip {
+  padding: 3px 9px;
+  border: 1px solid var(--line-soft);
+  color: var(--ink-dim);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.saves-chip b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.saves-chip.is-dim {
+  color: var(--ink-faint);
+}
+
+.saves-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.saves-card-actions .is-danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
+.saves-card-actions .is-danger:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.saves-rename {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.saves-input {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line-soft);
+  background: var(--bg-raise);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+.saves-input:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.saves-warn {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+}
+
+.saves-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+}
+
+.saves-confirm p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.saves-new {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.saves-new-label {
+  flex: 1 0 100%;
+  color: var(--ink-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.saves-new .saves-input {
+  flex: 1 1 200px;
+}
+
 .biome-card-top {
   display: flex;
   justify-content: space-between;
