@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 import { readPng } from '../scripts/png.mjs';
 import {
   BASE_TILE_HEIGHT,
   BASE_TILE_WIDTH,
   CAVE_ENTRANCE_BASE,
+  EXIT_LADDER_ASPECT,
+  EXIT_LADDER_DISPLAY,
   PICKAXE_ASPECT,
   PICKAXE_DISPLAY
 } from '../src/game/config.js';
@@ -205,5 +207,120 @@ test('a picareta continua sem esticar e sem cobrir a rocha', async () => {
     larguraPicareta < ladoRochas,
     `a picareta sai com ${larguraPicareta.toFixed(0)}px, e a rocha com `
       + `${ladoRochas.toFixed(0)}px. Com a picareta maior, o golpe cobre a rocha.`
+  );
+});
+
+test('a saída é a arte nova, do tamanho do buraco que ela substitui', async () => {
+  // A saída deixou de ser vetor: eram uma elipse escura, uma elipse verde e duas
+  // linhas de degrau, em 54 x 19px. Hoje é uma arte pintada de 160x106, na mesma
+  // largura e com a altura que a proporção da arte impõe.
+  const imagem = await readPng(new URL('exit_ladder.png', raiz));
+
+  assert.equal(
+    imagem.width,
+    160,
+    'a saída mudou de tamanho no arquivo; ajuste EXIT_LADDER_ASPECT e o '
+      + 'EXIT_LADDER_DISPLAY. Reexecute \'node scripts/trim-props.mjs\'.'
+  );
+  assert.equal(
+    imagem.height,
+    106,
+    'a saída mudou de tamanho no arquivo; ajuste EXIT_LADDER_ASPECT. '
+      + 'Reexecute \'node scripts/trim-props.mjs\'.'
+  );
+
+  // A largura é a âncora: é a largura do buraco que a arte substitui, e o que
+  // define o espaço que a peça ocupa no tile. Ver `EXIT_LADDER_DISPLAY`.
+  const larguraSaida = Math.round(BASE_TILE_WIDTH * EXIT_LADDER_DISPLAY);
+  const buracoAntigo = Math.round(BASE_TILE_WIDTH * 0.56);
+
+  assert.equal(
+    larguraSaida,
+    buracoAntigo,
+    `a saída sai com ${larguraSaida}px, e o buraco que ela substituia tinha `
+      + `${buracoAntigo}px. A largura é a âncora de propósito.`
+  );
+
+  // E a peça tem de caber dentro do próprio tile. Sem isso, uma arte pintada
+  // maior do que o tile cobre as pedras vizinhas, que é o mesmo defeito que a
+  // boca da caverna teve a 2,4x.
+  const alturaSaida = Math.round(larguraSaida * EXIT_LADDER_ASPECT);
+
+  assert.ok(
+    alturaSaida < BASE_TILE_HEIGHT,
+    `a saída tem ${alturaSaida}px de altura, e o tile tem ${BASE_TILE_HEIGHT}px. `
+      + 'Ela passa da fileira e cobre a pedra de trás. Baixe EXIT_LADDER_DISPLAY.'
+  );
+
+  assert.ok(
+    larguraSaida < BASE_TILE_WIDTH,
+    `a saída sai com ${larguraSaida}px, e o tile tem ${BASE_TILE_WIDTH}px. `
+      + 'Mais larga que o tile, ela invade os tiles vizinhos.'
+  );
+});
+
+test('a saída não tem folga transparente', async () => {
+  // A folga da arte de origem é de 300px em cima e 292px embaixo, num canvas de
+  // 1254px. Como a peça é ancorada pelo CENTRO e não pela base, a folga não
+  // vira levitação — ela empurra o buraco para fora do chão, e o resultado é uma
+  // saída que parece flutuar sobre o tile em vez de estar nele.
+  const { width: W, height: H, channels: C, data: D } = await readPng(
+    new URL('exit_ladder.png', raiz)
+  );
+
+  let minX = W;
+  let maxX = -1;
+  let minY = H;
+  let maxY = -1;
+
+  for (let y = 0; y < H; y += 1) {
+    for (let x = 0; x < W; x += 1) {
+      if (D[(y * W + x) * C + 3] > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  assert.notEqual(maxY, -1, 'exit_ladder.png está totalmente transparente');
+
+  for (const [lado, valor] of [
+    ['acima', minY],
+    ['abaixo', H - 1 - maxY],
+    ['a esquerda', minX],
+    ['a direita', W - 1 - maxX]
+  ]) {
+    assert.equal(
+      valor,
+      0,
+      `exit_ladder.png tem ${valor}px de folga ${lado}. A peça é ancorada pelo `
+        + 'centro, então a folga desloca o buraco em relação ao chão. '
+        + 'Rode \'node scripts/trim-props.mjs\'.'
+    );
+  }
+});
+
+test('a saída oculta continua com a escada de vetor, discreta', () => {
+  // É uma decisão, não um acidente: a saída oculta é um segredo que o jogador
+  // acha por acaso. A arte da saída é pintada e detalhada, e num ponto aleatório
+  // do mapa ela entrega o segredo antes da hora.
+  //
+  // O teste existe para a próxima pessoa que for "harmonizar" as duas saídas não
+  // fazer isso sem perceber o que está perdendo.
+  const fonte = readFileSync(
+    new URL('../src/game/scenes/CaveScene.js', import.meta.url),
+    'utf8'
+  );
+
+  const usos = (fonte.match(/'exit_ladder'/g) ?? []).length;
+
+  assert.equal(
+    usos,
+    1,
+    `'exit_ladder' aparece ${usos}x no CaveScene. A arte da saída não deve ir `
+      + 'na saída oculta: ela é um segredo, e detalhe num ponto aleatório do '
+      + 'mapa entrega o segredo antes da hora.'
   );
 });

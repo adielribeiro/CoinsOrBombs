@@ -58,11 +58,44 @@ export function getBackdropKeyForCave(cave = 1) {
 /**
  * Pedidos em andamento, por cena.
  *
- * Um `Set` por cena e não um global: o `CaveScene` é criado e destruído ao longo
+ * Um `Map` por cena e não um global: o `CaveScene` é criado e destruído ao longo
  * da sessão, e uma chave que ficou presa no conjunto depois do `shutdown`
  * diria para sempre que "já está carregando", sem nunca carregar.
+ *
+ * O que se guarda é o **conjunto de arquivos que faltam**, e não a lista de
+ * callbacks: um pedido só termina quando TODOS os arquivos dele chegaram, e o
+ * `onReady` dispara uma vez, no último. Com o desenho anterior — um `once` por
+ * arquivo chamando o mesmo `concluir` — o primeiro arquivo que chegava disparava
+ * o redesenho, o segundo arquivo ainda não estava na textura, e o render pedia o
+ * segundo de novo, reentrante, no meio do ciclo de carga do primeiro.
  */
 const emVoo = new WeakMap();
+
+/**
+ * O motor tem uma textura de verdade para esta chave?
+ *
+ * `exists` sozinho NÃO basta, e essa é a parte que custa caro. `exists` é
+ * `list.hasOwnProperty(key)`, e `get(key)` devolve `__MISSING` quando a chave não
+ * está na lista — que é a textura que o Phaser desenha como caixa preta com X
+ * verde.
+ *
+ * Então a pergunta útil não é "a chave está registrada?", e sim "o que eu
+ * receberia é a textura que eu pedi?". Por isso o teste é a identidade: a
+ * textura devolvida precisa ter a MESMA chave que foi pedida. A `__MISSING`
+ * responde `__MISSING`, e é reprovada.
+ *
+ * Esta é a barreira que impede o X verde na tela. Sem ela, qualquer erro na
+ * checagem de "está pronto?" vira uma caixa preta com X — sem exceção, sem erro no
+ * console, e sem nenhuma pista de que o fundo não carregou.
+ */
+export function isArtePronta(scene, key) {
+  const texturas = scene ? scene.textures : null;
+  if (!texturas || typeof texturas.exists !== 'function') return false;
+  if (typeof texturas.get !== 'function') return false;
+  if (texturas.exists(key) !== true) return false;
+  const textura = texturas.get(key);
+  return Boolean(textura) && textura.key === key;
+}
 
 /**
  * O que um bioma tem carregado, e o que ainda falta.
@@ -72,35 +105,20 @@ const emVoo = new WeakMap();
  * evita o caso de a entrada chegar um quadro depois, o que apareceria como um
  * pedestal que surge do nada.
  *
- * Esta é a ÚNICA função que toca em `scene.textures`, e é por isso que "está
- * pronto?" e "o que falta?" não podem divergir. Quando eram dois lugares
- * independentes, o `renderMap` passava pela verificação e caía no acesso
- * seguinte sem a textura — que é o placeholder de textura ausente, sem exceção,
- * sem aviso e sem erro de console.
- *
- * A guarda extrai `exists` ANTES de testar. A forma curta
- * (`typeof scene.texturas.exists !== 'function'`) é legível e passa em leitura,
- * mas ela é o único ponto do arquivo que decide entre "está tudo pronto" e "o
- * render tem que esperar" — e um erro ali é silencioso por construção: o jogo
- * simplesmente não pede a arte, e o bioma fica em cinza para sempre. Com uma
- * variável, o teste é sobre a função extraída, e não sobre a cadeia de acessos.
+ * Sem motor — fora do navegador, cena de teste — não há placeholder para trocar, e
+ * devolver "falta" colocaria o renderizador num laço de pedido que nunca termina.
+ * Então, sem `textures`, tudo é considerado pronto.
  */
 function estadoDoBioma(scene, biomeId) {
+  const texturas = scene ? scene.textures : null;
   const arte = [getBackdropKey(biomeId), getEntranceKey(biomeId)];
-  const existe = scene?.texturas?.exists;
-
-  // Sem motor — fora do navegador, cena de teste — não há placeholder para
-  // trocar, e devolver "falta" colocaria o renderizador num laço de pedido que
-  // nunca termina. Então, sem `textures`, tudo é considerado pronto.
-  if (typeof existe !== 'function') {
+  if (!texturas || typeof texturas.exists !== 'function') {
     return { arte, faltando: [], temTexturas: false };
   }
-
   const faltando = [];
   for (let i = 0; i < arte.length; i += 1) {
-    if (scene.texturas.exists(arte[i]) !== true) faltando.push(arte[i]);
+    if (texturas.exists(arte[i]) !== true) faltando.push(arte[i]);
   }
-
   return { arte, faltando, temTexturas: true };
 }
 
@@ -126,46 +144,54 @@ export function isBackdropReady(scene, biomeId) {
  */
 export function ensureBackdrop(scene, biomeId, onReady) {
   const faltando = estadoDoBioma(scene, biomeId).faltando;
-
   if (faltando.length === 0) return true;
 
   let pedidos = emVoo.get(scene);
   if (!pedidos) {
-    pedidos = new Set();
+    pedidos = new Map();
     emVoo.set(scene, pedidos);
   }
 
   // Só um pedido por bioma. A chave do pedido é o bioma, não o arquivo, porque o
   // pedido cobre os dois.
-  const idDoPedido = `bioma:${biomeId}`;
+  const idDoPedido = biomeId;
   if (pedidos.has(idDoPedido)) return false;
 
-  pedidos.add(idDoPedido);
+  // O pedido guarda o que ainda não chegou. Um `once` por arquivo tira o seu do
+  // conjunto, e só o último dispara o `onReady`.
+  const restantes = new Set(faltando);
+  pedidos.set(idDoPedido, restantes);
 
-  const concluir = () => {
-    pedidos.delete(idDoPedido);
+  const concluir = (key) => {
+    if (key) restantes.delete(key);
+    if (restantes.size > 0) return;
+    const atuais = emVoo.get(scene);
+    if (atuais) atuais.delete(idDoPedido);
     onReady?.();
   };
 
-  // `filecomplete-image-<chave>` é o evento por arquivo do Phaser. O
-  // `loaderror` é a rede: um arquivo que falha tem que liberar o pedido, senão a
-  // chave fica presa em "carregando" e o placeholder nunca mais sai.
+  // Um `once` por arquivo, e cada um tira o seu do conjunto.
   for (let i = 0; i < faltando.length; i += 1) {
-    scene.load.once(`filecomplete-image-${faltando[i]}`, concluir);
+    scene.load.once(`filecomplete-image-${faltando[i]}`, () => concluir(faltando[i]));
   }
-  scene.load.once('loaderror', concluir);
+
+  // `loaderror` é a rede: quando ela falha, o pedido inteiro é liberado, senão a
+  // chave fica presa em "carregando" e o placeholder nunca mais sai. Não vem
+  // com chave de arquivo utilizável, então libera tudo.
+  scene.load.once('loaderror', () => {
+    restantes.clear();
+    concluir();
+  });
 
   for (let i = 0; i < faltando.length; i += 1) {
     scene.load.image(faltando[i], `assets/${faltando[i]}.png`);
   }
 
-  try {
-    scene.load.start();
-  } catch {
-    // Sem loader utilizável — fora do navegador, ou a cena já encerrada. Não é
-    // motivo para derrubar o render: o placeholder cobre o quadro.
-    pedidos.delete(idDoPedido);
-  }
+  // `start()` só age se o loader estiver pronto; se ele já estiver baixando, ele
+  // recolhe os arquivos da fila sozinho. Não há `try` aqui de propósito: um
+  // `start()` que lançasse seria a pista de que a cena já está encerrada, e
+  // engolir isso esconde o sintoma.
+  scene.load.start();
 
   return false;
 }

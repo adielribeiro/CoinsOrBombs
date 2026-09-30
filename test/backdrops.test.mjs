@@ -7,73 +7,15 @@ import {
   ensureBackdrop,
   getBackdropKey,
   getBackdropKeyForCave,
+  isArtePronta,
   isBackdropReady,
   listBackdropKeys
 } from '../src/game/backdrops.js';
+import { MISSING, arteDe, cenaFalsa } from './cena-phaser.mjs';
 import { ENTRANCES, getEntranceKey } from '../src/game/entrances.js';
 import { BIOMES, getBiomeForCave } from '../src/game/progression.js';
 
 const BIOMAS = BIOMES.map((b) => b.id);
-
-/**
- * Uma cena falsa com o mínimo do Phaser que `ensureBackdrop` toca.
- *
- * Existe porque o caminho de carga por bioma **não é verificável no navegador
- * deste ambiente**: a aba fica com `visibilityState === 'hidden'`, o
- * `requestAnimationFrame` é estrangulado, o `BootScene` nunca termina o preload
- * e o `CaveScene.create()` nunca registra os ouvintes. Sem cena, não há
- * `ensureBackdrop` para chamar.
- *
- * O que esta cena falsa cobre é a LÓGICA, que é a parte com decisão: quando
- * pedir, quando não pedir, quando liberar o pedido. O que ela não cobre é se o
- * Phaser realmente baixa o arquivo — e isso fica registrado como o limite,
- * não escondido.
- */
-function cenaFalsa({ texturas = [] } = {}) {
-  const ouvintes = new Map();
-  const pedidos = [];
-  const iniciados = [];
-
-  const scene = {
-    texturas: {
-      existentes: new Set(texturas),
-      exists(key) {
-        return this.existentes.has(key);
-      }
-    },
-    load: {
-      once(evento, fn) {
-        if (!ouvintes.has(evento)) ouvintes.set(evento, []);
-        ouvintes.get(evento).push(fn);
-      },
-      image(key, url) {
-        pedidos.push({ key, url });
-      },
-      start() {
-        iniciados.push(pedidos.length);
-      }
-    },
-
-    // Instrumentação do teste, não da cena real.
-    _pedidos: pedidos,
-    _iniciados: iniciados,
-    _ouvintes: ouvintes,
-
-    /** Dispara um evento como o Phaser faria quando o arquivo chega. */
-    emitir(evento) {
-      for (const fn of ouvintes.get(evento) ?? []) fn();
-    },
-
-    /** Marca uma textura como carregada, como o `textures.exists` passaria a ver. */
-    terTextura(key) {
-      scene.texturas.existentes.add(key);
-    }
-  };
-
-  return scene;
-}
-
-const arteDe = (biomaId) => [getBackdropKey(biomaId), getEntranceKey(biomaId)];
 
 test('todo bioma tem fundo e entrada registrados', () => {
   for (const id of BIOMAS) {
@@ -126,13 +68,39 @@ test('pede o fundo E a entrada do bioma, no mesmo pedido', () => {
   );
   assert.equal(scene._iniciados.length, 1, 'os dois arquivos vão no mesmo start()');
   assert.equal(avisos, 0, 'o onReady não pode disparar antes de a arte chegar');
+});
 
-  // A arte chega, e o render é chamado para trocar o placeholder.
+test('o redesenho espera TODAS as artes, e dispara uma vez só', () => {
+  // Este é o teste do reentrante. Com um `concluir` por arquivo, o fundo
+  // chegava primeiro, disparava o redesenho, a entrada ainda não estava na
+  // textura, e o `renderMap` pedia a entrada de novo — um novo pedido, com um
+  // novo `start()`, no meio do ciclo de carga do primeiro. O sintoma era o
+  // retângulo da cor do bioma piscando enquanto o fundo entrava.
+  const scene = cenaFalsa();
+  let avisos = 0;
+
+  ensureBackdrop(scene, 'ember', () => { avisos += 1; });
+
   scene.terTextura(getBackdropKey('ember'));
-  scene.terTextura(getEntranceKey('ember'));
   scene.emitir(`filecomplete-image-${getBackdropKey('ember')}`);
 
-  assert.equal(avisos, 1, 'o onReady tem que disparar quando o fundo chega');
+  assert.equal(avisos, 0, 'o fundo chegou sozinho e disparou o redesenho. '
+    + 'A entrada do mesmo pedido ainda não tinha chegado.');
+
+  const antes = scene._pedidos.length;
+  ensureBackdrop(scene, 'ember', () => {});
+
+  assert.equal(
+    scene._pedidos.length,
+    antes,
+    'o segundo ensureBackdrop reentrante abriu um pedido novo, com a entrada que '
+      + 'ainda estava no meio da carga'
+  );
+
+  scene.terTextura(getEntranceKey('ember'));
+  scene.emitir(`filecomplete-image-${getEntranceKey('ember')}`);
+
+  assert.equal(avisos, 1, 'o redesenho tem de acontecer quando a última arte chega');
   assert.equal(isBackdropReady(scene, 'ember'), true);
 });
 
@@ -159,8 +127,10 @@ test('depois que chega, o mesmo bioma não abre outro pedido', () => {
   ensureBackdrop(scene, 'crystal', () => {});
 
   scene.terTextura(getBackdropKey('crystal'));
-  scene.terTextura(getEntranceKey('crystal'));
   scene.emitir(`filecomplete-image-${getBackdropKey('crystal')}`);
+
+  scene.terTextura(getEntranceKey('crystal'));
+  scene.emitir(`filecomplete-image-${getEntranceKey('crystal')}`);
 
   const antes = scene._pedidos.length;
   assert.equal(ensureBackdrop(scene, 'crystal', () => {}), true);
@@ -177,8 +147,7 @@ test('um arquivo que falha libera o pedido, e o placeholder não trava', () => {
   scene.emitir('loaderror');
 
   // O pedido foi liberado, então uma nova tentativa é possível. É este o ponto:
-  // sem o `loaderror`, a chave ficaria presa em "carregando" e o placeholder da
-  // cor do bioma nunca mais sairia — nem se o jogador saísse e voltasse ao bioma.
+  // sem o `loaderror`, a chave ficaria presa e a nova tentativa não abriria nada.
   const antes = scene._pedidos.length;
   ensureBackdrop(scene, 'wind', () => {});
   assert.equal(
@@ -246,6 +215,54 @@ test('o bioma de uma cave é o mesmo que o do fundo daquela cave', () => {
       getBackdropKeyForCave(cave),
       getBackdropKey(getBiomeForCave(cave).id),
       `cave ${cave}: o atalho de fundo discorda do bioma da cave`
+    );
+  }
+});
+
+// --- a barreira do __MISSING ------------------------------------------------
+//
+// Estes três testes são a razão de `isArtePronta` existir, e eles descrevem um
+// bug que aconteceu: cinco dos seis biomas apareceram com uma caixa preta e um X
+// verde, sem erro no console. A cena do Phaser respondia "está pronta" para uma
+// textura que não tinha chegado.
+
+test('isArtePronta reprova a textura que não é a que foi pedida', () => {
+  // O `exists` mente: a chave está registrada. O `get` entrega a `__MISSING`,
+  // que é o que o Phaser desenha como caixa preta com X verde. A identidade da
+  // chave é a única coisa que separa os dois casos.
+  const scene = cenaFalsa();
+
+  assert.equal(
+    scene.texturas.exists('cave_bg_ember'),
+    false,
+    'a cena falsa deveria comportar-se como o Phaser nesta questão'
+  );
+  assert.equal(scene.texturas.get('cave_bg_ember').key, MISSING);
+
+  assert.equal(
+    isArtePronta(scene, 'cave_bg_ember'),
+    false,
+    'isArtePronta aceitou uma chave que não está na lista de texturas'
+  );
+});
+
+test('isArtePronta aceita a textura, e só a textura certa', () => {
+  const scene = cenaFalsa({ texturas: ['cave_bg_ember'] });
+
+  assert.equal(isArtePronta(scene, 'cave_bg_ember'), true);
+  assert.equal(isArtePronta(scene, 'cave_entrance_ember'), false, 'aceitou a arte de outro arquivo');
+  assert.equal(isArtePronta(scene, 'cave_bg_frost'), false, 'aceitou o fundo de outro bioma');
+});
+
+test('isArtePronta reprova uma cena sem motor, e não lança', () => {
+  // O `ensureBackdrop` usa o mesmo caminho, e lá a ausência de motor significa
+  // "considere pronto". Aqui a pergunta é outra — "pode desenhar?" — e a resposta
+  // de uma cena sem motor é não, porque desenhar nela não é possível.
+  for (const cena of [null, undefined, {}, { textures: null }, { textures: {} }]) {
+    assert.equal(
+      isArtePronta(cena, 'cave_bg_ember'),
+      false,
+      `isArtePronta não respondeu falso para ${JSON.stringify(cena)}`
     );
   }
 });

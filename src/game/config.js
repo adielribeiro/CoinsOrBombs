@@ -26,6 +26,42 @@ export const BASE_TILE_HEIGHT = Math.round(44 * BASE_MAP_SCALE);
 export const CAVE_ENTRANCE_BASE = 0.28;
 
 /**
+ * Largura da saída, em múltiplos da largura do tile.
+ *
+ * 0,56 é a largura do buraco que a saída usava antes, e é por aí que a peça
+ * ancora: a arte nova é a saída inteira — buraco, anel de terra e escada — e ela
+ * substitui o buraco desenhado, o brilho e as linhas de degrau.
+ *
+ * Não é a largura da escada, que eram 10,6px. Uma peça de 10,6px de largura não
+ * mostra degrau nenhum, e a arte de origem tem 1003px de conteúdo: encolher isso
+ * a 10,6px seria jogar fora 99% dos pixels que o pintor gastou.
+ *
+ * A altura vem da proporção, e por isso sobe: a arte é 1,51 de largura por altura
+ * e o buraco desenhado era 2,84. Mesma largura no tile, 36px de altura contra 19.
+ */
+export const EXIT_LADDER_DISPLAY = 0.56;
+
+/**
+ * Proporção da saída: altura por largura, da arte já aparada.
+ *
+ * 160x106 é a medida de `public/assets/exit_ladder.png` depois de
+ * `scripts/trim-props.mjs`, e o teste em `test/props.test.mjs` compara as duas.
+ */
+export const EXIT_LADDER_ASPECT = 106 / 160;
+
+/**
+ * Onde a saída assenta, em frações da altura do tile.
+ *
+ * 0,04 é a posição em que o buraco estava, e a peça é ancorada pelo centro, e não
+ * pela base como as rochas e a boca. Isso é o que põe o buraco no chão em vez de
+ * ao lado dele: o centro do buraco dentro da arte está em 0,517 da altura, e com
+ * a origem em 0,5 ele fica 0,6px abaixo da linha — imperceptível, e vale menos
+ * que uma constante fracionária a mais, que dependeria de onde a contagem de
+ * "pixels escuros" cortou.
+ */
+export const EXIT_LADDER_CENTER_Y = 0.04;
+
+/**
  * Largura da picareta na animação de golpe, em múltiplos da largura do tile.
  *
  * A picareta é um efeito passageiro por cima da rocha, não um objeto do

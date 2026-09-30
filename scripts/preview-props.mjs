@@ -25,6 +25,9 @@ import {
   BASE_TILE_HEIGHT,
   BASE_TILE_WIDTH,
   CAVE_ENTRANCE_BASE,
+  EXIT_LADDER_ASPECT,
+  EXIT_LADDER_CENTER_Y,
+  EXIT_LADDER_DISPLAY,
   PICKAXE_DISPLAY,
   toIso
 } from '../src/game/config.js';
@@ -45,6 +48,7 @@ const TILE_H = BASE_TILE_HEIGHT;
 const fundo = await readPng(`public/assets/cave_bg_${BIOME}.png`);
 const boca = await readPng(`public/assets/${getEntranceKey(BIOME)}.png`);
 const picareta = await readPng('public/assets/pickaxe_lvl1.png');
+const saida = await readPng('public/assets/exit_ladder.png');
 const folha = await readPng(`public/assets/rocks_${BIOME}.png`);
 
 /** Recorta a folha de rochas: devolve o frame `indice` já isolado. */
@@ -166,6 +170,7 @@ function desenhaLosango(cx, cy) {
 
 const entrada = { col: 0, row: 2 };
 const casaPicareta = { col: 4, row: 3 };
+const casaSaida = { col: 2, row: 4 };
 
 const objetos = [];
 const celulas = [];
@@ -196,6 +201,30 @@ for (const c of celulas) {
       // Origem (0.5, 1): a base fica em `y`, e o topo `altura` acima.
       x: c.x,
       base: c.y + TILE_H * CAVE_ENTRANCE_BASE
+    });
+    continue;
+  }
+
+  if (c.col === casaSaida.col && c.row === casaSaida.row) {
+    // Exatamente o bloco de `renderExitStructure`. A diferença que importa: a
+    // saída é ancorada pelo CENTRO (`setOrigin(0.5, 0.5)`), e não pela base como
+    // as rochas e a boca. É o centro porque a peça é a saída inteira — buraco,
+    // terra e escada — e o que tem de assentar no chão é o buraco, que está no
+    // meio da arte e não na base dela.
+    const larguraSaida = Math.round(TILE_W * EXIT_LADDER_DISPLAY);
+    const alturaSaida = Math.round(larguraSaida * EXIT_LADDER_ASPECT);
+
+    objetos.push({
+      tipo: 'saida',
+      col: c.col,
+      row: c.row,
+      img: saida,
+      largura: larguraSaida,
+      altura: alturaSaida,
+      origemY: 0.5,
+      brilho: { largura: TILE_W * 0.52, altura: TILE_H * 0.4 },
+      x: c.x,
+      base: c.y + TILE_H * EXIT_LADDER_CENTER_Y
     });
     continue;
   }
@@ -244,9 +273,37 @@ objetos.sort((p, q) => {
 });
 
 for (const o of objetos) {
+  // `origemY` é a origem vertical do sprite: 1 assenta pela base (rochas, boca),
+  // 0.5 pelo centro (a saída). Sem isto, a saída apareceria pendurada 18px acima
+  // do chão, porque a base é onde a arte TERMINA e não onde o buraco está.
+  const origemY = o.origemY ?? 1;
+  const topo = o.base - o.altura * origemY;
+  const chao = topo + o.altura;
   const esq = o.x - o.largura / 2;
-  const topo = o.base - o.altura;
-  const chao = o.base;
+
+  // O brilho verde que sobra da elipse de vetor: sai por trás do buraco e é o que
+  // continua dizendo "aqui é o objetivo".
+  if (o.brilho) {
+    const bx = o.x;
+    const by = o.base;
+    const br = o.brilho.largura / 2;
+    const ba = o.brilho.altura / 2;
+
+    for (let py = Math.max(0, Math.round(by - ba)); py <= Math.min(altura, Math.ceil(by + ba)); py += 1) {
+      const dy = (py - by) / ba;
+      if (Math.abs(dy) > 1) continue;
+
+      for (let px = Math.max(0, Math.round(bx - br)); px <= Math.min(largura, Math.ceil(bx + br)); px += 1) {
+        const dx = (px - bx) / br;
+        if (Math.abs(dx) + Math.abs(dy) > 1) continue;
+
+        const i = (py * largura + px) * 4;
+        out[i] = 0x2f * 0.5 + out[i] * 0.5;
+        out[i + 1] = 0x8f * 0.5 + out[i + 1] * 0.5;
+        out[i + 2] = 0x5b * 0.5 + out[i + 2] * 0.5;
+      }
+    }
+  }
 
   for (let py = Math.max(0, Math.floor(topo)); py < Math.min(altura, Math.ceil(chao)); py += 1) {
     for (let px = Math.max(0, Math.floor(esq)); px < Math.min(largura, Math.ceil(esq + o.largura)); px += 1) {
@@ -277,13 +334,17 @@ console.log(`  tile ${TILE_W}x${TILE_H}`);
 console.log(`  boca   ${Math.round(TILE_W * ENTRANCE_DISPLAY)}x${Math.round(Math.round(TILE_W * ENTRANCE_DISPLAY) * getEntranceAspect(BIOME))}  base +${(TILE_H * CAVE_ENTRANCE_BASE).toFixed(1)}px do centro  (proporcao ${getEntranceAspect(BIOME).toFixed(4)})`);
 console.log(`  rocha  ${Math.round(TILE_W * ROCK_DISPLAY)}x${Math.round(TILE_W * ROCK_DISPLAY)}  base +${(TILE_H * 0.3).toFixed(1)}px do centro`);
 console.log(`  picareta ${Math.round(TILE_W * PICKAXE_DISPLAY)}x${Math.round(TILE_W * PICKAXE_DISPLAY)}`);
+console.log(`  saida  ${Math.round(TILE_W * EXIT_LADDER_DISPLAY)}x${Math.round(Math.round(TILE_W * EXIT_LADDER_DISPLAY) * EXIT_LADDER_ASPECT)}  centro +${(TILE_H * EXIT_LADDER_CENTER_Y).toFixed(1)}px do centro do tile  (proporcao ${EXIT_LADDER_ASPECT.toFixed(4)})`);
 console.log('');
 
 // Onde o pixel mais baixo de cada objeto cai, em relação à sua base.
 const assentados = { rocha: [], boca: [] };
 
 for (const o of objetos) {
-  if (o.tipo === 'picareta') continue;
+  // A picareta é efeito passageiro, e a saída é ancorada pelo centro: nenhuma das
+  // duas tem "base" que possa flutuar, e as duas medidas abaixo são de outro
+  // tipo. A da saída está no fim do script.
+  if (o.tipo === 'picareta' || o.tipo === 'saida') continue;
   const v = pisoDoConteudo(o.img, 0, 1);
   if (v === null) continue;
   const linhaReal = o.base - o.altura + v * o.altura;
@@ -338,4 +399,64 @@ if (bocaObj) {
     + `(${(mascarados.size / total * 100).toFixed(0)}%)`);
   console.log(`  a entrada fica em col 0, linha do meio: e a borda do mapa, entao o que`);
   console.log(`  ela cobre para cima e para a direita e fundo, nao campo de jogo.`);
+}
+console.log('');
+
+// --- onde o buraco da saida cai ----------------------------------------------
+// A medida de assentamento acima é "o pixel mais baixo encosta na linha do
+// chão". Ela não serve para a saída, que é ancorada pelo centro e tem terra
+// pintada embaixo do buraco: o pixel mais baixo dela é o anel de terra, e ele
+// tem de ficar ABAIXO do chão, não em cima.
+//
+// O que tem de bater é o CENTRO DO BURACO. Se ele cair acima da linha do chão, a
+// saída parece pendurada; se cair abaixo, parece afundada no tile.
+const saidaObj = objetos.find((o) => o.tipo === 'saida');
+
+if (saidaObj) {
+  const esq = saidaObj.x - saidaObj.largura / 2;
+  const topo = saidaObj.base - saidaObj.altura * saidaObj.origemY;
+  let somaX = 0;
+  let somaY = 0;
+  let n = 0;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  // Buraco = escuro e pouco saturado, o mesmo critério que mediu a arte de
+  // origem. A terra e a pedra da moldura são marrons, e têm R alto.
+  for (let py = Math.max(0, Math.floor(topo)); py < Math.min(altura, Math.ceil(topo + saidaObj.altura)); py += 1) {
+    for (let px = Math.max(0, Math.floor(esq)); px < Math.min(largura, Math.ceil(esq + saidaObj.largura)); px += 1) {
+      const i = (py * largura + px) * 4;
+      const r = out[i];
+      const g = out[i + 1];
+      const b = out[i + 2];
+      const brilho = 0.299 * r + 0.587 * g + 0.114 * b;
+      if (brilho > 70 || Math.max(r, g, b) - Math.min(r, g, b) > 40) continue;
+
+      somaX += px;
+      somaY += py;
+      n += 1;
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+    }
+  }
+
+  if (n === 0) {
+    console.log('  saida: nenhum pixel escuro encontrado na area da peca.');
+  } else {
+    const cx = somaX / n;
+    const cy = somaY / n;
+    const chaoDoTile = topo + saidaObj.altura * saidaObj.origemY;
+
+    console.log(`  saida: ${saidaObj.largura}x${saidaObj.altura}px, ancorada pelo centro`);
+    console.log(`  buraco desenhado: ${(maxX - minX + 1).toFixed(0)}x${(maxY - minY + 1).toFixed(0)}px`);
+    console.log(`  centro do buraco em relacao ao ponto de ancoragem: `
+      + `${(cx - saidaObj.x).toFixed(1)}px em x, ${(cy - chaoDoTile).toFixed(1)}px em y`);
+    console.log(`  (a linha do chao do tile e o proprio ponto de ancoragem: y = `
+      + `${chaoDoTile.toFixed(1)})`);
+    console.log(`  o verde do brilho e a pista de objetivo, e vem por tras da peca.`);
+  }
 }

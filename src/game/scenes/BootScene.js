@@ -78,6 +78,7 @@ export class BootScene extends Phaser.Scene {
 
     // Special
     this.load.image('exit_glow', 'assets/exit_glow.png');
+    this.load.image('exit_ladder', 'assets/exit_ladder.png');
 
     /**
      * Fundo e entrada: SÓ do primeiro bioma.

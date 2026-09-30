@@ -3,6 +3,9 @@ import {
   BASE_TILE_HEIGHT,
   BASE_TILE_WIDTH,
   CAVE_ENTRANCE_BASE,
+  EXIT_LADDER_ASPECT,
+  EXIT_LADDER_CENTER_Y,
+  EXIT_LADDER_DISPLAY,
   PICKAXE_ASPECT,
   PICKAXE_DISPLAY,
   getTileMetrics,
@@ -10,7 +13,7 @@ import {
 } from '../config.js';
 import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrameIndex } from '../ground.js';
 import { getLocale, setLocale, t } from '../../i18n/index.js';
-import { ensureBackdrop, getBackdropKey, isBackdropReady } from '../backdrops.js';
+import { ensureBackdrop, getBackdropKey, isArtePronta } from '../backdrops.js';
 import { ENTRANCE_DISPLAY, getEntranceAspect, getEntranceForBiome } from '../entrances.js';
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { ROCK_DISPLAY, getRockFrameIndex, getRockJitter, getRockSheetKey } from '../rocks.js';
@@ -663,11 +666,30 @@ export class CaveScene extends Phaser.Scene {
    *
    * A alternativa a esse retângulo é deixar o `add.image` rodar sem a textura, e
    * o Phaser mostra o placeholder de textura ausente: a caixa preta com o X
-   * verde. Um retângulo da cor da caverna por meio segundo é melhor que uma
-   * caixa com X, e é por isso que a verificação vem ANTES do `add.image`.
+   * verde. Foi exatamente isso que aconteceu em cinco dos seis biomas, com
+   * nenhum erro no console.
+   *
+   * ## Por que a verificação vem DEPOIS do pedido, e não antes
+   *
+   * Antes era o contrário: `ensureBackdrop` era consultado, e o `add.image` vinha
+   * logo depois sem nova checagem. Isso funciona enquanto a checagem e a verdade
+   * concordam, e uma vez que não concordam o X verde aparece na tela e pronto.
+   *
+   * Aqui a ordem é invertida: pede, e DEPOIS confirma a textura com
+   * `isArtePronta`. A confirmação é a barreira, e ela compara a chave da textura
+   * devolvida com a chave pedida, porque `textures.get()` entrega a `__MISSING`
+   * — que é justamente o X — em vez de devolver `undefined`.
+   *
+   * Se a confirmação falhar mesmo assim, o quadro é o retângulo da cor do bioma e
+   * o `console.error` diz qual chave não veio. Um retângulo cinza é feio; um
+   * retângulo cinza com o nome do arquivo no console é um bug com endereço.
    */
   drawBiomeBackdrop(biome, depth, alpha) {
-    if (!ensureBackdrop(this, biome.id, () => this.refreshBackdrop())) {
+    const chave = getBackdropKey(biome.id);
+
+    ensureBackdrop(this, biome.id, () => this.refreshBackdrop());
+
+    if (!isArtePronta(this, chave)) {
       const placeholder = this.add.rectangle(
         this.scale.width / 2,
         this.scale.height / 2,
@@ -679,10 +701,26 @@ export class CaveScene extends Phaser.Scene {
 
       placeholder.setDepth(depth);
       this.backgroundLayer.add(placeholder);
+
+      // Uma mensagem por chave, e não uma por quadro: o `renderMap` pode passar
+      // aqui várias vezes enquanto o fundo baixa, e um `console.error` por quadro
+      // esconde a mensagem em vez de destacá-la.
+      if (this.fundoReclamado !== chave) {
+        this.fundoReclamado = chave;
+        console.error(
+          `[fundo] a textura ${chave} do bioma ${biome.id} não está pronta. `
+            + 'A caixa preta com X verde é o que o Phaser desenharia aqui; o '
+            + 'retângulo é a cor do bioma no lugar dela. Se isso repete, o '
+            + 'pedido em ensureBackdrop não está concluindo.'
+        );
+      }
+
       return;
     }
 
-    const background = this.add.image(this.scale.width / 2, this.scale.height / 2, getBackdropKey(biome.id));
+    this.fundoReclamado = null;
+
+    const background = this.add.image(this.scale.width / 2, this.scale.height / 2, chave);
     const coverScale = Math.max(this.scale.width / background.width, this.scale.height / background.height);
 
     background.setScale(coverScale);
@@ -1121,10 +1159,12 @@ export class CaveScene extends Phaser.Scene {
         const entrada = getEntranceForBiome(biome.id);
 
         // A arte pode não ter chegado ainda: ela é carregada por bioma, junto
-        // com o fundo. Sem este guarda, o `add.image` cairia no placeholder de
-        // textura ausente do Phaser — a caixa preta com X verde. O tile fica
-        // vazio por meio segundo e o redesenho chega junto com o fundo.
-        if (this.textures.exists(entrada.key)) {
+        // com o fundo. A checagem é `isArtePronta`, e não `textures.exists`,
+        // porque `exists` só diz que a chave está registrada — e o Phaser
+        // desenha a `__MISSING`, a caixa preta com X verde, quando a textura
+        // pedida não chegou. O tile fica vazio por meio segundo e o redesenho
+        // chega junto com o fundo.
+        if (isArtePronta(this, entrada.key)) {
           const larguraBoca = Math.round(tileWidth * ENTRANCE_DISPLAY);
           const alturaBoca = Math.round(larguraBoca * getEntranceAspect(biome.id));
 
@@ -1188,46 +1228,53 @@ export class CaveScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * A saída: a peça inteira que o jogador precisa achar.
+   *
+   * Antes eram quatro desenhos de vetor — uma elipse escura com contorno verde,
+   * uma elipse verde dentro dela, e as linhas de dois montantes com três degraus
+   * — que ocupavam 54 x 19px. Hoje é uma arte pintada, com buraco, anel de terra
+   * e escada, na mesma largura e um pouco mais alta.
+   *
+   * ## Por que a arte substitui os três desenhos, e não só a escada
+   *
+   * A arte traz o anel de terra pintado em volta do buraco. Usá-la só no lugar
+   * das linhas de degrau deixaria esse anel desenhado em volta de uma elipse
+   * escura de vetor, e as duas bordas não iam bater. A peça é a saída, e a saída
+   * inteira virou uma arte.
+   *
+   * ## O verde que sobrou
+   *
+   * O contorno verde da elipse antiga era o que dizia "aqui é o objetivo", e é a
+   * pista que faz o jogador saber para onde andar. A arte nova é marrom e preta,
+   * e não tem essa pista — então o verde continua, virando um brilho que sai por
+   * trás do buraco. É o mesmo sinal com outra forma, e é o que segura a leitura
+   * de "cheguei aqui" sem pintar a arte de verde.
+   *
+   * A saída oculta NÃO usa esta arte. Ela é um segredo que o jogador acha por
+   * acaso, e uma peça pintada e detalhada num ponto aleatório do mapa entrega o
+   * segredo antes da hora. Continua com a escada de vetor, discreta.
+   */
   renderExitStructure(point, depth) {
     const { tileWidth, tileHeight } = this.renderMetrics;
+    const centroY = point.y + tileHeight * EXIT_LADDER_CENTER_Y;
 
-    const shadow = this.add.graphics();
-    shadow.fillStyle(0x081015, 0.94);
-    shadow.lineStyle(3, 0x8df0b0, 0.7);
-    shadow.fillEllipse(point.x, point.y + tileHeight * 0.04, tileWidth * 0.56, tileHeight * 0.38);
-    shadow.strokeEllipse(point.x, point.y + tileHeight * 0.04, tileWidth * 0.56, tileHeight * 0.38);
-    shadow.setDepth(depth);
-    this.objectLayer.add(shadow);
+    const brilho = this.add.graphics();
+    brilho.fillStyle(0x2f8f5b, 0.5);
+    brilho.fillEllipse(point.x, centroY, tileWidth * 0.52, tileHeight * 0.4);
+    brilho.setDepth(depth);
+    this.objectLayer.add(brilho);
 
-    const innerGlow = this.add.graphics();
-    innerGlow.fillStyle(0x163a2b, 0.55);
-    innerGlow.fillEllipse(point.x, point.y + tileHeight * 0.02, tileWidth * 0.4, tileHeight * 0.2);
-    innerGlow.setDepth(depth + 0.1);
-    this.objectLayer.add(innerGlow);
+    const largura = Math.round(tileWidth * EXIT_LADDER_DISPLAY);
+    const altura = Math.round(largura * EXIT_LADDER_ASPECT);
 
-    const rungColor = 0xc5a26a;
-    const leftX = point.x - tileWidth * 0.09;
-    const rightX = point.x + tileWidth * 0.02;
-    const topY = point.y - tileHeight * 0.08;
-    const bottomY = point.y + tileHeight * 0.16;
+    const peca = this.add
+      .image(point.x, centroY, 'exit_ladder')
+      .setOrigin(0.5, 0.5)
+      .setDisplaySize(largura, altura);
 
-    const ladder = this.add.graphics();
-    ladder.lineStyle(4, rungColor, 0.9);
-    ladder.beginPath();
-    ladder.moveTo(leftX, topY);
-    ladder.lineTo(leftX, bottomY);
-    ladder.moveTo(rightX, topY);
-    ladder.lineTo(rightX, bottomY);
-
-    for (let index = 0; index < 3; index += 1) {
-      const y = topY + ((bottomY - topY) / 3) * index;
-      ladder.moveTo(leftX, y);
-      ladder.lineTo(rightX, y);
-    }
-
-    ladder.strokePath();
-    ladder.setDepth(depth + 0.2);
-    this.objectLayer.add(ladder);
+    peca.setDepth(depth + 0.1);
+    this.objectLayer.add(peca);
   }
 
 

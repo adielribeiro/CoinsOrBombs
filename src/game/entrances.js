@@ -37,8 +37,12 @@
  * como entrada e não como um objeto posto em cima de um quadrado, e ainda deixa
  * ver o campo de jogo. Um terço a mais que a 1,05 da arte única: a boca é mais
  * detalhada hoje, e essa diferença é o que paga a arte por bioma.
+ *
+ * E 1,08, que é onde está. A captura da Cave 1 a 1,2 mostrava a boca ainda
+ * segurando mais linhas de fundo do que o pedestal pedia, e o ganho de 0,12 não
+ * pagava o que ocupava.
  */
-export const ENTRANCE_DISPLAY = 1.2;
+export const ENTRANCE_DISPLAY = 1.08;
 
 /**
  * Proporção altura por largura, e o tamanho do arquivo de cada uma.

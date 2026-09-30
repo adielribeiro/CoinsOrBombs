@@ -29,97 +29,20 @@
 // Reduzir por média de caixa e não por amostragem de ponto: numa redução de
 // 2,6x o ponto pega um pixel e joga fora cinco, e o contorno da arte fica
 // serrilhado.
+//
+// O recorte e a redução estão em `scripts/recorte.mjs`, compartilhados com a
+// escada da saída, que precisa do mesmo treatment.
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 
 import { readPng } from './png.mjs';
 import { encodePng } from './png-encode.mjs';
+import { recorteDoConteudo, reduzPorCaixa } from './recorte.mjs';
 
 const ORIGEM = 'C:/Users/adielvale/AppData/Local/Temp/opencode/cavein_zip/cave in';
 const BIOMAS = ['sunstone', 'frost', 'ember', 'ruins', 'wind', 'crystal'];
 
 /** Largura final, em pixels de arquivo. Ver a nota sobre `LADO_ALVO`. */
 const LADO_ALVO = 480;
-
-const LIMIAR = 8;
-
-/** Recorte do conteúdo, com o alfa. O limiar é o mesmo do fatiador de rochas. */
-function recorteDoConteudo(img) {
-  const { width: W, height: H, channels: C, data: D } = img;
-  let minX = W;
-  let maxX = -1;
-  let minY = H;
-  let maxY = -1;
-
-  for (let y = 0; y < H; y += 1) {
-    for (let x = 0; x < W; x += 1) {
-      if (D[(y * W + x) * C + 3] > LIMIAR) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-      }
-    }
-  }
-
-  if (maxX < 0) return null;
-  return { x: minX, y: minY, largura: maxX - minX + 1, altura: maxY - minY + 1 };
-}
-
-/**
- * Reduz por média de caixa, com o alfa na média e desmultiplicação na escrita.
- *
- * As duas etapas do alfa são o que separa uma borda limpa de uma franja suja:
- * sem o alfa na média, a borda semi-transparente é puxada para a cor de fundo do
- * PNG (o preto), e a peça ganha um contorno escuro de 1px. Sem desmultiplicar,
- * a cor gravada é a cor já escurecida pela mistura.
- */
-function reduzPorCaixa(img, recorte, larguraDestino) {
-  const { width: W, channels: C, data: D } = img;
-  const escalaX = recorte.largura / larguraDestino;
-  const alturaDestino = Math.max(1, Math.round(recorte.altura / escalaX));
-  const escalaY = recorte.altura / alturaDestino;
-  const saida = new Uint8ClampedArray(larguraDestino * alturaDestino * 4);
-
-  for (let dy = 0; dy < alturaDestino; dy += 1) {
-    const y0 = Math.floor(dy * escalaY);
-    const y1 = Math.max(y0 + 1, Math.min(recorte.altura, Math.ceil((dy + 1) * escalaY)));
-
-    for (let dx = 0; dx < larguraDestino; dx += 1) {
-      const x0 = Math.floor(dx * escalaX);
-      const x1 = Math.max(x0 + 1, Math.min(recorte.largura, Math.ceil((dx + 1) * escalaX)));
-
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      let a = 0;
-      let n = 0;
-
-      for (let y = y0; y < y1; y += 1) {
-        for (let x = x0; x < x1; x += 1) {
-          const i = ((recorte.y + y) * W + (recorte.x + x)) * C;
-          const alfa = D[i + 3] / 255;
-          // Soma já descontada pelo alfa, para a média sair da cor pura.
-          r += D[i] * alfa;
-          g += D[i + 1] * alfa;
-          b += D[i + 2] * alfa;
-          a += alfa;
-          n += 1;
-        }
-      }
-
-      const o = (dy * larguraDestino + dx) * 4;
-
-      if (a > 0) {
-        saida[o] = r / a;
-        saida[o + 1] = g / a;
-        saida[o + 2] = b / a;
-      }
-      saida[o + 3] = (a / n) * 255;
-    }
-  }
-
-  return { saida, alturaDestino };
-}
 
 const existentes = new Set((await readdir('public/assets')).map((n) => n.toLowerCase()));
 let totalAntes = 0;
