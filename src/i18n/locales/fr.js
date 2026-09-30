@@ -36,6 +36,18 @@ export default {
   'saves.current': 'En cours',
   'saves.nameTaken': 'Une partie porte déjà ce nom. Vous pouvez quand même l’utiliser.',
   'saves.ariaList': 'Parties enregistrées',
+
+  // --- final ---------------------------------------------------------------
+  'finale.title': 'Vous êtes arrivé jusqu’ici.',
+  'finale.p1': 'Chaque pierre brisée, chaque chemin découvert et chaque épreuve surmontée vous a mené un peu plus loin.',
+  'finale.p2': 'Au bout du compte, la plus grande richesse n’a jamais été seulement au fond de la caverne, mais dans le courage de continuer quand le chemin semblait difficile, dans la curiosité d’explorer l’inconnu et dans la persévérance d’essayer encore une fois.',
+  'finale.p3': 'Le voyage s’arrête ici pour l’instant, mais tout explorateur sait qu’il existe toujours un autre passage, un autre mystère et une nouvelle aventure qui attend d’être découverte.',
+  'finale.p4': 'Peut-être que celle-ci n’a été que la première fouille.',
+  'finale.p5': 'Merci d’avoir joué et d’être arrivé jusqu’au bout.',
+  'finale.signature': 'Avec affection,',
+  'finale.team': 'L’équipe Archangel Soft',
+  'finale.closing': 'À la prochaine aventure. ⛏️✨',
+  'finale.skip': 'Passer',
   'saves.relics': {
     one: '{count} relique',
     other: '{count} reliques'
@@ -160,6 +172,7 @@ export default {
   'exit.question': 'Que voulez-vous faire ?',
   'exit.nextCave': 'Grotte suivante',
   'exit.keepExploring': 'Continuer d’explorer cette grotte',
+  'exit.finale': 'Voir la fin',
 
   // --- rotation ------------------------------------------------------------
   'rotate.hint': 'Tournez le téléphone pour mieux jouer en paysage.',

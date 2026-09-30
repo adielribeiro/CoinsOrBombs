@@ -5,11 +5,12 @@ import { existsSync, statSync } from 'node:fs';
 
 import { generateMap, getBombDensity } from '../src/game/systems/mapGenerator.js';
 import { findSafeRoute, getNeighbors4, isFrontierRock } from '../src/game/systems/helpers.js';
-import { BIOMES, getBiomeForCave, getBiomeProgress } from '../src/game/progression.js';
+import { BIOMES, TOTAL_CAVES, ehCaveFinal, getBiomeForCave, getBiomeProgress } from '../src/game/progression.js';
 import { GROUND_TEXTURE_KEYS, SOIL_BY_BIOME, groundColorAt } from '../src/game/ground.js';
 import { BIOMA_INICIAL, getBackdropKey } from '../src/game/backdrops.js';
 
-const TOTAL_CAVES = BIOMES.at(-1).endCave;
+// `TOTAL_CAVES` vem do jogo agora, e não é derivado aqui de novo. Uma segunda
+// cópia do mesmo número é uma chance de divergirem sem ninguém perceber.
 const SAMPLES_PER_CAVE = 40;
 
 /**
@@ -447,4 +448,45 @@ test('as cores de chão são distintas entre todos os biomas', () => {
       );
     }
   }
+});
+
+// --- final do jogo ---------------------------------------------------------
+
+test('a ultima caverna e a endCave do ultimo bioma', () => {
+  // Nao e um numero escrito a mao. A tagline do menu ja mentiu uma vez por causa
+  // disso, quando as faixas passaram de 20 para 10 cavernas.
+  const ultimo = BIOMES[BIOMES.length - 1];
+
+  assert.equal(TOTAL_CAVES, ultimo.endCave);
+  assert.ok(TOTAL_CAVES > 0, 'o jogo nao tem caverna final');
+});
+
+test('a carta do final aparece so a partir da ultima caverna', () => {
+  assert.equal(ehCaveFinal(TOTAL_CAVES), true, 'a ultima caverna nao abre o final');
+  assert.equal(ehCaveFinal(TOTAL_CAVES - 1), false, 'o final apareceu uma caverna antes');
+  assert.equal(ehCaveFinal(1), false);
+  assert.equal(ehCaveFinal(), false, 'sem caverna, o jogo acha que terminou');
+});
+
+test('a caverna 61 tambem conta como final, porque ela e um beco', () => {
+  // O que existia antes do final: clicar na saida da caverna 60 levava para a 61.
+  // `getBiomeForCave` nao rejeita uma caverna fora da faixa, ela devolve o ultimo
+  // bioma, entao o jogador entrava numa caverna que mostra "10/10" para sempre.
+  // Um save assim pode ter ficado gravado, e ele nao pode ser um lugar sem saida.
+  assert.equal(ehCaveFinal(TOTAL_CAVES + 1), true, 'a caverna 61 voltou a ser beco');
+  assert.equal(ehCaveFinal(9999), true);
+});
+
+test('uma caverna fora da faixa nao abre o final sem ser a ultima', () => {
+  assert.equal(ehCaveFinal(0), false);
+  assert.equal(ehCaveFinal(-5), false);
+  // NaN com >= e sempre falso, entao isso passaria sem o Number.isFinite -- e
+  // passaria por acidente. O teste existe para travar o guarda, nao o operator.
+  assert.equal(ehCaveFinal(NaN), false);
+});
+
+test('a ultima caverna pertence ao ultimo bioma', () => {
+  // Se isto nao bater, o `endCave` do ultimo bioma e o `TOTAL_CAVES` apontariam
+  // para lugares diferentes, e o final cairia numa caverna de outro bioma.
+  assert.equal(getBiomeForCave(TOTAL_CAVES).id, BIOMES[BIOMES.length - 1].id);
 });

@@ -26,10 +26,12 @@ import {
   createCollectionState,
   createStatsState,
   createUtilityInventory,
+  ehCaveFinal,
   getBiomeForCave,
   getBiomeProgress,
   getBiomeStartCave,
   getObjectiveProgressList,
+  TOTAL_CAVES as TOTAL_CAVES_DO_JOGO,
   getTotalRelics,
   getUnlockedBiomes
 } from './game/progression.js';
@@ -157,6 +159,31 @@ const BLACK_SCREEN_MS = 900;
 const LOGO_FADE_MS = 2200;
 const GAME_VERSION = '0.2.0';
 
+/**
+ * Quanto tempo a carta do final leva para subir.
+ *
+ * A carta tem cerca de 180 palavras, e isso é a métrica que importa: 100 segundos
+ * dá uns 110 palavras por minuto, que é abaixo do ritmo de leitura confortável.
+ * Mais rápido que isso e a pessoa precisa voltar a linha; muito mais lento e vira
+ * uma espera sem informação.
+ *
+ * O valor está em JavaScript, e não só no CSS, porque é dele que sai o "acabou"
+ * que devolve a pessoa ao menu. Se a duração vivesse só na folha de estilo, o
+ * React nunca ficaria sabendo que a animação acabou.
+ */
+const FINAL_DURACAO_MS = 100000;
+
+/**
+ * Os parágrafos da carta, na ordem em que sobem.
+ *
+ * Uma lista aqui, e não a carta inteira como uma string: o parágrafo é o que dá o
+ * ritmo da rolagem, cada um precisa do seu espaço, e um texto corrido só
+ * permitiria um bloco único no meio da tela. Os parágrafos também viram chaves de
+ * i18n — os dez idiomas têm comprimentos diferentes, e quem decide o espaço é o
+ * navegador, não o texto.
+ */
+const FINALE_PARAGRAFOS = ['finale.p1', 'finale.p2', 'finale.p3', 'finale.p4', 'finale.p5'];
+
 const SETTINGS_STORAGE_KEY = 'coinsorbombs:settings:v1';
 const PROFILE_STORAGE_KEY = 'coinsorbombs:profile:v1';
 
@@ -165,8 +192,13 @@ const PROFILE_STORAGE_KEY = 'coinsorbombs:profile:v1';
  *
  * Estava escrito à mão no tagline do menu ("80 caves · 4 biomas"), e mentiu
  * assim que as faixas passaram de 20 para 10 caves. Agora vem da lista.
+ *
+ * Hoje morava aqui e foi para `progression.js`: o final do jogo precisa saber
+ * qual é a última caverna das duas pontas — para mostrar a carta e para saber
+ * que depois dela não existe outra — e um total que mora na tela não pode ser
+ * testado sem a tela.
  */
-const TOTAL_CAVES = BIOMES[BIOMES.length - 1].endCave;
+const TOTAL_CAVES = TOTAL_CAVES_DO_JOGO;
 
 /**
  * Configurações que o jogador escolhe.
@@ -572,6 +604,22 @@ export default function App() {
   const [showRotateLock, setShowRotateLock] = useState(needsLandscapeGate());
   const [showUtilityShopModal, setShowUtilityShopModal] = useState(false);
   const [showExitDecision, setShowExitDecision] = useState(false);
+
+  /**
+   * A carta do final, e o relógio dela.
+   *
+   * O timer fica num `useRef` em vez de ser um `setTimeout` solto, porque o final
+   * termina por três caminhos — a animação acabar, o botão de pular e o `Esc` — e
+   * cada um precisa cancelar o mesmo relógio. Um timer criado dentro de um handler
+   * não teria de quem ser cancelado, e um sobrevive ao cancelamento de outro: voltar
+   * ao menu e abrir o final de novo deixaria dois timers vivos, e o mais velho
+   * derrubaria a tela no meio da segunda leitura.
+   *
+   * O `useEffect` abaixo é a rede de segurança para o caso do componente desmontar
+   * com a carta aberta.
+   */
+  const [showFinale, setShowFinale] = useState(false);
+  const finaleTimerRef = useRef(null);
   const [rewardRefreshCost, setRewardRefreshCost] = useState(10);
   const [entryPhase, setEntryPhase] = useState(ENTRY_PHASE.MENU);
   const [showSettings, setShowSettings] = useState(false);
@@ -757,7 +805,8 @@ export default function App() {
     const handleKeyDown = (event) => {
       if (event.key !== 'Escape' || isFullscreenActive()) return;
 
-      if (showUtilityShopModal) setShowUtilityShopModal(false);
+      if (showFinale) fecharFinale();
+      else if (showUtilityShopModal) setShowUtilityShopModal(false);
       else if (showBiomeSelect) setShowBiomeSelection(null);
       else if (showSaves) setShowSaves(false);
       else if (showLanguage) setShowLanguage(false);
@@ -771,6 +820,7 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
+    showFinale,
     showUtilityShopModal,
     showBiomeSelect,
     showSaves,
@@ -781,6 +831,14 @@ export default function App() {
     showPause,
     pauseAvailable
   ]);
+
+  /** Um timer que sobrevive ao unmount derrubaria a tela depois dela ter saído. */
+  useEffect(
+    () => () => {
+      if (finaleTimerRef.current !== null) window.clearTimeout(finaleTimerRef.current);
+    },
+    []
+  );
 
   useEffect(() => {
     stateRef.current = gameState;
@@ -1429,6 +1487,82 @@ export default function App() {
     );
   };
 
+  /**
+   * some o relógio do final e leva a pessoa para a tela de título.
+   *
+   * Não é `backToMainMenu`. Aquela reseta a run — que é o certo para o botão "Ir
+   * para o menu" da pausa, onde a pessoa está abandonando a caverna. Aqui seria o
+   * contrário: quem chegou ao final acabou de terminar o jogo, e voltar ao menu
+   * zerando moedas, relíquias e `bestCave` apagaria justamente o que a carta de
+   * despedida acabou de comemorar. E o save é reescrito a cada mudança de estado,
+   * então o reset não ficaria só na tela: iria para o disco.
+   *
+   * O que o menu precisa é de `entryPhase` em MENU, que liga o modo attract da
+   * cena e troca a tela de título pela caverna. O estado da run não é lido por
+   * nenhum dos dois, então pode ficar como está.
+   */
+  const fecharFinale = () => {
+    if (finaleTimerRef.current !== null) {
+      window.clearTimeout(finaleTimerRef.current);
+      finaleTimerRef.current = null;
+    }
+
+    setShowFinale(false);
+    setShowExitDecision(false);
+    setShowPause(false);
+
+    setSelectedUtility(null);
+    setSelectedRewardId(null);
+    setShowUtilityShopModal(false);
+    setRewardRefreshCost(10);
+    setRewardOptions([]);
+    setEntryPhase(ENTRY_PHASE.MENU);
+
+    window.dispatchEvent(
+      new CustomEvent('cob-restart-run', {
+        // O estado como está, e não um estado zerado: a cena recarrega o mapa com
+        // isto, e recarregar com o estado zerado apagaria a run que a pessoa
+        // terminou de completar.
+        detail: { ...stateRef.current, inLobby: false, lobbyReason: null, purchased: [] }
+      })
+    );
+  };
+
+  /**
+   * Abre a carta do final.
+   *
+   * O relógio é posto aqui, e não só no fim da animação, porque `onAnimationEnd`
+   * não é o único caminho: quem tem `prefers-reduced-motion` ligado não tem
+   * animação nenhuma, e sem este relógio a carta viraria uma parede de texto sem
+   * botão de fechar. O `Esc` e o botão continuam lá nos dois casos — são eles que
+   * garantem que ninguém fique preso.
+   *
+   * O relógio só roda sozinho quando a animação existe; com movimento reduzido, o
+   * `onAnimationEnd` de quem existe chama o fechamento.
+   */
+  const abrirFinale = () => {
+    const prefereMenosMovimento =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    setShowExitDecision(false);
+    setShowPause(false);
+    setShowFinale(true);
+
+    if (finaleTimerRef.current !== null) window.clearTimeout(finaleTimerRef.current);
+
+    finaleTimerRef.current = prefereMenosMovimento
+      ? null
+      : window.setTimeout(fecharFinale, FINAL_DURACAO_MS + 1200);
+  };
+
+  /** A animação acabou de subir. O `+1200` do relógio cobre esse mesmo atraso. */
+  const concluirFinale = (evento) => {
+    if (evento?.animationName !== 'finale-subir') return;
+
+    fecharFinale();
+  };
+
   const continueToNextCave = () => {
     const baseState = stateRef.current;
     const reward = rewardOptions.find((item) => item.id === selectedRewardId);
@@ -1741,8 +1875,16 @@ export default function App() {
               <p>{gameState.lastMessage}</p>
 
               <div className="exit-decision-actions">
-                <button className="primary-btn next-cave-btn" type="button" onClick={chooseNextCaveFromExit}>
-                  {t('exit.nextCave')}
+                {/* Na última caverna não existe "próxima". Sem esta troca, o botão
+                    levava para a caverna 61 — que `getBiomeForCave` não rejeita, ela
+                    devolve o último bioma — e o jogador ficava numa caverna que
+                    mostra "10/10" para sempre, sem nunca mais avançar. */}
+                <button
+                  className="primary-btn next-cave-btn"
+                  type="button"
+                  onClick={ehCaveFinal(gameState.cave) ? abrirFinale : chooseNextCaveFromExit}
+                >
+                  {ehCaveFinal(gameState.cave) ? t('exit.finale') : t('exit.nextCave')}
                 </button>
 
                 <button className="ghost-btn utility-lobby-btn" type="button" onClick={continueExploringCurrentCave}>
@@ -2329,6 +2471,60 @@ export default function App() {
                 </button>
               </form>
             </div>
+          </div>
+        )}
+
+        {showFinale && (
+          <div
+            className="finale-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cob-finale-titulo"
+            onClick={fecharFinale}
+          >
+            <img
+              className="finale-art"
+              src="./assets/finale.jpg"
+              alt=""
+              aria-hidden="true"
+              draggable="false"
+            />
+
+            {/* O véu. A arte é clara no meio — é um pôr do sol — e o texto passa por
+                cima dela, então sem isto o branco da letra some no brilho do céu.
+                O degradê é mais forte em cima e embaixo porque é onde a carta entra
+                e sai, e é onde o branco do céu encosta na borda. */}
+            <div className="finale-veil" aria-hidden="true" />
+
+            <div className="finale-roller">
+              <div
+                className="finale-text"
+                style={{ '--finale-duracao': `${FINAL_DURACAO_MS}ms` }}
+                onAnimationEnd={concluirFinale}
+              >
+                {/* O `id` existe para o `aria-labelledby` do dialog: um `aria-label`
+                    com o mesmo texto do título funciona para o leitor de tela, mas
+                    o Lighthouse acusa porque o nome acessível não bate com todo o
+                    texto visível do elemento, que é a carta inteira. */}
+                <h2 className="finale-title" id="cob-finale-titulo">
+                  {t('finale.title')}
+                </h2>
+
+                {FINALE_PARAGRAFOS.map((chave) => (
+                  <p key={chave} className="finale-paragrafo">
+                    {t(chave)}
+                  </p>
+                ))}
+
+                <p className="finale-assinatura">{t('finale.signature')}</p>
+                <p className="finale-equipe">{t('finale.team')}</p>
+                <p className="finale-encerramento">{t('finale.closing')}</p>
+              </div>
+            </div>
+
+            <button className="finale-pular" type="button" onClick={fecharFinale}>
+              {t('finale.skip')}
+            </button>
           </div>
         )}
 

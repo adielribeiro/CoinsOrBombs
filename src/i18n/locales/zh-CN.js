@@ -43,6 +43,18 @@ export default {
   'saves.current': '进行中',
   'saves.nameTaken': '已经有同名的存档了。仍然可以用这个名字。',
   'saves.ariaList': '已保存的存档',
+
+  // --- final ---------------------------------------------------------------
+  'finale.title': '你走到了这里。',
+  'finale.p1': '每一块破碎的岩石、每一条发现的道路、每一次战胜的挑战，都让你走得再远一点。',
+  'finale.p2': '到最后，最宝贵的财富从来都不只在洞穴的深处，更在于道路看似艰难时仍继续前行的勇气、探索未知的渴望，以及再试一次的那份坚持。',
+  'finale.p3': '旅程到此暂告一段落，但每一位探险者都知道：永远还有另一条通道、另一个谜团，以及一场等待被发现的全新冒险。',
+  'finale.p4': '也许这只是一次最初的挖掘。',
+  'finale.p5': '感谢你游玩，也感谢你走到最后。',
+  'finale.signature': '衷心地，',
+  'finale.team': 'Archangel Soft 团队',
+  'finale.closing': '下次冒险再见。⛏️✨',
+  'finale.skip': '跳过',
   'saves.relics': {
     other: '{count} 件遗物'
   },
@@ -163,6 +175,7 @@ export default {
   'exit.question': '你想怎么做？',
   'exit.nextCave': '下一个 Cave',
   'exit.keepExploring': '继续探索这个 Cave',
+  'exit.finale': '观看结局',
 
   // --- 旋转 -----------------------------------------------------------------------------
   'rotate.hint': '把手机横过来，横屏玩会更舒服。',

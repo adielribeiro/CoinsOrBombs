@@ -1618,6 +1618,186 @@ button {
   border-style: dashed;
 }
 
+/* ==========================================================================
+   Carta do final
+
+   A tela da caverna 60. A arte fica parada e a carta sobe por cima dela.
+
+   A rolagem é CSS e não JavaScript de propósito: `translateY` num elemento é
+   gratuito para a GPU, roda em composição, e não roda nenhum script por quadro.
+   Um `requestAnimationFrame` que subisse a carta linha a linha faria o jogo
+   gastar CPU com a única tela em que a pessoa não está jogando.
+   ========================================================================== */
+
+.finale-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  overflow: hidden;
+  background: var(--bg-void);
+  cursor: pointer;
+}
+
+.finale-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}
+
+/* O véu que torna a arte habitável. A arte é clara no meio — é um pôr do sol — e
+   a letra passa por cima dela, então sem esta camada o branco do texto desaparece
+   no brilho do céu. O degradê pesa mais em cima e embaixo, que é onde a carta
+   entra e sai. */
+.finale-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(7, 9, 13, 0.9) 0%,
+      rgba(7, 9, 13, 0.68) 22%,
+      rgba(7, 9, 13, 0.62) 50%,
+      rgba(7, 9, 13, 0.7) 78%,
+      rgba(7, 9, 13, 0.92) 100%
+    );
+}
+
+/* A janela por onde a carta passa. `overflow: hidden` é o que recorta: sem ele a
+   carta aparece inteira embaixo da tela antes de começar a subir. */
+.finale-roller {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.finale-text {
+  width: min(660px, 100%);
+  margin: 0 auto;
+  padding: 0 24px;
+  /* `--finale-duracao` vem do JSX. A animação CSS não consegue ler o `timeout` do
+     React, e a duração que o relógio usa tem de ser a mesma que a da animação —
+     duas números separados divergem, e o final volta ao menu antes ou depois de a
+     carta terminar, o que é pior do que qualquer um dos dois. */
+  animation: finale-subir var(--finale-duracao, 100s) cubic-bezier(0.28, 0, 0.32, 1) forwards;
+  will-change: transform;
+}
+
+@keyframes finale-subir {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+.finale-title {
+  margin: 0 0 34px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 4.2vw, 40px);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: center;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.85);
+}
+
+.finale-paragrafo {
+  margin: 0 0 22px;
+  color: #e6ebf2;
+  font-size: clamp(14px, 1.55vw, 16.5px);
+  line-height: 1.72;
+  text-align: center;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8);
+}
+
+/* Os dois últimos parágrafos curtos ficariam com 22px de espaço igual a um
+   parágrafo de três linhas, e o ritmo da carta se desfaria bem no fim — que é
+   onde o olho está esperando a assinatura. */
+.finale-assinatura,
+.finale-encerramento {
+  margin: 0 0 6px;
+  color: #cdd6e2;
+  font-size: clamp(13px, 1.35vw, 15px);
+  text-align: center;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8);
+}
+
+.finale-equipe {
+  margin: 0 0 18px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(17px, 2.1vw, 22px);
+  font-weight: 600;
+  text-align: center;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.85);
+}
+
+.finale-encerramento {
+  margin: 0 0 60px;
+  color: var(--accent);
+}
+
+/* O botão fica sobre a arte, e não sobre a carta: a carta ocupa a tela toda
+   durante a rolagem, e um botão dentro dela subiria junto. */
+.finale-pular {
+  position: absolute;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 2;
+  padding: 10px 20px;
+  border: 1px solid var(--line);
+  background: rgba(7, 9, 13, 0.72);
+  color: var(--ink-dim);
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.finale-pular:hover,
+.finale-pular:focus-visible {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: rgba(7, 9, 13, 0.9);
+}
+
+/* Quem pede menos movimento não recebe uma parede de texto que não sai: recebe o
+   texto parado, inteiro, com rolagem própria quando não cabe. O botão e o `Esc`
+   continuam funcionando — são eles que garantem que ninguém fique preso. */
+@media (prefers-reduced-motion: reduce) {
+  .finale-text {
+    animation: none;
+    transform: none;
+    margin: auto;
+    padding-bottom: 72px;
+    overflow-y: auto;
+  }
+
+  .finale-roller {
+    align-items: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .finale-text {
+    padding: 0 18px;
+  }
+
+  .finale-paragrafo {
+    margin-bottom: 18px;
+    line-height: 1.66;
+  }
+}
+
 .biome-card:disabled {
   cursor: not-allowed;
 }

@@ -59,6 +59,24 @@ export default {
   'saves.nameTaken': 'Já existe um jogo com esse nome. Pode usar assim mesmo.',
   'saves.ariaList': 'Jogos salvos',
 
+  // --- final ---------------------------------------------------------------
+  // A carta do fim, na caverna 60. São chaves separadas e não um texto único com
+  // `\n` porque o parágrafo é o que dá o ritmo da rolagem: cada um precisa do seu
+  // espaço, e um texto corrido só permitiria um bloco único no meio da tela.
+  'finale.title': 'Você chegou até aqui.',
+  'finale.p1':
+    'Cada pedra quebrada, cada caminho descoberto e cada desafio superado trouxe você um pouco mais longe.',
+  'finale.p2':
+    'No fim, a maior riqueza nunca esteve apenas nas profundezas da caverna, mas na coragem de continuar quando o caminho parecia difícil, na curiosidade de explorar o desconhecido e na persistência de tentar mais uma vez.',
+  'finale.p3':
+    'A jornada termina por agora, mas todo explorador sabe que sempre existe outra passagem, outro mistério e uma nova aventura esperando para ser descoberta.',
+  'finale.p4': 'Talvez esta tenha sido apenas a primeira escavação.',
+  'finale.p5': 'Obrigado por jogar e por chegar até o fim.',
+  'finale.signature': 'Com carinho,',
+  'finale.team': 'Equipe Archangel Soft',
+  'finale.closing': 'Até a próxima aventura. ⛏️✨',
+  'finale.skip': 'Pular',
+
   // --- tela de idioma -----------------------------------------------------
   'language.title': 'Idioma',
   'language.hint': 'A troca vale na hora, sem reiniciar.',
@@ -178,6 +196,9 @@ export default {
   'exit.question': 'O que deseja fazer?',
   'exit.nextCave': 'Próxima cave',
   'exit.keepExploring': 'Continuar na cave atual',
+  // Na última caverna não existe "próxima": o botão que ofereceria seguir em
+  // frente vira o botão que abre o final.
+  'exit.finale': 'Ver o final',
 
   // --- rotação ------------------------------------------------------------
   'rotate.hint': 'Gire o celular para jogar melhor em modo paisagem.',

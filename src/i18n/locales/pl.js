@@ -49,6 +49,18 @@ export default {
   'saves.current': 'W toku',
   'saves.nameTaken': 'Zapis o tej nazwie już istnieje. Możesz go mimo to użyć.',
   'saves.ariaList': 'Zapisane gry',
+
+  // --- final ---------------------------------------------------------------
+  'finale.title': 'Dotarłeś aż tutaj.',
+  'finale.p1': 'Każdy rozbity kamień, każda odkryta ścieżka i każde pokonane wyzwanie przybliżały cię trochę bardziej.',
+  'finale.p2': 'Na koniec największe bogactwo nigdy nie leżało wyłącznie w głębinach jaskini, lecz w odwadze, by iść dalej, gdy droga wydawała się trudna, w ciekawości nieznanego i w wytrwałości, by spróbować jeszcze raz.',
+  'finale.p3': 'Podróż kończy się na razie, ale każdy odkrywca wie, że zawsze czeka kolejne przejście, kolejna zagadka i nowa przygoda, która czeka na odkrycie.',
+  'finale.p4': 'Może to była jedynie pierwsza wyprawa.',
+  'finale.p5': 'Dziękujemy za grę i za to, że dotarłeś do końca.',
+  'finale.signature': 'Z serca,',
+  'finale.team': 'Zespół Archangel Soft',
+  'finale.closing': 'Do następnej przygody. ⛏️✨',
+  'finale.skip': 'Pomiń',
   'saves.relics': {
     one: '{count} relikt',
     few: '{count} relikty',
@@ -174,6 +186,7 @@ export default {
   'exit.question': 'Co chcesz zrobić?',
   'exit.nextCave': 'Następna jaskinia',
   'exit.keepExploring': 'Kontynuuj eksplorację tej jaskini',
+  'exit.finale': 'Zobacz zakończenie',
 
   // --- obrót ekranu --------------------------------------------------------
   'rotate.hint': 'Obróć telefon, aby lepiej grać w orientacji poziomej.',

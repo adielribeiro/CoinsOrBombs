@@ -36,6 +36,18 @@ export default {
   'saves.current': 'In progress',
   'saves.nameTaken': 'A game with that name already exists. You can still use it.',
   'saves.ariaList': 'Saved games',
+
+  // --- final ---------------------------------------------------------------
+  'finale.title': 'You made it this far.',
+  'finale.p1': 'Every stone broken, every path discovered and every challenge overcome brought you a little further.',
+  'finale.p2': 'In the end, the greatest treasure was never only in the depths of the cave, but in the courage to keep going when the path seemed hard, in the curiosity to explore the unknown, and in the persistence of trying one more time.',
+  'finale.p3': 'The journey ends for now, but every explorer knows there is always another passage, another mystery and a new adventure waiting to be discovered.',
+  'finale.p4': 'Perhaps this has only been the first excavation.',
+  'finale.p5': 'Thank you for playing, and for making it all the way to the end.',
+  'finale.signature': 'With affection,',
+  'finale.team': 'The Archangel Soft team',
+  'finale.closing': 'Until the next adventure. ⛏️✨',
+  'finale.skip': 'Skip',
   'saves.relics': {
     one: '{count} relic',
     other: '{count} relics'
@@ -157,6 +169,7 @@ export default {
   'exit.question': 'What do you want to do?',
   'exit.nextCave': 'Next cave',
   'exit.keepExploring': 'Keep exploring this cave',
+  'exit.finale': 'See the ending',
 
   // --- rotation -----------------------------------------------------------
   'rotate.hint': 'Turn your phone sideways to play better in landscape.',

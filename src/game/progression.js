@@ -341,6 +341,30 @@ export function createCollectionState() {
   }, {});
 }
 
+/**
+ * A última caverna do jogo: a `endCave` do último bioma.
+ *
+ * Fica aqui, e não na tela, porque é um dado do jogo e não da interface. O
+ * `App.jsx` derivava isso na mão (`BIOMES[BIOMES.length - 1].endCave`) e era
+ * preciso nas duas pontas do final — para saber quando mostrá-lo e para saber que
+ * não existe caverna depois.
+ */
+export const TOTAL_CAVES = BIOMES[BIOMES.length - 1].endCave;
+
+/**
+ * Esta é a última caverna, e o final aparece aqui?
+ *
+ * A comparação é `>=`, e não `===`, por causa do que acontece em volta: antes do
+ * final existir, clicar na Saída da caverna 60 levava para a 61. `getBiomeForCave`
+ * não falha numa caverna fora da faixa — ela devolve o último bioma —, então o
+ * jogador entrava numa caverna que mostra "10/10" para sempre, sem nunca mais
+ * avançar. A caverna 61 é um beco, e `>=` garante que o final responda por ela
+ * mesmo que algum save antigo tenha ficado gravado assim.
+ */
+export function ehCaveFinal(cave = 1) {
+  return Number.isFinite(cave) && cave >= TOTAL_CAVES;
+}
+
 export function getBiomeForCave(cave = 1) {
   return BIOMES.find((biome) => cave >= biome.startCave && cave <= biome.endCave) ?? BIOMES[BIOMES.length - 1];
 }

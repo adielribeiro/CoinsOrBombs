@@ -7,6 +7,37 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **O final do jogo, na caverna 60.** Chegando à última caverna da Câmara de Cristal
+  e clicando na Saída, o botão "Próxima cave" vira "Ver o final" e abre a carta: a
+  arte do exploreiro na saída da caverna em tela cheia, com o texto subindo de baixo
+  pra cima por 100 segundos. No fim, ou quando a pessoa pular, volta para a tela de
+  título.
+
+  - **Pular por botão, por `Esc` ou clicando em qualquer lugar.** O botão fica sobre
+    a arte e não sobre a carta: durante a rolagem a carta ocupa a tela toda, e um
+    botão dentro dela subiria junto.
+  - **Quem pede menos movimento não recebe uma parede de texto que não sai.** Com
+    `prefers-reduced-motion` a rolagem some, o texto fica parado e rola sozinho se
+    não couber, e o botão e o `Esc` continuam funcionando — são eles que garantem
+    que ninguém fique preso numa tela que só se abre sozinha.
+  - **A carta é traduzida nos dez idiomas**, como o resto. São chaves separadas por
+    parágrafo e não um texto único com quebra de linha, porque o parágrafo é o que dá
+    o ritmo da rolagem, cada um precisa do seu espaço, e um texto corrido só
+    permitiria um bloco único no meio da tela. Os comprimentos diferentes de cada
+    tradução são o que ajusta a duração percebida, e quem decide o espaço é o
+    navegador.
+
+- **A caverna 60 deixou de ser um beco sem saída.** Antes, clicar na Saída da última
+  caverna levava para a 61 — e `getBiomeForCave` não rejeita uma caverna fora da
+  faixa, ela devolve o último bioma. O jogador entrava numa caverna que mostra
+  "10/10" para sempre, sem nunca mais avançar. O final é o que responde por ela.
+
+- **Terminar o jogo não apaga a run.** Voltar ao menu depois da carta mantém moedas,
+  relíquias, coleção e `bestCave` no save. O caminho normal de "Ir para o menu"
+  reseta a run de propósito — quem abandona a caverna recomeça — e não serve aqui:
+  quem terminou o jogo teria as moedas e as relíquias zeradas no momento em que a
+  carta de despedida acabou de comemorar as duas coisas.
+
 - **Jogos salvos, um por slot, como no Minecraft.** Clicar em **Entrar** na tela de
   título abre a lista de jogos em vez de ir direto para a seleção de bioma. Cada
   jogo guarda a run inteira: a caverna em que a pessoa parou, moedas, bombas,

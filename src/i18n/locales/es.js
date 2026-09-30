@@ -36,6 +36,18 @@ export default {
   'saves.current': 'En curso',
   'saves.nameTaken': 'Ya existe una partida con ese nombre. Puedes usarlo igual.',
   'saves.ariaList': 'Partidas guardadas',
+
+  // --- final ---------------------------------------------------------------
+  'finale.title': 'Has llegado hasta aquí.',
+  'finale.p1': 'Cada piedra rota, cada camino descubierto y cada desafío superado te ha traído un poco más lejos.',
+  'finale.p2': 'Al final, la mayor riqueza nunca estuvo solo en las profundidades de la cueva, sino en el valor de seguir adelante cuando el camino parecía difícil, en la curiosidad por explorar lo desconocido y en la constancia de intentarlo una vez más.',
+  'finale.p3': 'El viaje termina por ahora, pero todo explorador sabe que siempre existe otro pasaje, otro misterio y una nueva aventura esperando ser descubierta.',
+  'finale.p4': 'Puede que esta haya sido solo la primera excavación.',
+  'finale.p5': 'Gracias por jugar y por llegar hasta el final.',
+  'finale.signature': 'Con cariño,',
+  'finale.team': 'Equipo Archangel Soft',
+  'finale.closing': 'Hasta la próxima aventura. ⛏️✨',
+  'finale.skip': 'Saltar',
   'saves.relics': {
     one: '{count} reliquia',
     other: '{count} reliquias'
@@ -159,6 +171,7 @@ export default {
   'exit.question': '¿Qué quieres hacer?',
   'exit.nextCave': 'Siguiente cueva',
   'exit.keepExploring': 'Seguir explorando esta cueva',
+  'exit.finale': 'Ver el final',
 
   // --- rotación -----------------------------------------------------------
   'rotate.hint': 'Gira el móvil para jugar mejor en horizontal.',

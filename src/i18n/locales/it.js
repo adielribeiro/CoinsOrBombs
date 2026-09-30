@@ -36,6 +36,18 @@ export default {
   'saves.current': 'In corso',
   'saves.nameTaken': 'Esiste già una partita con questo nome. Puoi usarlo comunque.',
   'saves.ariaList': 'Partite salvate',
+
+  // --- final ---------------------------------------------------------------
+  'finale.title': 'Sei arrivato fin qui.',
+  'finale.p1': 'Ogni pietra spezzata, ogni sentiero scoperto e ogni sfida superata ti hanno portato un po’ più avanti.',
+  'finale.p2': 'Alla fine, la ricchezza più grande non è mai stata solo nelle profondità della caverna, ma nel coraggio di andare avanti quando il cammino sembrava difficile, nella curiosità di esplorare l’ignoto e nella costanza di provare ancora una volta.',
+  'finale.p3': 'Il viaggio finisce per ora, ma ogni esploratore sa che esiste sempre un altro passaggio, un altro mistero e una nuova avventura che aspetta di essere scoperta.',
+  'finale.p4': 'Forse questa è stata solo la prima scavo.',
+  'finale.p5': 'Grazie per aver giocato e per essere arrivato fino in fondo.',
+  'finale.signature': 'Con affetto,',
+  'finale.team': 'Il team Archangel Soft',
+  'finale.closing': 'Alla prossima avventura. ⛏️✨',
+  'finale.skip': 'Salta',
   'saves.relics': {
     one: '{count} reliquia',
     other: '{count} reliquie'
@@ -159,6 +171,7 @@ export default {
   'exit.question': 'Cosa vuoi fare?',
   'exit.nextCave': 'Prossima grotta',
   'exit.keepExploring': 'Continua a esplorare questa grotta',
+  'exit.finale': 'Vedi il finale',
 
   // --- rotazione ---------------------------------------------------------------------
   'rotate.hint': 'Ruota il telefono per giocare meglio in orizzontale.',

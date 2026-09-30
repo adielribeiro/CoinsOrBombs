@@ -36,6 +36,18 @@ export default {
   'saves.current': 'Läuft gerade',
   'saves.nameTaken': 'Es gibt schon ein Spiel mit diesem Namen. Du kannst es trotzdem verwenden.',
   'saves.ariaList': 'Gespeicherte Spiele',
+
+  // --- final ---------------------------------------------------------------
+  'finale.title': 'Du hast es bis hierher geschafft.',
+  'finale.p1': 'Jeder gebrochene Stein, jeder entdeckte Weg und jede überwundene Herausforderung hat dich ein Stück weitergebracht.',
+  'finale.p2': 'Am Ende lag der größte Schatz nie nur in der Tiefe der Höhle, sondern in dem Mut weiterzugehen, wenn der Weg schwierig wirkte, in der Neugier auf das Unbekannte und in der Ausdauer, es noch einmal zu versuchen.',
+  'finale.p3': 'Die Reise endet vorerst, doch jeder Entdecker weiß: Es gibt immer einen weiteren Gang, ein weiteres Rätsel und ein neues Abenteuer, das es zu entdecken gilt.',
+  'finale.p4': 'Vielleicht war dies nur die erste Grabung.',
+  'finale.p5': 'Danke, dass du gespielt hast und bis zum Ende gekommen bist.',
+  'finale.signature': 'Mit Liebe,',
+  'finale.team': 'Das Archangel-Soft-Team',
+  'finale.closing': 'Bis zum nächsten Abenteuer. ⛏️✨',
+  'finale.skip': 'Überspringen',
   'saves.relics': {
     one: '{count} Relikt',
     other: '{count} Relikte'
@@ -159,6 +171,7 @@ export default {
   'exit.question': 'Was möchtest du tun?',
   'exit.nextCave': 'Nächste Höhle',
   'exit.keepExploring': 'Diese Höhle weiter erkunden',
+  'exit.finale': 'Ende ansehen',
 
   // --- Drehung ------------------------------------------------------------
   'rotate.hint': 'Dreh das Handy, um im Querformat besser zu spielen.',
