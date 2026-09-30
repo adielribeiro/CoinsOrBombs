@@ -13,8 +13,41 @@ import {
 } from '../config.js';
 import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrameIndex } from '../ground.js';
 import { getLocale, setLocale, t } from '../../i18n/index.js';
-import { ensureBackdrop, getBackdropKey, isArtePronta } from '../backdrops.js';
+import { BIOMA_INICIAL, ensureBackdrop, getBackdropKey } from '../backdrops.js';
 import { ENTRANCE_DISPLAY, getEntranceAspect, getEntranceForBiome } from '../entrances.js';
+
+/**
+ * A cena tem uma textura DE VERDADE para esta chave?
+ *
+ * `textures.exists(chave)` e `list.hasOwnProperty(chave)`, e
+ * `textures.get(chave)` devolve a textura `__MISSING` quando a chave nao esta na
+ * lista. A `__MISSING` e a caixa preta com o X verde que apareceu no lugar do
+ * fundo de cinco dos seis biomas.
+ *
+ * O teste que serve e a identidade: a textura devolvida precisa ter a MESMA chave
+ * que foi pedida. A `__MISSING` responde `__MISSING`, e e reprovada.
+ *
+ * Fica aqui, na cena, e nao em `backdrops.js`, por um motivo concreto: a
+ * verificacao decide se o `add.image` pode rodar, e uma verificacao que falha em
+ * silencio produce a caixa com X sem erro nenhum. Este bug nao esta no modulo que
+ * pediu a arte, e sim na checagem que decidiu que ela tinha chegado.
+ */
+function texturaEhUsavel(scene, chave) {
+  if (!scene || !scene.textures) return false;
+  if (typeof scene.textures.get !== 'function') return false;
+  const textura = scene.textures.get(chave);
+  return Boolean(textura) && textura.key === chave;
+}
+
+/** Como o `console.error` descreve a textura que a cena recebeu. */
+function descreveTextura(scene, chave) {
+  if (!scene || !scene.textures || typeof scene.textures.get !== 'function') {
+    return 'sem texturas';
+  }
+  const textura = scene.textures.get(chave);
+  if (!textura) return 'vazio';
+  return `${textura.key}${textura.key === chave ? ' (bate)' : ' (DIVERGE)'}`;
+}
 import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
 import { ROCK_DISPLAY, getRockFrameIndex, getRockJitter, getRockSheetKey } from '../rocks.js';
 import { generateMap } from '../systems/mapGenerator.js';
@@ -657,39 +690,65 @@ export class CaveScene extends Phaser.Scene {
    *
    * O fundo é 4K (1672x941) e cada um dos seis vale 2,9 MB, então só o do bioma
    * atual é carregado — ver `backdrops.js`. A consequência é que aqui pode não
-   * haver textura ainda, e são dois desfechos possíveis:
+   * haver textura ainda, e são três desfechos:
    *
-   * - **Tem textura**: desenha, e é o caminho normal depois do primeiro quadro de
-   *   cada bioma.
-   * - **Não tem**: pede o arquivo e pinta um retângulo com `palette.background`,
-   *   a cor de fundo do próprio bioma. O redesenho chega no `complete`.
+   * 1. **Tem a textura do bioma**: desenha, e é o caminho normal.
+   * 2. **Não tem, mas a da Mina Solar tem**: desenha a da Mina Solar.
+   * 3. **Não tem nenhuma das duas**: pinta um retângulo com `palette.background`,
+   *    a cor do próprio bioma. O redesenho chega com o `complete`.
    *
-   * A alternativa a esse retângulo é deixar o `add.image` rodar sem a textura, e
-   * o Phaser mostra o placeholder de textura ausente: a caixa preta com o X
-   * verde. Foi exatamente isso que aconteceu em cinco dos seis biomas, com
-   * nenhum erro no console.
+   * ## O X verde, e por que ele aparecia
    *
-   * ## Por que a verificação vem DEPOIS do pedido, e não antes
+   * Cinco dos seis biomas entravam com uma caixa preta e um X verde no lugar do
+   * fundo, sem erro no console. O X é a textura `__MISSING` do Phaser, e ela é o
+   * que `textures.get(chave)` devolve quando a chave não está na lista. E
+   * `textures.exists(chave)` é `list.hasOwnProperty(chave)` — então ele não
+   * distingue "carregou" de "não carregou", e a checagem antiga dizia que sim.
    *
-   * Antes era o contrário: `ensureBackdrop` era consultado, e o `add.image` vinha
-   * logo depois sem nova checagem. Isso funciona enquanto a checagem e a verdade
-   * concordam, e uma vez que não concordam o X verde aparece na tela e pronto.
+   * A barreira é `texturaEhUsavel`, que compara a chave da textura devolvida com a
+   * chave pedida, e a reserva é o que impede o pior: mesmo que a checagem erre,
+   * o jogador vê uma caverna em vez de uma caixa preta.
    *
-   * Aqui a ordem é invertida: pede, e DEPOIS confirma a textura com
-   * `isArtePronta`. A confirmação é a barreira, e ela compara a chave da textura
-   * devolvida com a chave pedida, porque `textures.get()` entrega a `__MISSING`
-   * — que é justamente o X — em vez de devolver `undefined`.
+   * ## O console.error
    *
-   * Se a confirmação falhar mesmo assim, o quadro é o retângulo da cor do bioma e
-   * o `console.error` diz qual chave não veio. Um retângulo cinza é feio; um
-   * retângulo cinza com o nome do arquivo no console é um bug com endereço.
+   * Uma vez por chave, não uma por quadro: o `renderMap` passa aqui várias vezes
+   * enquanto o fundo baixa, e um erro por quadro esconde a mensagem em vez de
+   * destacá-la. Ele traz o que a cena vê — `exists` e `get` das duas chaves —
+   * porque a causa deste bug não estava no código que desenhou, e sim na checagem
+   * que decidiu que a arte tinha chegado.
    */
   drawBiomeBackdrop(biome, depth, alpha) {
     const chave = getBackdropKey(biome.id);
+    const reserva = getBackdropKey(BIOMA_INICIAL);
 
     ensureBackdrop(this, biome.id, () => this.refreshBackdrop());
 
-    if (!isArtePronta(this, chave)) {
+    // Três desfechos, e o do meio é o conserto do sintoma que aconteceu: o bioma
+    // entrava com uma caixa preta e um X verde no lugar do fundo, porque o
+    // `add.image` rodava com uma chave que o Phaser não tinha. Cair para a caverna
+    // da Mina Solar é feio, e não é preta.
+    const usa = texturaEhUsavel(this, chave)
+      ? chave
+      : texturaEhUsavel(this, reserva)
+        ? reserva
+        : null;
+
+    if (this.fundoAvisado !== chave) {
+      this.fundoAvisado = chave;
+      if (!usa) {
+        console.error(
+          `[fundo] nenhuma textura de fundo utilizavel para o bioma ${biome.id}.`
+            + ` Pedi ${chave} e ${reserva}. A cena ve:`
+            + ` textures=${typeof this.textures}`
+            + ` exists(${chave})=${this.textures && this.textures.exists(chave)}`
+            + ` get(${chave})=${descreveTextura(this, chave)}`
+            + ` exists(${reserva})=${this.textures && this.textures.exists(reserva)}`
+            + ` get(${reserva})=${descreveTextura(this, reserva)}`
+        );
+      }
+    }
+
+    if (!usa) {
       const placeholder = this.add.rectangle(
         this.scale.width / 2,
         this.scale.height / 2,
@@ -718,9 +777,9 @@ export class CaveScene extends Phaser.Scene {
       return;
     }
 
-    this.fundoReclamado = null;
+    this.fundoAvisado = null;
 
-    const background = this.add.image(this.scale.width / 2, this.scale.height / 2, chave);
+    const background = this.add.image(this.scale.width / 2, this.scale.height / 2, usa);
     const coverScale = Math.max(this.scale.width / background.width, this.scale.height / background.height);
 
     background.setScale(coverScale);
@@ -1159,12 +1218,12 @@ export class CaveScene extends Phaser.Scene {
         const entrada = getEntranceForBiome(biome.id);
 
         // A arte pode não ter chegado ainda: ela é carregada por bioma, junto
-        // com o fundo. A checagem é `isArtePronta`, e não `textures.exists`,
+        // com o fundo. A checagem é `texturaEhUsavel`, e não `textures.exists`,
         // porque `exists` só diz que a chave está registrada — e o Phaser
         // desenha a `__MISSING`, a caixa preta com X verde, quando a textura
         // pedida não chegou. O tile fica vazio por meio segundo e o redesenho
         // chega junto com o fundo.
-        if (isArtePronta(this, entrada.key)) {
+        if (texturaEhUsavel(this, entrada.key)) {
           const larguraBoca = Math.round(tileWidth * ENTRANCE_DISPLAY);
           const alturaBoca = Math.round(larguraBoca * getEntranceAspect(biome.id));
 

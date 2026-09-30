@@ -93,6 +93,47 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   variável antes do teste resolveu, e a forma curta está explicada no código
   porque é o único ponto do arquivo onde esse tipo de erro é silencioso.
 
+### Corrigido
+
+  **A cena falsa ficou dentro do próprio arquivo de teste.** Ela morou em
+  `test/cena-phaser.mjs`, importada, e o comportamento foi impossível de
+  explicar: o mesmo objeto devolvido por `cenaFalsa()`, com `texturas` presente em
+  toda sondagem, chegava a um arquivo de teste sem `texturas` — em linhas
+  consecutivas do mesmo arquivo, e de forma diferente conforme o arquivo que o
+  executava. Ver a nota em "Corrigido" para o que foi descartado por causa disso.
+
+- **Cinco dos seis biomas entravam com uma caixa preta e um X verde no lugar do
+  fundo, sem erro no console.** Só a Mina Solar funcionava — que é a única que o
+  `BootScene` carrega. Os outros cinco dependem do caminho de carga por bioma.
+
+  O X verde é a textura `__MISSING` do Phaser, e é o que `textures.get(chave)`
+  devolve quando a chave não está na lista de texturas. E
+  `textures.exists(chave)` é `list.hasOwnProperty(chave)` — então ele responde
+  "sim" tanto para uma arte que carregou quanto para uma que nunca chegou, e a
+  checagem antiga dizia que sim. O `add.image` seguinte desenhava o placeholder.
+
+  A correção são duas, e a segunda é a que garante que o pior não acontece:
+
+  - **`texturaEhUsavel(scene, chave)`**, no `CaveScene`: a textura devolvida
+    precisa ter a **mesma chave** que foi pedida. A `__MISSING` responde
+    `__MISSING`, e é reprovada. A mesma barreira vale para a entrada da caverna.
+  - **Reserva no fundo da Mina Solar.** Se a arte do bioma não está, usa a da
+    Mina Solar, que está no boot. O jogador vê uma caverna em vez de uma caixa
+    preta. Só se as duas faltarem é que sai o retângulo da cor do bioma.
+
+  E há um `console.error` por chave, com o que a cena vê: `exists` e `get` das
+  duas chaves. A causa deste bug não estava no código que desenhou, e sim na
+  checagem que decidiu que a arte tinha chegado — e um log que não diz qual chave
+  nem o que a textura respondeu não serve para o próximo.
+
+  **O que foi descartado no caminho, e por quê.** A primeira versão do conserto
+  trocava a guarda de `backdrops.js` por uma forma equivalente sem optional
+  chaining, porque a versão antiga estava_registerada como suspeita. Com ela, seis
+  testes passaram a falhar de forma determinística — três rodadas, sempre 6 de 6 —
+  e a CI, em Linux com Node 22, viu a mesma coisa. A versão antiga passou na CI de
+  `ba1d2ef`, então a troca era a causa, e ela foi revertida. O conserto ficou
+  inteiro no `CaveScene`, que é onde a decisão de desenhar acontece.
+
 - **O jogo fala dez idiomas.** Português, inglês, espanhol, francês, alemão,
   italiano, polonês, hindi, chinês simplificado e japonês, com seletor no menu
   principal.
