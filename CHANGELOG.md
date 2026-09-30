@@ -5,6 +5,26 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Removido
+
+- **A decoração espalhada da caverna.** Colunas nas Ruínas, cristais, lanternas,
+  caixas, trilhos, pilhas de ouro, estalactites e fendas de lava saíam sorteados
+  nos tiles abertos — cerca de 18% deles. São **nove sprites a menos** na tela, em
+  todos os seis biomas.
+
+  - **Eram só imagem.** `renderDecoration` colocava a arte com uma escala e uma
+    profundidade, e mais nada: sem colisão, sem clique, sem efeito. Nenhuma regra
+    do jogo lia `tile.deco`, então tirá-los não muda uma única chance de bomba,
+    moeda ou relíquia.
+  - **`deco_rubble` continua, apesar do nome.** Ele deixou de ser decoração e
+    virou a textura de duas coisas que são efeito de jogo: o caco que sai da
+    rocha quebrada (`spawnBreakDebris`) e o cascalho do chão (`renderGrit`).
+    Apagar junto teria quebrado a animação de quebra — e a animação é justamente
+    o retorno que a pessoa sente ao acertar uma pedra.
+  - **O `primaryDeco` de cada bioma saiu junto.** Ele apontava para texturas que
+    não existem mais, e um campo que aponta para um arquivo apagado é pior que um
+    campo que não existe: ele mente sobre o que o jogo carrega.
+
 ### Adicionado
 
 - **O final do jogo, na caverna 60.** Chegando à última caverna da Câmara de Cristal

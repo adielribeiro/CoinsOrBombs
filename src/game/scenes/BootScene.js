@@ -67,13 +67,11 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
-    // Decorations
+    // Entulho. Sobrevive à remoção da decoração espalhada porque deixou de ser
+    // decoração: é a textura de duas coisas que são efeito de jogo —
+    // `spawnBreakDebris` (o caco que sai da rocha quebrada) e `renderGrit` (o
+    // cascalho do chão). Apagar junto quebraria a animação de quebra.
     this.load.image('deco_rubble', 'assets/deco_rubble.png');
-    this.load.image('deco_crystal_blue', 'assets/deco_crystal_blue.png');
-    this.load.image('deco_crystal_red', 'assets/deco_crystal_red.png');
-    this.load.image('deco_lantern', 'assets/deco_lantern.png');
-    this.load.image('deco_crate', 'assets/deco_crate.png');
-    this.load.image('deco_tracks', 'assets/deco_tracks.png');
 
     // Special
     this.load.image('exit_glow', 'assets/exit_glow.png');
@@ -103,12 +101,6 @@ export class BootScene extends Phaser.Scene {
     for (const item of listBiomeArt()) {
       this.load.image(item.key, item.url);
     }
-
-    // Biome decorations
-    this.load.image('deco_gold_pile', 'assets/deco_gold_pile.png');
-    this.load.image('deco_ice_spike', 'assets/deco_ice_spike.png');
-    this.load.image('deco_lava_vent', 'assets/deco_lava_vent.png');
-    this.load.image('deco_ruin_pillar', 'assets/deco_ruin_pillar.png');
   }
 
   create() {

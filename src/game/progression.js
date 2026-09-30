@@ -31,7 +31,6 @@ export const BIOMES = [
     relicChance: 0.12,
     coinMultiplier: 1,
     bombMultiplier: 1,
-    primaryDeco: 'deco_gold_pile',
     palette: {
       background: '#14181f',
       overlay: 0xd99845,
@@ -62,7 +61,6 @@ export const BIOMES = [
     relicChance: 0.14,
     coinMultiplier: 0.94,
     bombMultiplier: 1.04,
-    primaryDeco: 'deco_ice_spike',
     palette: {
       background: '#111a27',
       overlay: 0x73bdf2,
@@ -93,7 +91,6 @@ export const BIOMES = [
     relicChance: 0.16,
     coinMultiplier: 1.02,
     bombMultiplier: 1.08,
-    primaryDeco: 'deco_lava_vent',
     palette: {
       background: '#201414',
       overlay: 0xe46845,
@@ -124,7 +121,6 @@ export const BIOMES = [
     relicChance: 0.18,
     coinMultiplier: 0.96,
     bombMultiplier: 1.12,
-    primaryDeco: 'deco_ruin_pillar',
     palette: {
       background: '#181422',
       overlay: 0x987bff,
@@ -153,15 +149,10 @@ export const BIOMES = [
     backgroundKey: 'cave_bg_wind',
     relicId: 'gust_shell',
     relicChance: 0.2,
-    // Mais moedas e menos bombas: o vento espalha o minério e leva a
-    // detonação para longe. É o bioma de respiração depois de três apertos.
     coinMultiplier: 1.12,
     bombMultiplier: 0.94,
-    // `deco_ice_spike` em vez de uma arte nova: a estalagmite alta funciona
-    // tanto numa gruta congelada quanto numa galeria de vento, e uma arte
-    // nova sairia do estilo das outras quatro. O que diferencia o bioma é o
-    // fundo e o chão, que são únicos.
-    primaryDeco: 'deco_ice_spike',
+    // Mais moedas e menos bombas: o vento espalha o minério e leva a
+    // detonação para longe. É o bioma de respiração depois de três apertos.
     palette: {
       background: '#101a1c',
       overlay: 0x74d8e8,
@@ -187,13 +178,10 @@ export const BIOMES = [
     backgroundKey: 'cave_bg_crystal',
     relicId: 'prism_core',
     relicChance: 0.24,
-    // Menos moedas e muito mais bomba: o cristal reflete a detonação de volta
-    // para dentro da cave. É o bioma final, e o mais caro.
     coinMultiplier: 0.88,
     bombMultiplier: 1.2,
-    // `deco_crystal_blue` é literalmente um cristal, e o nome do bioma é
-    // Cristal. Criar arte nova aqui seria redundante.
-    primaryDeco: 'deco_crystal_blue',
+    // Menos moedas e muito mais bomba: o cristal reflete a detonação de volta
+    // para dentro da cave. É o bioma final, e o mais caro.
     palette: {
       background: '#141a24',
       overlay: 0xa8f0ff,

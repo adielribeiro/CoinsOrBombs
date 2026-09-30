@@ -138,7 +138,6 @@ function createBaseTile(col, row, rockHp, biomeId = 'sunstone') {
     // na textura e a cor vem do bioma.
     grit: pickGrit(col, row),
     rockVariant: sorteiaVarianteDeRocha(biomeId),
-    deco: null,
     isHiddenExit: false
   };
 }
@@ -247,91 +246,7 @@ function buildMainPath(width, height, entry, exit) {
   return path;
 }
 
-function decorateOpenTiles(tiles, width, height, entry, biome) {
-  const isNearEntry = (col) => col <= 2;
 
-  for (let row = 0; row < height; row += 1) {
-    for (let col = 0; col < width; col += 1) {
-      const tile = tiles[row][col];
-
-      if (tile.type === 'rock') continue;
-      if (tile.type === 'entrance' || tile.type === 'exit') continue;
-
-      const neighbors = getNeighbors8(col, row, width, height);
-      const adjacentRockCount = neighbors.filter(
-        (n) => tiles[n.row][n.col].type === 'rock'
-      ).length;
-
-      const roll = Math.random();
-
-      if (isNearEntry(col) && roll < 0.10) {
-        tile.deco = biome.id === 'ruins' ? 'deco_ruin_pillar' : 'deco_tracks';
-        continue;
-      }
-
-      if (adjacentRockCount >= 2 && roll < 0.05) {
-        tile.deco = DECO_NEAR_ROCK[biome.id] ?? 'deco_rubble';
-        continue;
-      }
-
-      // Decoração temática do bioma, por tabela.
-      //
-      // Era uma cascata de `if (biome.id === 'x')`, e os biomas novos caíam
-      // direto no genérico: a Galeria de Vento e a Câmara de Cristal recebiam
-      // entulho de mó通用, que não diz nada sobre o lugar. Com a tabela, um
-      // bioma novo entra por dados e o teste cobre a tabela inteira.
-      const tematica = DECO_BY_BIOME[biome.id];
-
-      if (tematica && roll < tematica.chance) {
-        tile.deco = Math.random() < tematica.mainChance
-          ? tematica.main
-          : tematica.alt;
-        continue;
-      }
-
-      if (roll < 0.10) {
-        tile.deco = 'deco_rubble';
-        continue;
-      }
-
-      if (roll < 0.14) {
-        tile.deco = 'deco_crate';
-        continue;
-      }
-
-      if (roll < 0.18) {
-        tile.deco = tematica?.alt ?? (biome.id === 'frost' ? 'deco_crystal_blue' : 'deco_crystal_red');
-      }
-    }
-  }
-}
-
-/**
- * Decoração temática de cada bioma.
- *
- * `chance` é a probabilidade de sair algo do bioma em vez do entulho comum,
- * `mainChance` o quanto pesa a decoração principal contra a secundária, e
- * `alt` o que completa. `DECO_NEAR_ROCK` é o que aparece encostado em rocha,
- * que costuma ser algo pequeno.
- */
-const DECO_BY_BIOME = {
-  sunstone: { chance: 0.14, main: 'deco_gold_pile', mainChance: 0.55, alt: 'deco_lantern' },
-  frost: { chance: 0.16, main: 'deco_ice_spike', mainChance: 0.7, alt: 'deco_crystal_blue' },
-  ember: { chance: 0.16, main: 'deco_lava_vent', mainChance: 0.7, alt: 'deco_crystal_red' },
-  ruins: { chance: 0.16, main: 'deco_ruin_pillar', mainChance: 0.6, alt: 'deco_crate' },
-  // Vento: estalactite alta e cristal azul, a mesma paleta do gelo — a
-  // galeria é fria e vazia, e repetir a arte fica melhor do que inventar uma
-  // peça fora do estilo.
-  wind: { chance: 0.15, main: 'deco_ice_spike', mainChance: 0.45, alt: 'deco_crystal_blue' },
-  // Cristal: o nome do bioma é Cristal, e `deco_crystal_blue` é literalmente
-  // um cristal.
-  crystal: { chance: 0.18, main: 'deco_crystal_blue', mainChance: 0.6, alt: 'deco_crystal_red' }
-};
-
-const DECO_NEAR_ROCK = {
-  sunstone: 'deco_gold_pile',
-  ruins: 'deco_ruin_pillar'
-};
 
 /**
  * Abre o menor trecho de caminho necessário para que a rocha da saída fique
@@ -360,7 +275,6 @@ function ensureExitReachable(mapData) {
       tile.walkable = true;
       tile.revealed = true;
       tile.hp = 0;
-      tile.deco = null;
     }
   };
 
@@ -514,7 +428,6 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
     revealed: true,
     walkable: true,
     hp: 0,
-    deco: null,
     isHiddenExit: false
   };
 
@@ -525,7 +438,6 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
     revealed: false,
     walkable: false,
     hp: rockHp,
-    deco: null,
     isHiddenExit: true
   };
 
@@ -609,7 +521,6 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
     }
   }
 
-  decorateOpenTiles(tiles, width, height, entry, biome);
 
   const mapData = {
     width,

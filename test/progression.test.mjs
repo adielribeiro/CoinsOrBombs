@@ -366,11 +366,6 @@ test('todo bioma tem chão, fundo e decoração próprios', () => {
     );
     assert.ok(biome.palette.ground > 0, `${biome.id} sem cor de chão`);
     assert.ok(biome.relicId, `${biome.id} sem relíquia`);
-    assert.ok(biome.primaryDeco, `${biome.id} sem decoração principal`);
-    assert.ok(
-      boot.includes(`'${biome.primaryDeco}'`),
-      `${biome.id} usa ${biome.primaryDeco}, que o BootScene não carrega`
-    );
   }
 });
 

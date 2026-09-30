@@ -1159,7 +1159,6 @@ export class CaveScene extends Phaser.Scene {
       }
 
       tile.sprite = floor;
-      this.renderDecoration(tile, point);
 
       if (tile.safePath) {
         this.renderSafePathHighlight(point, point.y + 3);
@@ -1725,8 +1724,6 @@ export class CaveScene extends Phaser.Scene {
     if (revealedHiddenExit) {
       this.renderExitHighlight(rewardPos);
       this.renderExitTileVisual(tile, rewardPos);
-    } else {
-      this.renderDecoration(tile, rewardPos);
     }
 
     let message = '';
@@ -2308,56 +2305,5 @@ export class CaveScene extends Phaser.Scene {
 
   syncUI() {
     this.game?.uiBridge?.syncUI?.({ state: this.metaState, purchased: this.purchased });
-  }
-
-  renderDecoration(tile, point) {
-    if (!tile.deco) return;
-
-    const deco = this.add.image(point.x, point.y - 18, tile.deco);
-    const { mapScale, tileHeight } = this.renderMetrics;
-
-    let scale = 0.42 * mapScale;
-    let yOffset = -tileHeight * 0.4;
-
-    if (tile.deco === 'deco_lantern') {
-      scale = 0.38 * mapScale;
-      yOffset = -tileHeight * 0.56;
-    }
-
-    if (tile.deco === 'deco_tracks') {
-      scale = 0.5 * mapScale;
-      yOffset = -tileHeight * 0.08;
-    }
-
-    if (tile.deco === 'deco_rubble') {
-      scale = 0.4 * mapScale;
-      yOffset = -tileHeight * 0.22;
-    }
-
-    if (tile.deco === 'deco_gold_pile') {
-      scale = 0.46 * mapScale;
-      yOffset = -tileHeight * 0.22;
-    }
-
-    if (tile.deco === 'deco_ice_spike') {
-      scale = 0.34 * mapScale;
-      yOffset = -tileHeight * 0.48;
-    }
-
-    if (tile.deco === 'deco_lava_vent') {
-      scale = 0.44 * mapScale;
-      yOffset = -tileHeight * 0.22;
-    }
-
-    if (tile.deco === 'deco_ruin_pillar') {
-      scale = 0.42 * mapScale;
-      yOffset = -tileHeight * 0.46;
-    }
-
-    deco.setPosition(point.x, point.y + yOffset);
-    deco.setScale(scale);
-    deco.setDepth(point.y + 6);
-
-    this.objectLayer.add(deco);
   }
 }
