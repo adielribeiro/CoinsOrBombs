@@ -1,0 +1,317 @@
+/**
+ * Navegação espacial dos menus.
+ *
+ * ## O problema
+ *
+ * Todas as telas do jogo são DOM React por cima do canvas: jogos salvos,
+ * configurações, seleção de bioma, pausa, idioma, loja, a carta do final. O
+ * controle do Phaser move o cursor do canvas e não sabe que um `<button>` existe,
+ * então o controle não consegue focar um menu por conta própria.
+ *
+ * A camada que resolve isto — camada de foco — é a que está aqui.
+ *
+ * ## Por que foco de verdade, e não um índice virtual
+ *
+ * A alternativa seria manter um índice e desenhar o foco à mão. É mais simples de
+ * escrever e errado por dois motivos: o `Tab` do teclado passaria a andar por um
+ * lugar e o controle por outro, e o leitor de tela não veria nada.
+ *
+ * Usando o foco real do DOM, os dois esquemas dividem o mesmo estado. Quem joga
+ * de teclado, quem joga de controle e quem usa leitor de tela veem a mesma coisa,
+ * e o anel de foco é `:focus-visible` — o mesmo que o navegador já faz.
+ *
+ * ## Por que espacial, e não em linha
+ *
+ * As telas não são listas. A seleção de bioma é uma grade de 2 colunas, a
+ * configuração tem interruptores e linhas de texto alternadas, e a loja tem
+ * linhas com dois botões. Navegar em linha faria o foco pular da coluna direita
+ * para a seguinte da esquerda, e a pessoa teria de ir e voltar para atravessar a
+ * tela.
+ *
+ * ## Por que isso é uma função pura
+ *
+ * Porque a parte difícil — "qual é o melhor alvo para cima, a partir daqui" — é
+ * aritmética com caixas, e não depende de nada do DOM além dos retângulos. Recebendo
+ * uma lista de `{ id, x, y, largura, altura }` e devolvendo um `id`, a função é
+ * testável sem navegador, sem `getBoundingClientRect` e semesperar layout.
+ *
+ * É a mesma razão de `saves.js` receber o storage como argumento: o que a tela faz
+ * fica na tela, e o que é decisão fica num módulo que se executa no teste.
+ */
+
+/** Espera antes da primeira repetição ao segurar a direção, em ms. */
+export const ESPERA_REPETICAO_MS = 380;
+
+/** Intervalo entre repetições seguintes, em ms. */
+export const INTERVALO_REPETICAO_MS = 110;
+
+/**
+ * Os alvos na direção pedida, do melhor para o pior.
+ *
+ * A desempate é deliberado e não é "`menor distância`": é o ângulo primeiro, e
+ * só depois a distância. Num menu como a seleção de bioma, o alvo duas linhas
+ * acima na mesma coluna está a menos de 30px, e o alvo da coluna de cima a 300px.
+ * Vence o ângulo, e a desempate da distância escolhe entre os dois quando os
+ * ângulos empatam.
+ *
+ * Um alvo tem de estar **na direção pedida**: o centro dele precisa estar à
+ * frente, e não ao lado. Sem este teste, apertar "cima" numa tela de duas linhas
+ * poderia escolher o vizinho da direita, que está mais perto mas não está acima.
+ */
+export function ordenarPorDirecao(alvos, de, direcao, tolerancia = 12) {
+  if (!de) return [...alvos];
+
+  const centroDe = { x: de.x + de.largura / 2, y: de.y + de.altura / 2 };
+
+  const pontuar = (alvo) => {
+    const centro = { x: alvo.x + alvo.largura / 2, y: alvo.y + alvo.altura / 2 };
+    const dx = centro.x - centroDe.x;
+    const dy = centro.y - centroDe.y;
+
+    let aoLongo = 0;
+    let atravessado = 0;
+    let sentido = 0;
+
+    if (direcao === 'cima') {
+      aoLongo = -dy;
+      atravessado = Math.abs(dx);
+      sentido = dy < 0 ? 1 : 0;
+    } else if (direcao === 'baixo') {
+      aoLongo = dy;
+      atravessado = Math.abs(dx);
+      sentido = dy > 0 ? 1 : 0;
+    } else if (direcao === 'esquerda') {
+      aoLongo = -dx;
+      atravessado = Math.abs(dy);
+      sentido = dx < 0 ? 1 : 0;
+    } else if (direcao === 'direita') {
+      aoLongo = dx;
+      atravessado = Math.abs(dy);
+      sentido = dx > 0 ? 1 : 0;
+    }
+
+    // Fora da direção, ou alinhado demais com o eixo errado para ser um passo.
+    if (!sentido || aoLongo < tolerancia) return null;
+
+    // A distância é o comprimento do passo, e não a "distância em linha":
+    // atravessar uma coluna larga é um passo válido e não pode ser penalizado
+    // como se fossem quatro.
+    const comprimento = Math.hypot(aoLongo, atravessado);
+    const desvio = atravessado / comprimento;
+
+    return { alvo, comprimento, desvio };
+  };
+
+  return alvos
+    .map(pontuar)
+    .filter(Boolean)
+    .sort((a, b) => a.desvio - b.desvio || a.comprimento - b.comprimento)
+    .map((p) => p.alvo);
+}
+
+/**
+ * O `id` do próximo alvo numa direção, ou `null` se não há nenhum.
+ *
+ * Devolve `null` em vez do alvo atual quando não há para onde ir, e quem chama
+ * trata: manter o foco onde está é o certo, e trocá-lo por umvizinho aleatório é
+ * pior.
+ */
+export function proximoAlvo(alvos, de, direcao, tolerancia) {
+  const ordenados = ordenarPorDirecao(alvos, de, direcao, tolerancia);
+
+  if (ordenados.length === 0) return null;
+
+  return ordenados[0].id ?? null;
+}
+
+/**
+ * O primeiro alvo da tela, para quando o foco ainda não está em lugar nenhum.
+ *
+ * A ordem é de leitura: cima, depois esquerda, e não a ordem do DOM. Numa grade
+ * de duas colunas isso põe o foco no primeiro card, e não no último que entrou no
+ * DOM.
+ */
+export function primeiroAlvo(alvos) {
+  if (!alvos || alvos.length === 0) return null;
+
+  return [...alvos].sort((a, b) => a.y - b.y || a.x - b.x)[0].id ?? null;
+}
+
+/**
+ * Alvos alcançáveis agora.
+ *
+ * A lista muda conforme as telas abrem e fecham, e um alvo escondido que ainda
+ * recebe foco é o pior bug possível de navegação: a pessoa aperta e nada acontece,
+ * ou pior, o foco vai para um botão de uma tela que já não está na tela.
+ */
+export function alvosAlcancaveis(raiz) {
+  if (!raiz || typeof raiz.querySelectorAll !== 'function') return [];
+
+  const seletor = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  const elementos = Array.from(raiz.querySelectorAll(seletor));
+
+  return elementos
+    .filter((elemento) => {
+      // `offsetParent` é `null` em `display: none` e em ancestral oculto, e é
+      // exatamente a checagem de "isto está na tela agora" que o CSS não dá.
+      if (!elemento.offsetParent && getComputedStyle(elemento).position !== 'fixed') return false;
+      if (elemento.getAttribute('aria-hidden') === 'true') return false;
+
+      const caixa = elemento.getBoundingClientRect();
+
+      return caixa.width > 0 && caixa.height > 0;
+    })
+    .map((elemento) => {
+      const caixa = elemento.getBoundingClientRect();
+
+      return {
+        id: elemento.dataset.focoId ?? elemento.id ?? null,
+        elemento,
+        x: caixa.left,
+        y: caixa.top,
+        largura: caixa.width,
+        altura: caixa.height
+      };
+    })
+    .filter((alvo) => alvo.id !== null);
+}
+
+/**
+ * Decide se a direção deve repetir, e devolve o novo estado da repetição.
+ *
+ * Separado do objeto que a aplica de propósito: isto são três tempos — antes da
+ * espera, na virada, e entre repetições — e a teste precisa dos três sem ter de
+ * construir a navegação inteira.
+ */
+export function passoDeRepeticao(estado, agora, { espera = ESPERA_REPETICAO_MS, intervalo = INTERVALO_REPETICAO_MS } = {}) {
+  // `Number.isFinite` e não `!estado?.desde`: um relógio que começa em 0 produz
+  // `desde: 0`, que é falsy, e o teste de "primeira vez" dispararia a cada quadro
+  // — a navegação andaria sem parar. No navegador `Date.now()` nunca é 0, o que é
+  // exatamente o tipo de coisa que não se percebe até um teste rodar com
+  // relógio controlado.
+  if (!estado || !Number.isFinite(estado.desde)) return { repetir: true, desde: agora, repetiuEm: null };
+
+  const desdeRepeticao = agora - estado.desde;
+
+  if (desdeRepeticao < espera) return { repetir: false, desde: estado.desde, repetiuEm: estado.repetiuEm };
+
+  if (!Number.isFinite(estado.repetiuEm)) return { repetir: true, desde: estado.desde, repetiuEm: agora };
+
+  const desdeUltima = agora - estado.repetiuEm;
+
+  if (desdeUltima < intervalo) return { repetir: false, desde: estado.desde, repetiuEm: estado.repetiuEm };
+
+  return { repetir: true, desde: estado.desde, repetiuEm: agora };
+}
+
+/**
+ * Cria o navegador de foco por controle.
+ *
+ * Igual ao leitor: o DOM entra como argumento e o relógio também, para o teste
+ * mandar o tempo.
+ */
+export function criarNavegadorDeFoco({ raiz, elementoAtivo, aplicarFoco, agora } = {}) {
+  const relogio = typeof agora === 'function' ? agora : () => Date.now();
+  const repeticoes = { cima: null, baixo: null, esquerda: null, direita: null };
+
+  /** O alvo com o foco agora, ou `null` se o foco estiver fora da lista. */
+  const alvoAtual = () => {
+    const alvos = alvosAlcancaveis(raiz);
+    const ativo = typeof elementoAtivo === 'function' ? elementoAtivo() : null;
+    const achado = alvos.find((alvo) => alvo.elemento === ativo);
+
+    return achado ?? null;
+  };
+
+  return {
+    alvos() {
+      return alvosAlcancaveis(raiz);
+    },
+
+    /** Põe o foco no primeiro alvo, se ainda não houver nenhum. */
+    focarPrimeiro() {
+      const alvos = alvosAlcancaveis(raiz);
+      const id = primeiroAlvo(alvos);
+
+      if (id === null) return null;
+
+      const alvo = alvos.find((item) => item.id === id);
+      if (alvo?.elemento?.focus) alvo.elemento.focus();
+
+      return id;
+    },
+
+    /**
+     * Move o foco na direção.
+     *
+     * Devolve `true` quando o foco andou. Devolver `false` é o que faz a
+     * repetição parar numa borda da tela, em vez de ficar quicando.
+     */
+    mover(direcao) {
+      const alvos = alvosAlcancaveis(raiz);
+      if (alvos.length === 0) return false;
+
+      const de = alvoAtual();
+      const id = proximoAlvo(alvos, de, direcao);
+
+      if (id === null) return false;
+
+      const alvo = alvos.find((item) => item.id === id);
+      if (!alvo?.elemento?.focus) return false;
+
+      alvo.elemento.focus();
+      if (typeof aplicarFoco === 'function') aplicarFoco(alvo.elemento);
+
+      return true;
+    },
+
+    /**
+     * Move com repetição, a partir da direção dominante.
+     *
+     * Chamar uma vez por quadro. A primeira vez que a direção aparece, anda
+     * sempre — não há espera antes do primeiro passo, porque quem aperta e quer
+     * um passo quer um passo, e esperar 380ms para o primeiro passo é a sensação
+     * de controle quebrado mais comum em navegação por controle.
+     *
+     * A direção vem como uma só, já resolvida: um menu responde a um passo por
+     * vez, e decidir aqui qual das quatro vale tiraria a decisão de dentro de um
+     * laço, onde ela ficaria escondida.
+     */
+    moverComRepeticao(direcaoDominante, agoraMs = relogio()) {
+      if (!direcaoDominante) {
+        for (const direcao of Object.keys(repeticoes)) repeticoes[direcao] = null;
+        return false;
+      }
+
+      // A direção que mudou zera a repetição das outras. Sem isto, soltar o
+      // "cima" e segurar o "baixo" direto deixaria a repetição do "baixo"
+      // esperando o tempo do "cima", e o primeiro passo para baixo atrasaria.
+      for (const direcao of Object.keys(repeticoes)) {
+        if (direcao !== direcaoDominante) repeticoes[direcao] = null;
+      }
+
+      const passo = passoDeRepeticao(repeticoes[direcaoDominante], agoraMs);
+      repeticoes[direcaoDominante] = passo;
+
+      if (!passo.repetir) return false;
+
+      return this.mover(direcaoDominante);
+    },
+
+    /** Ativa o alvo com foco. */
+    ativar() {
+      const alvo = alvoAtual();
+
+      if (!alvo?.elemento) return false;
+
+      alvo.elemento.click();
+
+      return true;
+    },
+
+    /** O `id` do alvo com foco, para o teste e para o HUD. */
+    atual() {
+      return alvoAtual()?.id ?? null;
+    }
+  };
+}
