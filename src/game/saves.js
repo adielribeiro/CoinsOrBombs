@@ -32,7 +32,9 @@
  * jogo novo começa na Mina Solar, mesmo que outro slot já tenha chegado ao gelo.
  */
 import {
+  IMPROVEMENT_FIELDS,
   createCollectionState,
+  createImprovementState,
   createStatsState,
   createUtilityInventory,
   getBiomeForCave,
@@ -60,7 +62,13 @@ export const PERSISTENTE = [
   'collection',
   'stats',
   'lastRelicFound',
-  'utilities'
+  'utilities',
+  // As melhorias entram aqui porque elas são permanentes. Antes elas viviam só na
+  // memória do `App.jsx`: o jogador escolhia "Vitalidade 2", fechava a aba, e a
+  // melhoria não estava em lugar nenhum. Não basta um save de uma linha que não
+  // guarda o que a pessoa conquistou.
+  ...
+    IMPROVEMENT_FIELDS
 ];
 
 /** Limite do nome. Curto o bastante para caber na lista, longo o bastante para nomear. */
@@ -161,7 +169,8 @@ export function estadoInicial(cave = 1) {
     collection: createCollectionState(),
     stats: createStatsState(),
     lastRelicFound: null,
-    utilities: createUtilityInventory()
+    utilities: createUtilityInventory(),
+    ...createImprovementState()
   };
 }
 

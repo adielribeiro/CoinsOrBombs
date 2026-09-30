@@ -24,6 +24,7 @@ import {
   BIOMES,
   RELIC_CATALOG,
   createCollectionState,
+  createImprovementState,
   createStatsState,
   createUtilityInventory,
   ehCaveFinal,
@@ -31,6 +32,7 @@ import {
   getBiomeProgress,
   getBiomeStartCave,
   getObjectiveProgressList,
+  improvementsDe,
   TOTAL_CAVES as TOTAL_CAVES_DO_JOGO,
   getTotalRelics,
   getUnlockedBiomes
@@ -50,22 +52,8 @@ import {
 import { criarLeitorDeControle } from './game/gamepad.js';
 import { criarNavegadorDeFoco } from './game/foco.js';
 import { fechaTelaDoTopo, telaDoTopo } from './game/telas.js';
+import { buildRewardCatalog, pickRewardOptions, shuffle } from './game/rewards.js';
 import './styles/app.css';
-
-const createImprovementState = () => ({
-  pickaxeUpgradeLevel: 0,
-  vitalityLevel: 0,
-  coinBonusLevel: 0,
-  coinBonusChance: 0,
-  coinBonusAmount: 0,
-  rockBonusLevel: 0,
-  rockBonusChance: 0,
-  rockBonusAmount: 0,
-  utilityDropLevel: 0,
-  utilityDropChance: 0,
-  bombRevealLevel: 0,
-  bombRevealChance: 0
-});
 
 const firstBiome = getBiomeForCave(1);
 
@@ -222,209 +210,6 @@ const DEFAULT_SETTINGS = {
   autoFullscreen: true,
   developerMode: false
 };
-
-/**
- * Lê as configurações, descartando as chaves que deixaram de existir.
- *
- * `readStorage` faz merge com o que está salvo, e é o comportamento certo para
- *_defaults_ novos. Mas para uma chave REMOVIDA ele é o contrário do que se
- * quer: o `showGrid: true` de um jogador que tinha ligado a grade voltava do
- * navegador e entrava no estado, mesmo sem mais nenhum interruptor na tela.
- *
- * O efeito prático era o pior dos dois: a cena recebia `showGrid: true` e
- * desenhava a grade, e o jogador não tinha caminho para desligar. `buildSceneSettings`
- * já neutraliza isso, mas deixar a chave no estado é armadilha para quem for
- * mexer aqui depois — um `settings.showGrid` lido em qualquer lugar voltaria a
- * valer sem ninguém saber por quê.
- *
- * Descartar na leitura faz o `localStorage` se curar sozinho na próxima
- * gravação, e o estado passa a descrever só o que existe.
- */
-const CHAVES_DE_SETTINGS_REMOVIDAS = ['reducedMotion', 'showGrid'];
-
-function readSettings() {
-  const lido = readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
-  const limpo = { ...lido };
-
-  for (const chave of CHAVES_DE_SETTINGS_REMOVIDAS) {
-    delete limpo[chave];
-  }
-
-  // O idioma é resolvido DEPOIS do merge, e nunca a partir dele. Um valor
-  // salvo que não existe mais no jogo — idioma removido numa atualização, ou
-  // storage editado à mão — é ignorado, e a detecção do navegador assume. Sem
-  // isso o estado descreveria um idioma que nenhuma cadeia sabe traduzir, e o
-  // `createTranslator` cairia no português calado em vez de detectar.
-  limpo.language = readStoredLocale(SETTINGS_STORAGE_KEY);
-
-  return limpo;
-}
-
-function readStorage(key, fallback) {
-  if (typeof window === 'undefined') return fallback;
-
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeStorage(key, value) {
-  if (typeof window === 'undefined') return;
-
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // modo privado / storage bloqueado: o jogo segue funcionando sem persistir
-  }
-}
-
-function tierLabel(value) {
-  return String(value).padStart(2, '0');
-}
-
-function shuffle(list) {
-  const cloned = [...list];
-
-  for (let i = cloned.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
-  }
-
-  return cloned;
-}
-
-function getRewardVisual(track) {
-  const visuals = {
-    pickaxe: { icon: '⛏️', accent: 'pickaxe' },
-    vitality: { icon: '🛡️', accent: 'vitality' },
-    coins: { icon: '🪙', accent: 'coins' },
-    rocks: { icon: '🪨', accent: 'rocks' },
-    utility: { icon: '🎒', accent: 'utility' },
-    bomb: { icon: '💥', accent: 'bomb' }
-  };
-
-  return visuals[track] ?? { icon: '✨', accent: 'default' };
-}
-
-function buildRewardCatalog(state, t) {
-  const rewards = [];
-
-  // pickaxePower é limitado a 5 (1 base + 4 upgrades). O catálogo antigo
-  // oferecia até 7 níveis, então "Picareta 05/06/07" eram cartas mortas:
-  // aplicavam +1 em um valor já saturado e não mudavam nada na run.
-  const nextPickaxe = (state.pickaxeUpgradeLevel ?? 0) + 1;
-  if (nextPickaxe <= 4) {
-    rewards.push({
-      id: `pickaxe_${nextPickaxe}`,
-      track: 'pickaxe',
-      name: t('reward.pickaxe.name', { tier: tierLabel(nextPickaxe) }),
-      description:
-        nextPickaxe === 1
-          ? t('reward.pickaxe.first')
-          : t('reward.pickaxe.next', { tier: tierLabel(nextPickaxe - 1) }),
-      apply: (currentState) => ({
-        ...currentState,
-        pickaxeUpgradeLevel: nextPickaxe,
-        pickaxeLevel: Math.min(5, (currentState.pickaxeLevel ?? 1) + 1),
-        pickaxePower: Math.min(5, (currentState.pickaxePower ?? 1) + 1)
-      })
-    });
-  }
-
-  const nextVitality = (state.vitalityLevel ?? 0) + 1;
-  if (nextVitality <= 8) {
-    rewards.push({
-      id: `vitality_${nextVitality}`,
-      track: 'vitality',
-      name: t('reward.vitality.name', { tier: tierLabel(nextVitality) }),
-      description: t('reward.vitality.description'),
-      apply: (currentState) => ({
-        ...currentState,
-        vitalityLevel: nextVitality,
-        maxHp: 2 + nextVitality,
-        hp: 2 + nextVitality
-      })
-    });
-  }
-
-  const nextCoins = (state.coinBonusLevel ?? 0) + 1;
-  if (nextCoins <= 8) {
-    rewards.push({
-      id: `coins_${nextCoins}`,
-      track: 'coins',
-      name: t('reward.coins.name', { tier: tierLabel(nextCoins) }),
-      // `count` é a QUANTIDADE e `chance` é a probabilidade. A plural tem que
-      // seguir a quantidade: mandar `chance` no lugar trocaria "+2 moedas" por
-      // "+20 moedas" no polonês, porque 20 é uma categoria diferente de 2.
-      description: t('reward.coins.description', { chance: nextCoins * 1, count: nextCoins }),
-      apply: (currentState) => ({
-        ...currentState,
-        coinBonusLevel: nextCoins,
-        coinBonusChance: nextCoins * 0.1,
-        coinBonusAmount: nextCoins
-      })
-    });
-  }
-
-  const nextRocks = (state.rockBonusLevel ?? 0) + 1;
-  if (nextRocks <= 2) {
-    rewards.push({
-      id: `rocks_${nextRocks}`,
-      track: 'rocks',
-      name: t('reward.rocks.name', { tier: tierLabel(nextRocks) }),
-      description: t('reward.rocks.description', { chance: nextRocks * 1, count: nextRocks }),
-      apply: (currentState) => ({
-        ...currentState,
-        rockBonusLevel: nextRocks,
-        rockBonusChance: nextRocks * 0.1,
-        rockBonusAmount: nextRocks
-      })
-    });
-  }
-
-  const nextUtility = (state.utilityDropLevel ?? 0) + 1;
-  const utilityChances = [0.01, 0.02, 0.03, 0.03];
-
-  if (nextUtility <= 2) {
-    const nextChance = utilityChances[nextUtility - 1];
-
-    rewards.push({
-      id: `utility_${nextUtility}`,
-      track: 'utility',
-      name: t('reward.utility.name', { tier: tierLabel(nextUtility) }),
-      description: t('reward.utility.description', { chance: Math.round(nextChance * 100) }),
-      apply: (currentState) => ({
-        ...currentState,
-        utilityDropLevel: nextUtility,
-        utilityDropChance: nextChance
-      })
-    });
-  }
-
-  const nextBomb = (state.bombRevealLevel ?? 0) + 1;
-  if (nextBomb <= 10) {
-    rewards.push({
-      id: `bomb_${nextBomb}`,
-      track: 'bomb',
-      name: t('reward.bomb.name', { tier: tierLabel(nextBomb) }),
-      description: t('reward.bomb.description', { chance: nextBomb * 1 }),
-      apply: (currentState) => ({
-        ...currentState,
-        bombRevealLevel: nextBomb,
-        bombRevealChance: nextBomb * 0.1
-      })
-    });
-  }
-
-  return rewards;
-}
-
-function pickRewardOptions(state, t, amount = 3) {
-  return shuffle(buildRewardCatalog(state, t)).slice(0, amount);
-}
 
 function isCoarsePointerDevice() {
   if (typeof window === 'undefined') return false;
@@ -1001,7 +786,7 @@ export default function App() {
       setShowUtilityShopModal(false);
       setShowExitDecision(false);
       setRewardRefreshCost(10);
-      setRewardOptions(pickRewardOptions(mergedState, t, 3));
+      setRewardOptions(pickRewardOptions(mergedState, t, 4));
     };
 
     const handlePlayerDead = (event) => {
@@ -1169,6 +954,11 @@ export default function App() {
       },
       collection: baseState.collection ?? createCollectionState(),
       stats: baseState.stats ?? createStatsState(),
+      // As melhorias sobrevivem a morte, que e o que a pessoa espera depois de
+      // escolher uma. Sem esta linha o `...initialState` acima zerava todas, e
+      // a run voltava ao começo levando junto a recompensa por ter chegado
+      // ate ali -- que e o oposto de uma recompensa.
+      ...improvementsDe(baseState),
       bestCave: baseState.bestCave ?? 1,
       lastRelicFound: baseState.lastRelicFound ?? null,
       lastMessage: message
@@ -1754,6 +1544,10 @@ export default function App() {
       },
       collection: baseState.collection ?? createCollectionState(),
       stats: baseState.stats ?? createStatsState(),
+      // As melhorias sobrevivem a morte. Sem esta linha o `...initialState`
+      // acima zerava todas, e a pessoa perdia a recompensa por ter chegado
+      // ate ali ao perder uma vida na caverna seguinte.
+      ...improvementsDe(baseState),
       // bestCave só avança quando a cave é concluída. A versão anterior
       // fazia Math.max(bestCave, cave) também ao morrer, o que destravava
       // o próximo bioma sem nunca ter concluído nenhuma cave dele.

@@ -7,6 +7,33 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **A melhoria escolhida e permanente.** Ela sobrevive a morte e ao F5. Antes as
+  doze melhorias viviam so na memoria do `App.jsx`: o jogador escolhia
+  "Vitalidade 1", fechava a aba, e a melhoria nao estava em lugar nenhum.
+  Verifiquei no navegador antes de mexer -- o save era gravado sem nenhuma delas.
+
+  - **A lista do que vai para o disco e derivada da fabrica, nao escrita a mao.**
+    `createImprovementState` subiu para `progression.js`, ao lado das outras tres
+    fabricas de estado vazio, e `IMPROVEMENT_FIELDS` sai dela. Uma lista escrita a
+    mao funciona ate a proxima melhoria: o nome entra na fabrica, a lista nao sabe
+    dele, e a melhoria nunca vai para o disco -- sem erro, so uma recompensa que
+    desaparece.
+  - **A melhoria atravessa a morte e a troca de bioma.** As duas reconstroem o
+    estado a partir do inicial, e sem carregar as melhorias elas sumiam. Trocar de
+    caverna e morrer sao as duas coisas que mais acontecem na run, e as duas
+    levavam junto a recompensa.
+  - **Um save antigo abre com as melhorias em zero**, e nao em `undefined`.
+
+- **O lobby oferece quatro melhorias, em vez de tres.** Quatro colunas em tela
+  larga e 2x2 abaixo de 900px -- com tres colunas fixas a quarta caia numa segunda
+  linha orfa, e o lobby ficava com uma linha de tres e uma de um.
+
+- **O catalogo de melhorias saiu do `App.jsx` para `src/game/rewards.js`.** Um
+  teste em Node nao importa um `.jsx`, entao a regra que decide se a melhoria
+  escolhida sobe o campo certo nao tinha como ser testada -- e essa regra e o
+  coracao do recurso. Alem disso e dado de jogo com um tradutor injetado, nao
+  codigo de tela: ele nao sabe o que e uma tela, sabe o que a proxima melhoria e.
+
 - **Suporte a controle, do começo ao fim.** Direcional move o cursor na caverna e
   a navegação nos menus, A confirma, B volta, Start abre a pausa. Vale para Xbox,
   PlayStation e qualquer controle com mapeamento padrão — o navegador já entrega

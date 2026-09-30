@@ -2,9 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  IMPROVEMENT_FIELDS,
   createCollectionState,
+  createImprovementState,
   createUtilityInventory,
-  getTotalRelics
+  getTotalRelics,
+  improvementsDe
 } from '../src/game/progression.js';
 import {
   PERSISTENTE,
@@ -554,4 +557,81 @@ test('profile quebrado não derruba a migração', () => {
   assert.doesNotThrow(() => migrarPerfilAntigo(storage));
   assert.equal(migrarPerfilAntigo(storage), null);
   assert.equal(listarJogos(storage).length, 0);
+});
+
+// --- melhorias permanentes --------------------------------------------------
+
+test('toda melhoria vai para o save, e volta na hora', () => {
+  // O que a pessoa escolhe no lobby não pode evaporar ao fechar a aba. Antes
+  // estas chaves nao estavam em PERSISTENTE: o save era gravado sem elas, e a
+  // melhoria vivia so na memoria do componente React.
+  for (const campo of IMPROVEMENT_FIELDS) {
+    assert.ok(PERSISTENTE.includes(campo), `${campo} nao vai para o save`);
+  }
+
+  const storage = storageFalso();
+  const id = criarJogo(storage, 'Run');
+
+  gravarEstadoDoJogo(storage, id, { ...estadoInicial(1), vitalityLevel: 3, coinBonusChance: 0.12, bombRevealLevel: 2 });
+  const relido = lerJogo(storage, id);
+
+  assert.equal(relido.vitalityLevel, 3, 'a vitalidade escolhida nao sobreviveu ao save');
+  assert.equal(relido.coinBonusChance, 0.12, 'a chance de moeda nao sobreviveu');
+  assert.equal(relido.bombRevealLevel, 2);
+});
+
+test('a lista de campos deriva da fabrica, e nao esta escrita a mao', () => {
+  // A razao de `IMPROVEMENT_FIELDS` existir: acrescentar uma melhoria nova na
+  // fabrica tem queaversa no save sozinha. Se alguem reescrever a lista a mao e
+  // esquecer um campo, este teste nao pega -- e o teste abaixo pega.
+  assert.deepEqual(IMPROVEMENT_FIELDS, Object.keys(createImprovementState()));
+  assert.ok(IMPROVEMENT_FIELDS.length > 0, 'a lista de melhorias esta vazia');
+});
+
+test('um save antigo abre com as melhorias em zero, e nao em undefined', () => {
+  // Quem jogou antes desta versao tem um save sem nenhuma chave de melhoria. Se o
+  // save abrir com elas indefinidas, a tela le um campo que nao existe.
+  const storage = storageFalso();
+  const id = criarJogo(storage, 'Antigo');
+  const dados = lerJogos(storage);
+  const state = { ...dados.saves[id].state };
+  for (const campo of IMPROVEMENT_FIELDS) delete state[campo];
+
+  dados.saves[id].state = state;
+  storage.setItem(SAVES_KEY, JSON.stringify({ version: 1, seq: dados.seq, lastPlayed: id, saves: dados.saves }));
+
+  const aberto = lerJogo(storage, id);
+  for (const campo of IMPROVEMENT_FIELDS) {
+    assert.equal(aberto[campo], 0, `${campo} abriu como ${aberto[campo]} em vez de 0`);
+  }
+});
+
+test('a melhoria volta quando a run reinicia depois da morte', () => {
+  // `improvementsDe` e o que o reinicio usa. Sem ela, o reinicio reconstroi o
+  // estado a partir do inicial e a melhoria zera -- que era o bug.
+  const comMelhoria = { ...estadoInicial(1), vitalityLevel: 2, rockBonusLevel: 1, coinBonusAmount: 3 };
+  const carry = improvementsDe(comMelhoria);
+
+  assert.equal(carry.vitalityLevel, 2, 'a vitalidade nao atravessou o reinicio');
+  assert.equal(carry.rockBonusLevel, 1);
+  assert.equal(carry.coinBonusAmount, 3);
+
+  // E o que nao tem melhoria continua em zero.
+  assert.equal(carry.bombRevealChance, 0);
+});
+
+test('improvementsDe completa um estado incompleto', () => {
+  const carry = improvementsDe({ vitalityLevel: 1 });
+
+  assert.equal(carry.vitalityLevel, 1);
+  assert.equal(carry.pickaxeUpgradeLevel, 0, 'campo ausente virou ' + improvementsDe({}).pickaxeUpgradeLevel);
+});
+
+test('improvementsDe nao deixa campoimprovemento vazar de outro estado', () => {
+  // A funcao devolve SO melhorias. Se ela vazasse o resto do estado, o reinicio
+  // passaria a levar junto moedas e vida.
+  const carry = improvementsDe({ ...estadoInicial(1), coins: 999, hp: 2, cave: 40 });
+
+  assert.deepEqual(Object.keys(carry).sort(), [...IMPROVEMENT_FIELDS].sort(), 'carry trouxe campo de fora');
+  assert.equal(carry.coins, undefined);
 });

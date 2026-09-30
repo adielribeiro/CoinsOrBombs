@@ -303,6 +303,65 @@ export function createStatsState() {
 }
 
 /**
+ * As melhorias, zeradas.
+ *
+ * Estavam dentro do `App.jsx`, e foram para aqui pelo mesmo motivo de
+ * `createUtilityInventory`: os jogos salvos precisam saber quais são. Uma melhoria
+ * conquistada é permanente — morre a caverna, ela fica — e "permanente" só é
+ * verdade se ela estiver no disco, não só na memória de um componente.
+ *
+ * ## Por que a lista de campos sai daqui e não de uma lista escrita à mão
+ *
+ * `IMPROVEMENT_FIELDS` é derivada desta fábrica. Escrever os doze nomes numa lista
+ * separada, ao lado do save, funciona até alguém acrescentar a próxima melhoria:
+ * o nome novo entra na fábrica, a lista não sabe dele, e a melhoria nunca vai para
+ * o disco. Não há teste que pegue isso, porque não há erro — só uma melhoria que
+ * o jogador escolhe e que desaparece.
+ */
+export function createImprovementState() {
+  return {
+    pickaxeUpgradeLevel: 0,
+    vitalityLevel: 0,
+    coinBonusLevel: 0,
+    coinBonusChance: 0,
+    coinBonusAmount: 0,
+    rockBonusLevel: 0,
+    rockBonusChance: 0,
+    rockBonusAmount: 0,
+    utilityDropLevel: 0,
+    utilityDropChance: 0,
+    bombRevealLevel: 0,
+    bombRevealChance: 0
+  };
+}
+
+/** Os nomes das melhorias, derivados da fábrica. Fonte única, e não uma cópia. */
+export const IMPROVEMENT_FIELDS = Object.keys(createImprovementState());
+
+/**
+ * Só as melhorias de um estado, completadas com zero onde faltarem.
+ *
+ * É o que o reinício de run usa para carregar a run de volta: o jogador escolhe
+ * "Vitalidade 2", morre na caverna seguinte, e a vitalidade continua 2. Sem esta
+ * função, `buildResetState` reconstrói o estado a partir do inicial e a melhoria
+ * volta a zero — que era o que acontecia.
+ *
+ * Completar com zero em vez de deixar `undefined` é o que impede um save antigo, de
+ * antes das melhorias existirem, de abrir com um campo que a tela lê e não
+ * encontra.
+ */
+export function improvementsDe(estado) {
+  const base = createImprovementState();
+  const pego = {};
+
+  for (const campo of IMPROVEMENT_FIELDS) {
+    pego[campo] = estado?.[campo] ?? base[campo];
+  }
+
+  return pego;
+}
+
+/**
  * O inventário de utilidades, zerado.
  *
  * Estava definido dentro do `App.jsx`, ao lado das outras fábricas de estado

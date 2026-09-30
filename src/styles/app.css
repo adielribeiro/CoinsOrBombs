@@ -1260,8 +1260,19 @@ button {
 
 .reward-line-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Quatro opções: quatro colunas em tela larga, e 2x2 quando não cabe. Com três
+     colunas fixas, a quarta caía numa segunda linha órfã e o lobby ficava com
+     uma linha de três e uma de um. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+/* Abaixo de 900px, quatro colunas de melhoria ficam estreitas demais para ler a
+   descrição. 2x2 mantém o texto legível e o lobby cabendo na tela. */
+@media (max-width: 900px) {
+  .reward-line-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .reward-line-card {
