@@ -11,6 +11,7 @@ import {
   onFullscreenChange,
   toggleFullscreen
 } from './game/fullscreen.js';
+import { introJaVista, marcarIntroVista } from './game/intro.js';
 import {
   LOCALES,
   createTranslator,
@@ -874,6 +875,31 @@ export default function App() {
     };
   }, [entryPhase]);
 
+  /**
+   * Entra na caverna a partir do menu.
+   *
+   * Sempre pede tela cheia e trava a orientação, em toda entrada — isso não tem
+   * nada a ver com o splash. E o pedido precisa acontecer **aqui**, de forma
+   * síncrona, dentro do clique: o Fullscreen API só aceita um pedido feito a
+   * partir de um gesto do usuário, e pedir depois de um `setTimeout` é recusado.
+   * Por isso a sequência de intro vive depois desta linha, e não antes.
+   *
+   * ## O splash só na primeira vez
+   *
+   * Antes, toda vez que se saía do menu vinha 900ms de tela preta e 2200ms do
+   * logo da ArchangelSoft — mais de três segundos para entrar no jogo, repetidos
+   * toda sessão. Agora:
+   *
+   * - **Primeira vez neste navegador**: preto, logo, jogo. E o sinal é salvo.
+   * - **Depois disso**: direto para o jogo, sem preto e sem logo.
+   *
+   * O preto vai junto porque ele só existia para cobrir a troca antes do logo. Com
+   * o logo fora, sobra um segundo e meio de nada — a pior das duas leituras, que é
+   * pausar sem mostrar nada.
+   *
+   * A regra mora em `src/game/intro.js`, que é testada de verdade: o
+   * `localStorage` entra como argumento, e o que se afirma é o que acontece.
+   */
   const startEntrySequence = () => {
     if (showRotateLock) return;
 
@@ -885,6 +911,13 @@ export default function App() {
 
     setShowSettings(false);
     setShowInfoModal(false);
+
+    if (introJaVista()) {
+      setEntryPhase(ENTRY_PHASE.PLAYING);
+      return;
+    }
+
+    marcarIntroVista();
     setEntryPhase(ENTRY_PHASE.BLACK);
 
     const logoTimeout = window.setTimeout(() => {

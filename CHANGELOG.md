@@ -5,6 +5,37 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Mudado
+
+- **O splash da ArchangelSoft aparece uma vez, e não a cada entrada.** Toda vez que
+  o jogador saía do menu principal para entrar numa cave, vinha 900ms de tela preta
+  e 2200ms do logo — mais de três segundos de intro, repetidos toda sessão. Agora
+  o splash aparece **uma vez por navegador**, e a marca fica salva.
+
+  - **Depois da primeira vez, a entrada é direta**: sem preto e sem logo, do menu
+    para a caverna.
+  - **O preto foi junto, e essa é a parte que precisava de justificativa.** Ele não
+    era uma transição: era a cobertura entre o menu e o logo. Tirando o logo,
+    sobra um segundo e meio de tela preta antes do jogo, que é a pior das duas
+    leituras — pausar sem mostrar nada. Ele existe junto do splash ou não existe.
+  - **A tela cheia e o travamento de orientação continuam em toda entrada.** Não
+    têm relação com o splash, e o pedido de tela cheia precisa continuar saindo
+    de dentro do clique: o Fullscreen API só aceita um pedido feito a partir de um
+    gesto do usuário, e pedir depois de um `setTimeout` é recusado.
+  - **A marca é um item separado do perfil e das configurações.** Um "limpar
+    progresso" não devolve o splash para quem já jogou: o splash é da primeira
+    abertura do jogo, não da primeira cave.
+  - **Sem storage, o splash volta.** Modo privado é um custo de dois segundos e
+    meio por entrada, e é melhor do que o jogo quebrar. O lado que o jogo erra é
+    sempre o de mostrar o splash: escondê-lo de quem nunca viu tiraria a única
+    coisa que ele existe para fazer.
+
+  A regra mora em `src/game/intro.js` e é testada **executando** a lógica com um
+  storage falso — o storage entra como argumento. Um teste que só procurasse a
+  palavra no `App.jsx` confirmaria que o texto está presente, que foi exatamente o
+  tipo de teste que passou enquanto o `BootScene` iterava um identificador que não
+  existe.
+
 ### Adicionado
 
 - **Fundos em 4K, um por bioma, carregados por bioma.** Os seis `cave_bg_*.png`
