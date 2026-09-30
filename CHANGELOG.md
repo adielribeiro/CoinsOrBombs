@@ -102,37 +102,58 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   consecutivas do mesmo arquivo, e de forma diferente conforme o arquivo que o
   executava. Ver a nota em "Corrigido" para o que foi descartado por causa disso.
 
-- **Cinco dos seis biomas entravam com uma caixa preta e um X verde no lugar do
-  fundo, sem erro no console.** Só a Mina Solar funcionava — que é a única que o
-  `BootScene` carrega. Os outros cinco dependem do caminho de carga por bioma.
+- **Todo bioma mostrava o fundo da Mina Solar, e a entrada da caverna não
+  aparecia.** Cinco dos seis mostravam ainda uma caixa preta com X verde antes da
+  reserva, e nenhum erro no console dizia por quê.
 
-  O X verde é a textura `__MISSING` do Phaser, e é o que `textures.get(chave)`
-  devolve quando a chave não está na lista de texturas. E
-  `textures.exists(chave)` é `list.hasOwnProperty(chave)` — então ele responde
-  "sim" tanto para uma arte que carregou quanto para uma que nunca chegou, e a
-  checagem antiga dizia que sim. O `add.image` seguinte desenhava o placeholder.
+  A carga por bioma saiu. O `BootScene` agora carrega **os seis fundos e as seis
+  entradas**, e não há mais caminho de carga depois do boot. O que se economizava
+  era 17 MB na primeira visita, contra uma tela que mostra um bioma por vez; o que
+  custava era um `ensureBackdrop` que pedia a arte, chamava `start()`, e não
+  recebia nenhum evento de conclusão — sem erro, sem aviso, e com a caverna errada
+  na tela.
 
-  A correção são duas, e a segunda é a que garante que o pior não acontece:
+  | | antes | agora |
+  | --- | --- | --- |
+  | boot | 9,7 MB + 16,3 MB sob demanda | **26,0 MB** |
+  | caminho de carga depois do boot | `ensureBackdrop` | nenhum |
 
-  - **`texturaEhUsavel(scene, chave)`**, no `CaveScene`: a textura devolvida
-    precisa ter a **mesma chave** que foi pedida. A `__MISSING` responde
-    `__MISSING`, e é reprovada. A mesma barreira vale para a entrada da caverna.
-  - **Reserva no fundo da Mina Solar.** Se a arte do bioma não está, usa a da
-    Mina Solar, que está no boot. O jogador vê uma caverna em vez de uma caixa
-    preta. Só se as duas faltarem é que sai o retângulo da cor do bioma.
+  - **`texturaEhUsavel(scene, chave)`**, no `CaveScene`: a textura devolvida por
+    `textures.get()` precisa ter a **mesma chave** que foi pedida. A `__MISSING`
+    responde `__MISSING`, e é reprovada. `textures.exists()` é
+    `list.hasOwnProperty(key)` — responde "sim" tanto para uma arte que carregou
+    quanto para uma que nunca chegou, e por isso não serve para decidir se pode
+    desenhar. A mesma barreira vale para a entrada da caverna.
+  - **Reserva no fundo da Mina Solar**, com aviso. Uma caverna errada é feio; a
+    caixa preta do Phaser não é jogável. E a reserva esconde a falha, então ela
+    avisa no console — senão "o bioma mostrou a caverna de outro" fica
+    indistinguível de "está tudo bem".
+  - **A lista do boot virou uma função pura**, `listBiomeArt()`, e ela itera
+    `BIOMES` usando o `backgroundKey` do próprio bioma. Com duas listas — o
+    registro de chaves e a lista de biomas — elas podem discordar, e a que
+    discorda é a que decide o que o jogo pede.
 
-  E há um `console.error` por chave, com o que a cena vê: `exists` e `get` das
-  duas chaves. A causa deste bug não estava no código que desenhou, e sim na
-  checagem que decidiu que a arte tinha chegado — e um log que não diz qual chave
-  nem o que a textura respondeu não serve para o próximo.
+- **Dois erros que quebravam o boot inteiro, e que nenhum teste pegava.** O
+  `BootScene` importava `BIOMES` e iterava `BIOMAS`; e depois declarava `bioma` e
+  usava `biome`. Os dois são `ReferenceError`: o build passa, o `node --test`
+  passa, e a tela fica preta sem mensagem útil.
 
-  **O que foi descartado no caminho, e por quê.** A primeira versão do conserto
-  trocava a guarda de `backdrops.js` por uma forma equivalente sem optional
-  chaining, porque a versão antiga estava_registerada como suspeita. Com ela, seis
-  testes passaram a falhar de forma determinística — três rodadas, sempre 6 de 6 —
-  e a CI, em Linux com Node 22, viu a mesma coisa. A versão antiga passou na CI de
-  `ba1d2ef`, então a troca era a causa, e ela foi revertida. O conserto ficou
-  inteiro no `CaveScene`, que é onde a decisão de desenhar acontece.
+  Pior: o teste que existia procurava no fonte a string
+  `for (const bioma of BIOMAS)` — **exatamente a grafia errada**. O teste passou
+  porque repetiu o erro.
+
+  Por isso a lista de assets do boot é testada **executando** `listBiomeArt`, e o
+  `test/boot.test.mjs` confere que os doze arquivos estão na lista, que nenhum
+  fundo se repete, que a chave bate com o caminho, e que cada arquivo existe em
+  disco. Isso pega a classe inteira do erro, e não só estes dois.
+
+- **O que foi descartado no caminho.** A primeira versão do conserto trocava a
+  guarda de `backdrops.js` por uma forma equivalente sem optional chaining,
+  porque a versão antiga estava registrada como suspeita. Com ela, seis testes
+  passaram a falhar de forma determinística — três rodadas, sempre 6 de 6 — e a
+  CI, em Linux com Node 22, viu a mesma coisa. A versão antiga passou na CI de
+  `ba1d2ef`, então a troca era a causa, e ela foi revertida. Com a carga por
+  demanda fora, a guarda nem existe mais.
 
 - **O jogo fala dez idiomas.** Português, inglês, espanhol, francês, alemão,
   italiano, polonês, hindi, chinês simplificado e japonês, com seletor no menu

@@ -6,8 +6,7 @@ import {
   GROUND_TEXTURE_KEYS
 } from '../ground.js';
 import { ROCK_CELL_SIZE, getRockSheetKey, getRockVariantCount } from '../rocks.js';
-import { BIOMA_INICIAL, getBackdropKey } from '../backdrops.js';
-import { getEntranceKey } from '../entrances.js';
+import { listBiomeArt } from '../backdrops.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -81,18 +80,29 @@ export class BootScene extends Phaser.Scene {
     this.load.image('exit_ladder', 'assets/exit_ladder.png');
 
     /**
-     * Fundo e entrada: SÓ do primeiro bioma.
+     * Fundos e entradas: os seis de cada, TODOS no boot.
      *
-     * A versão anterior carregava os seis fundos e uma entrada, o que levava o
-     * pacote de boot de 14,8 MB para 36,8 MB. Os fundos em 4K somam 17,3 MB e as
-     * seis entradas 2,3 MB, para uma tela que mostra um de cada vez.
+     * Isto já foi por demanda, com um só par no boot e os outros cinco pedidos na
+     * hora de entrar no bioma. Não funcionou: em cinco dos seis biomas o fundo não
+     * aparecia, a entrada não aparecia, e nenhum erro no console dizia por quê. O
+     * pedido existia, o `start()` era chamado, e nenhum evento de conclusão
+     * chegava — o que o jogo desenhava era o fundo da Mina Solar, que é o único
+     * que estava em cache.
      *
-     * O primeiro bioma entra porque é o da tela de título: sem ele, o menu
-     * apareceria com um retângulo da cor da caverna até o fundo chegar. Os outros
-     * cinco entram por demanda, em `ensureBackdrop`, no `backdrops.js`.
+     * A economia que aquilo prometia era de 17 MB na primeira visita, contra uma
+     * tela que mostra um bioma por vez. Trocar 17 MB por "o jogo funciona" é uma
+     * conta fácil, e a alternativa era manter um caminho de carga que eu não
+     * consegui fazer funcionar nem explicar.
+     *
+     * Medido: 19,8 MB de fundo e entrada, 27 MB de boot no total. O que economiza
+     * é o tempo de espera de quem joga uma única cave; o que custa é a espera de
+     * quem joga as seis. É a escolha certa para um jogo de progressão.
      */
-    this.load.image(getBackdropKey(BIOMA_INICIAL), `assets/${getBackdropKey(BIOMA_INICIAL)}.png`);
-    this.load.image(getEntranceKey(BIOMA_INICIAL), `assets/${getEntranceKey(BIOMA_INICIAL)}.png`);
+    // A lista vem pronta de `listBiomeArt`, que é pura e testada. Um laço escrito
+    // aqui dentro é um `ReferenceError` esperando acontecer, e o build não pega.
+    for (const item of listBiomeArt()) {
+      this.load.image(item.key, item.url);
+    }
 
     // Biome decorations
     this.load.image('deco_gold_pile', 'assets/deco_gold_pile.png');

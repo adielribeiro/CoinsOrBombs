@@ -13,7 +13,7 @@ import {
 } from '../config.js';
 import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrameIndex } from '../ground.js';
 import { getLocale, setLocale, t } from '../../i18n/index.js';
-import { BIOMA_INICIAL, ensureBackdrop, getBackdropKey } from '../backdrops.js';
+import { BIOMA_INICIAL, getBackdropKey } from '../backdrops.js';
 import { ENTRANCE_DISPLAY, getEntranceAspect, getEntranceForBiome } from '../entrances.js';
 
 /**
@@ -721,12 +721,14 @@ export class CaveScene extends Phaser.Scene {
     const chave = getBackdropKey(biome.id);
     const reserva = getBackdropKey(BIOMA_INICIAL);
 
-    ensureBackdrop(this, biome.id, () => this.refreshBackdrop());
-
-    // Três desfechos, e o do meio é o conserto do sintoma que aconteceu: o bioma
-    // entrava com uma caixa preta e um X verde no lugar do fundo, porque o
-    // `add.image` rodava com uma chave que o Phaser não tinha. Cair para a caverna
-    // da Mina Solar é feio, e não é preta.
+    // Não há pedido aqui. Os seis fundos e as seis entradas entram no `BootScene`,
+    // então neste ponto a textura está carregada ou não está — e não há caminho
+    // que a busque, porque a carga por demanda não funcionou e saiu. Ver o
+    // cabeçalho de `backdrops.js`.
+    //
+    // A reserva para a Mina Solar é o seguro contra o pior desfecho possível: a
+    // textura `__MISSING` do Phaser, que é a caixa preta com X verde. Uma caverna
+    // errada é feio; uma caixa preta não é jogável.
     const usa = texturaEhUsavel(this, chave)
       ? chave
       : texturaEhUsavel(this, reserva)
@@ -735,15 +737,23 @@ export class CaveScene extends Phaser.Scene {
 
     if (this.fundoAvisado !== chave) {
       this.fundoAvisado = chave;
-      if (!usa) {
+
+      // A reserva é um evento, não um estado: ela é o que esconde a falha, e é
+      // justamente por isso que precisa aparecer no console. Sem este aviso, "o
+      // bioma mostrou a caverna errada" é indistinguível de "está tudo bem".
+      if (usa === reserva) {
         console.error(
-          `[fundo] nenhuma textura de fundo utilizavel para o bioma ${biome.id}.`
-            + ` Pedi ${chave} e ${reserva}. A cena ve:`
-            + ` textures=${typeof this.textures}`
-            + ` exists(${chave})=${this.textures && this.textures.exists(chave)}`
-            + ` get(${chave})=${descreveTextura(this, chave)}`
-            + ` exists(${reserva})=${this.textures && this.textures.exists(reserva)}`
-            + ` get(${reserva})=${descreveTextura(this, reserva)}`
+          `[fundo] o bioma ${biome.id} está sem a textura ${chave} e está usando `
+            + `o fundo da Mina Solar no lugar. A cena ve: `
+            + `exists=${this.textures && this.textures.exists(chave)} `
+            + `get=${descreveTextura(this, chave)}`
+        );
+      } else if (!usa) {
+        console.error(
+          `[fundo] nenhuma textura de fundo utilizavel para o bioma ${biome.id}. `
+            + `Nem ${chave} nem ${reserva}. A cena ve: `
+            + `exists=${this.textures && this.textures.exists(chave)} `
+            + `get=${descreveTextura(this, chave)}`
         );
       }
     }
@@ -760,24 +770,10 @@ export class CaveScene extends Phaser.Scene {
 
       placeholder.setDepth(depth);
       this.backgroundLayer.add(placeholder);
-
-      // Uma mensagem por chave, e não uma por quadro: o `renderMap` pode passar
-      // aqui várias vezes enquanto o fundo baixa, e um `console.error` por quadro
-      // esconde a mensagem em vez de destacá-la.
-      if (this.fundoReclamado !== chave) {
-        this.fundoReclamado = chave;
-        console.error(
-          `[fundo] a textura ${chave} do bioma ${biome.id} não está pronta. `
-            + 'A caixa preta com X verde é o que o Phaser desenharia aqui; o '
-            + 'retângulo é a cor do bioma no lugar dela. Se isso repete, o '
-            + 'pedido em ensureBackdrop não está concluindo.'
-        );
-      }
-
       return;
     }
 
-    this.fundoAvisado = null;
+    if (usa === chave) this.fundoAvisado = null;
 
     const background = this.add.image(this.scale.width / 2, this.scale.height / 2, usa);
     const coverScale = Math.max(this.scale.width / background.width, this.scale.height / background.height);
@@ -787,22 +783,6 @@ export class CaveScene extends Phaser.Scene {
     background.setAlpha(alpha);
     background.setDepth(depth);
     this.backgroundLayer.add(background);
-  }
-
-  /**
-   * Redesenha quando um fundo que estava faltando chega.
-   *
-   * Passa pelo mesmo caminho do render completo, e não por um redesenho
-   * "parcial": o fundo é a camada de baixo, e qualquer coisa desenhada por cima
-   * dele precisa ser redesenhada junto, senão o placeholder fica por cima do
-   * mapa. `renderMap` já limpa as três camadas, então chamar o método certo de
-   * primeira vez é o que evita o duplo trabalho.
-   */
-  refreshBackdrop() {
-    if (this.pendingResponsiveRefreshes?.length) this.clearResponsiveRefreshQueue();
-
-    if (this.metaState.inLobby) this.renderLobbyBackdrop();
-    else this.renderMap();
   }
 
   drawCaveWalls(bounds) {
