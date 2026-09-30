@@ -5,6 +5,44 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- **Suporte a controle, do começo ao fim.** Direcional move o cursor na caverna e
+  a navegação nos menus, A confirma, B volta, Start abre a pausa. Vale para Xbox,
+  PlayStation e qualquer controle com mapeamento padrão — o navegador já entrega
+  os mesmos índices para todos, e o que era trabalho era dar nome aos botões e
+  ligar a parte que o navegador não liga sozinho.
+
+  - **O `Esc` e o botão voltar agora leem a mesma pilha de telas** (`telas.js`).
+    Antes cada um tinha sua própria cadeia de `if`, e dois lugares divergem: um
+    modal novo nascia respondendo a um e não ao outro, e ninguém percebia até
+    alguém com controle na mão relatar que não dava para sair daquela tela.
+  - **A navegação dos menus é espacial, não em linha**, porque a seleção de bioma
+    é uma grade de duas colunas: em linha o foco pularia da coluna direita para a
+    seguinte da esquerda. E usa foco de verdade do DOM, o que faz o `Tab` do
+    teclado e o direcional compartilharem o mesmo estado.
+  - **O anel de foco aparece com controle.** `:focus-visible` sozinho não
+    apareceria: o navegador só o mostra em foco programático quando a última
+    interação foi de teclado, e aqui ela foi de controle, que ele não conhece. O
+    shell recebe `data-controle` enquanto o controle manda no foco.
+  - **O cursor é de tile, não de mouse.** Transformar o analógico em coordenada
+    de tela erra por meio pixel, e meio pixel numa aresta isométrica é clicar na
+    pedra errada. A isometria também torna "para cima" igual a `col - 1, row - 1`,
+    então as quatro direções da tela não são os quatro movimentos da grade.
+  - **Confirmar chama o mesmo caminho do clique.** Um segundo caminho para
+    "quebrou uma pedra" acabaria divergindo em alguma regra, e a pessoa quebraria
+    uma pedra de um jeito e não do outro, sem erro visível.
+  - **O nome do controle aparece na HUD quando ele é reconhecido**, porque a falha
+    típica do controle é silenciosa: se ele não for lido, nada acontece, e a
+    pessoa conclui que o jogo não tem suporte.
+
+  **Não verificado com hardware.** O laço de leitura usa `requestAnimationFrame`, e
+  o ambiente onde isto foi escrito não deixa a aba do navegador visível — o rAF
+  não roda e o laço não é exercitado em tela. O que está verificado: 256 testes,
+  incluindo um que percorre o mapa real de todos os seis biomas com o cursor
+  perguntando se ele acha pedra quebrável a partir da entrada. O que não está:
+  a sensação na mão.
+
 ### Removido
 
 - **A decoração espalhada da caverna.** Colunas nas Ruínas, cristais, lanternas,

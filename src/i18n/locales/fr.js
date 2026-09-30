@@ -165,6 +165,8 @@ export default {
   'pause.continue': 'Reprendre',
   'pause.toMenu': 'Retour au menu',
   'pause.hint': 'Échap reprend',
+  'pause.controllerHint': 'Croix directionnelle · A confirme · B retour · Start pause',
+  'hud.controller': '{name} connecte',
   'pause.aria': 'Jeu en pause',
 
   // --- décision de sortie --------------------------------------------------

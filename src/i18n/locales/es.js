@@ -164,6 +164,8 @@ export default {
   'pause.continue': 'Continuar',
   'pause.toMenu': 'Ir al menú',
   'pause.hint': 'Esc continúa',
+  'pause.controllerHint': 'Cruceta mueve · A confirma · B vuelve · Start pausa',
+  'hud.controller': '{name} conectado',
   'pause.aria': 'Juego en pausa',
 
   // --- decisión de salida -------------------------------------------------

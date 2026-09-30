@@ -168,6 +168,8 @@ export default {
   'pause.continue': 'つづける',
   'pause.toMenu': 'メニューに戻る',
   'pause.hint': 'Esc で再開',
+  'pause.controllerHint': '十字キーで移動 · A で決定 · B で戻る · Start でポーズ',
+  'hud.controller': '{name} 接続中',
   'pause.aria': '一時停止中',
 
   // --- 出口の選択 ----------------------------------------------------------------------------

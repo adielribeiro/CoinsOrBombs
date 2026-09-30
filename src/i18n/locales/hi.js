@@ -174,6 +174,8 @@ export default {
   'pause.continue': 'जारी रखें',
   'pause.toMenu': 'मेन्यू पर जाएँ',
   'pause.hint': 'Esc से जारी',
+  'pause.controllerHint': 'डी-पैड चलाता है · A पुष्टि करता है · B वापस जाता है · Start रोकता है',
+  'hud.controller': '{name} जुड़ा',
   'pause.aria': 'खेल रुका हुआ है',
 
   // --- निकास का फ़ैसला -------------------------------------------------------

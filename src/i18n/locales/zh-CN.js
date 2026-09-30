@@ -168,6 +168,8 @@ export default {
   'pause.continue': '继续',
   'pause.toMenu': '回到菜单',
   'pause.hint': 'Esc 继续',
+  'pause.controllerHint': '方向键移动 · A 确认 · B 返回 · Start 暂停',
+  'hud.controller': '已连接 {name}',
   'pause.aria': '游戏已暂停',
 
   // --- 出口选择 -------------------------------------------------------------------------

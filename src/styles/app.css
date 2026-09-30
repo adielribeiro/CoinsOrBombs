@@ -1798,6 +1798,62 @@ button {
   }
 }
 
+/* ==========================================================================
+   Controle
+
+   O anel de foco é a peça que faz o controle parecer ligado ao jogo, e ela tem
+   um problema que o teclado não tem: `:focus-visible` sozinho não apareceria.
+
+   O navegador só mostra o `:focus-visible` em foco programático quando a última
+   interação foi de teclado. Mover o foco pelo direcional é foco programático com
+   a última interação de controle — que o navegador não conhece — e o resultado
+   é nenhum anel. A pessoa mexe o analógico, o foco muda, e não há nada na tela
+   dizendo onde ele foi parar.
+
+   Por isso o shell recebe `data-controle` enquanto o controle está mandando no
+   foco, e o anel vem daí. É o mesmo anel do teclado, com a cor de acento.
+   ========================================================================== */
+
+.app-shell[data-controle='1'] :focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(141, 240, 176, 0.16);
+}
+
+/* O `:focus-visible` do teclado, para o caso de quem alterna entre os dois. */
+.app-shell :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* O rótulo do controle conectado, no canto da HUD. Existe porque a falha típica
+   do controle é silenciosa: se ele não for reconhecido, nada acontece, e a
+   pessoa conclui que o jogo não tem suporte. Ver o nome é a prova de que ele foi
+   lido. */
+.hud-controller {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 4;
+  padding: 5px 11px;
+  border: 1px solid var(--line-soft);
+  background: rgba(7, 9, 13, 0.66);
+  color: var(--ink-dim);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.pause-hint-controle {
+  display: block;
+  margin-top: 10px;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+}
+
 .biome-card:disabled {
   cursor: not-allowed;
 }

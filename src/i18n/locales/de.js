@@ -164,6 +164,8 @@ export default {
   'pause.continue': 'Weiter',
   'pause.toMenu': 'Zum Menü',
   'pause.hint': 'Esc macht weiter',
+  'pause.controllerHint': 'Steuerkreuz bewegt · A bestätigt · B zurück · Start pausiert',
+  'hud.controller': '{name} verbunden',
   'pause.aria': 'Spiel pausiert',
 
   // --- Ausgang ------------------------------------------------------------

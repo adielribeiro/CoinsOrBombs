@@ -189,6 +189,8 @@ export default {
   'pause.continue': 'Continuar',
   'pause.toMenu': 'Ir para o menu',
   'pause.hint': 'Esc continua',
+  'pause.controllerHint': 'Direcional move · A confirma · B volta · Start pausa',
+  'hud.controller': '{name} conectado',
   'pause.aria': 'Jogo pausado',
 
   // --- decisão da saída ----------------------------------------------------

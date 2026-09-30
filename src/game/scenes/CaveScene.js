@@ -15,6 +15,7 @@ import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrame
 import { getLocale, setLocale, t } from '../../i18n/index.js';
 import { BIOMA_INICIAL, getBackdropKey } from '../backdrops.js';
 import { ENTRANCE_DISPLAY, getEntranceAspect, getEntranceForBiome } from '../entrances.js';
+import { proximoTileValido, tileInicialDoCursor } from '../cursor.js';
 
 /**
  * A cena tem uma textura DE VERDADE para esta chave?
@@ -132,6 +133,11 @@ export class CaveScene extends Phaser.Scene {
 
     this.purchased = [];
     this.hoveredRockTile = null;
+    // O cursor de controle começa na entrada e só existe quando há controle
+    // conectado. `col`/`row` são a posição na grade; `visivel` é o que decide se
+    // o losango aparece, e ele é desligado sozinho quando um modal abre por cima.
+    this.cursorTile = null;
+    this.cursorVisivel = false;
     this.pendingResponsiveRefreshes = [];
     this.pendingEffects = [];
     this.clearedCaves = new Set();
@@ -175,6 +181,14 @@ export class CaveScene extends Phaser.Scene {
     this.hoverIndicator = this.add.graphics();
     this.hoverIndicator.setVisible(false);
     this.overlayLayer.add(this.hoverIndicator);
+
+    // O cursor de controle é um losango como o de hover, com a cor de acento do
+    // jogo em vez do verde/vermelho de "dá para quebrar". Duas cores para a mesma
+    // forma diria "aqui é o mouse, aqui é o controle", e a pessoa não teria como
+    // saber qual está em uso.
+    this.cursorIndicator = this.add.graphics();
+    this.cursorIndicator.setVisible(false);
+    this.overlayLayer.add(this.cursorIndicator);
 
     this.pickaxeEffect = this.add.image(0, 0, 'pickaxe').setScale(0.42).setAlpha(0);
     this.pickaxeEffect.setVisible(false);
@@ -290,6 +304,85 @@ export class CaveScene extends Phaser.Scene {
     };
 
     /**
+     * Controle: move o cursor de tile e confirma.
+     *
+     * ## Por que a cena recebe o comando em vez de ler o controle
+     *
+     * O `App.jsx` já lê `getGamepads` uma vez por quadro. Ler de novo aqui
+     * daria duas bordas de clique para a mesma mão, e a segunda leria como "ainda
+     * pressionado" — metade dos cliques sumiria, e não de forma constante, o que
+     * é o pior tipo de bug.
+     *
+     * ## Por que a cena não decide o que é menu
+     *
+     * O evento chega com `telaAberta` já resolvido pelo React. Com um modal
+     * aberto o comando é do menu, e mover o cursor da caverna por baixo dele é o
+     * bug clássico de suporte a controle em jogo com HTML sobre o canvas: a
+     * pessoa mexe o direcional, o cursor anda escondido, e parece quebrado.
+     *
+     * ## Por que confirmar chama o mesmo caminho do clique
+     *
+     * `handleTileClick` é o que o mouse executa. Um segundo caminho para
+     * "quebrou uma pedra" acabaria divergindo dele em algum regra — e a pessoa
+     * quebraria uma pedra de um jeito e não do outro, sem nenhum erro visível.
+     */
+    this.onGamepad = (event) => {
+      const estado = event?.detail?.estado;
+      const telaAberta = event?.detail?.telaAberta ?? null;
+
+      const querMenu = telaAberta !== null;
+      const conectado = Boolean(estado?.conectado);
+
+      // Perdeu o controle, ou abriu um modal por cima: o cursor some. Sem isto, o
+      // losango fica marcado num tile qualquer, e a pessoa desconectou há dez
+      // segundos.
+      if (!conectado || querMenu) {
+        this.cursorVisivel = false;
+        this.cursorIndicator?.clear();
+        this.cursorIndicator?.setVisible(false);
+
+        if (!conectado) this.cursorTile = null;
+
+        return;
+      }
+
+      if (!this.cursorTile) {
+        const entrada = this.mapData?.entry;
+        if (!entrada) return;
+
+        this.cursorTile = tileInicialDoCursor(entrada, this.mapData.width, this.mapData.height);
+      }
+
+      const direcao = estado.direcoes?.dominante ?? null;
+
+      if (direcao && this.cursorTile) {
+        const { tileWidth, tileHeight } = this.renderMetrics;
+
+        this.cursorTile = proximoTileValido(
+          this.cursorTile.col,
+          this.cursorTile.row,
+          estado.eixo?.x ?? 0,
+          estado.eixo?.y ?? 0,
+          {
+            largura: this.mapData.width,
+            altura: this.mapData.height,
+            metricas: { tileWidth, tileHeight }
+          },
+          (col, row) => this.mapData.tiles[row]?.[col]?.type !== 'rock'
+        );
+      }
+
+      this.cursorVisivel = true;
+      this.renderCursorIndicator();
+
+      if (estado.bordas?.confirmar && this.cursorTile) {
+        const tile = this.mapData.tiles[this.cursorTile.row]?.[this.cursorTile.col];
+
+        if (tile) this.handleTileClick(tile);
+      }
+    };
+
+    /**
      * Pausa e retoma a cena.
      *
      * O overlay de pausa é React, então a cena do Phaser não sabe que ele
@@ -368,6 +461,7 @@ export class CaveScene extends Phaser.Scene {
     window.addEventListener('cob-hud-inset', this.onHudInset);
     window.addEventListener('cob-force-resize', this.onForcedResize);
     window.addEventListener('cob-pause', this.onPauseChange);
+    window.addEventListener('cob-controle', this.onGamepad);
     this.scale.on('resize', this.onResize);
 
     this.events.on('shutdown', () => {
@@ -381,6 +475,7 @@ export class CaveScene extends Phaser.Scene {
       window.removeEventListener('cob-hud-inset', this.onHudInset);
       window.removeEventListener('cob-force-resize', this.onForcedResize);
       window.removeEventListener('cob-pause', this.onPauseChange);
+      window.removeEventListener('cob-controle', this.onGamepad);
       this.scale.off('resize', this.onResize);
       this.clearResponsiveRefreshQueue();
       this.flushPendingEffects();
@@ -1020,6 +1115,7 @@ export class CaveScene extends Phaser.Scene {
     this.objectLayer.removeAll(true);
     this.hoveredRockTile = null;
     this.hoverIndicator.setVisible(false);
+    this.hideCursor();
 
     const centeredOrigin = this.getCenteredMapOrigin();
     const { tileWidth, tileHeight, mapScale } = this.renderMetrics;
@@ -1455,6 +1551,57 @@ export class CaveScene extends Phaser.Scene {
     this.hoverIndicator.clear();
     this.hoverIndicator.setVisible(false);
   }
+
+    /**
+     * O losango do cursor de controle.
+     *
+     * A mesma forma do indicador de hover, com a cor de acento do jogo. Duas
+     * cores para a mesma forma diriam "aqui é o mouse, aqui é o controle" — e a
+     * pessoa não teria como saber qual está em uso.
+     */
+    renderCursorIndicator() {
+      const tile = this.cursorTile;
+      const linha = tile && this.mapData ? this.mapData.tiles[tile.row] : null;
+      const alvo = linha ? linha[tile.col] : null;
+
+      if (!this.cursorVisivel || !alvo || !this.origin) {
+        this.cursorIndicator.clear();
+        this.cursorIndicator.setVisible(false);
+        return;
+      }
+
+      const { tileWidth, tileHeight } = this.renderMetrics;
+      const point = toIso(alvo.col, alvo.row, this.origin.x, this.origin.y, tileWidth, tileHeight);
+      const halfWidth = Math.round(tileWidth * 0.3);
+      const halfHeight = Math.round(tileHeight * 0.32);
+
+      this.cursorIndicator.clear();
+      this.cursorIndicator.lineStyle(2, 0x8df0b0, 0.9);
+      this.cursorIndicator.fillStyle(0x8df0b0, 0.1);
+
+      this.cursorIndicator.beginPath();
+      this.cursorIndicator.moveTo(point.x, point.y - halfHeight);
+      this.cursorIndicator.lineTo(point.x + halfWidth, point.y);
+      this.cursorIndicator.lineTo(point.x, point.y + halfHeight);
+      this.cursorIndicator.lineTo(point.x - halfWidth, point.y);
+      this.cursorIndicator.closePath();
+      this.cursorIndicator.strokePath();
+      this.cursorIndicator.fillPath();
+      this.cursorIndicator.setVisible(true);
+    }
+
+    /**
+     * Esconde o cursor de controle.
+     *
+     * Chamado quando um modal abre, quando a pausa entra e no modo attract. O
+     * losango ficaria marcado num tile qualquer atrás da tela, e a pessoa voltaria
+     * do menu para um cursor que não foi ela que moveu.
+     */
+    hideCursor() {
+      this.cursorVisivel = false;
+      this.cursorIndicator.clear();
+      this.cursorIndicator.setVisible(false);
+    }
 
   renderHoverIndicator(tile, canBreak) {
     if (!tile || !this.origin) {

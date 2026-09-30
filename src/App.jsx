@@ -47,6 +47,9 @@ import {
   normalizarNome,
   renomearJogo
 } from './game/saves.js';
+import { criarLeitorDeControle } from './game/gamepad.js';
+import { criarNavegadorDeFoco } from './game/foco.js';
+import { fechaTelaDoTopo, telaDoTopo } from './game/telas.js';
 import './styles/app.css';
 
 const createImprovementState = () => ({
@@ -794,6 +797,48 @@ export default function App() {
   }, []);
 
   /**
+   * As telas abertas, na forma que a pilha de `telas.js` entende.
+   *
+   * Este objeto é a **única** fonte da ordem de fechamento: o `Esc` e o botão
+   * voltar do controle leem os dois daqui, e é o que impede que um modal novo
+   * responda a um e não ao outro. Ver `telas.js` para por que a ordem mora numa
+   * lista em vez de num `if`/`else`.
+   */
+  const telasAbertas = {
+    final: showFinale,
+    saida: showExitDecision,
+    utilitaria: showUtilityShopModal,
+    bioma: showBiomeSelect,
+    jogos: showSaves,
+    idioma: showLanguage,
+    configuracoes: showSettings,
+    informacoes: showInfoModal,
+    pausa: showPause
+  };
+
+  /**
+   * Fecha a tela pelo nome da pilha. Cada caso é um `setState` do próprio nome.
+   *
+   * É uma função comum e não um `useCallback` de propósito: `fecharFinale` é
+   * declarado bem mais abaixo neste componente, e o array de dependências de um
+   * `useCallback` seria avaliado no mesmo render em que `fecharFinale` ainda está
+   * na zona morta temporal. Isso derruba o jogo inteiro na montagem com um
+   * `ReferenceError` que não tem nada a ver com a linha que o causou. O custo de
+   * não memoizar é uma função nova por render num handler de teclado — nenhum.
+   */
+  const fecharTelaPeloNome = (nome) => {
+    if (nome === 'final') fecharFinale();
+    else if (nome === 'saida') setShowExitDecision(false);
+    else if (nome === 'utilitaria') setShowUtilityShopModal(false);
+    else if (nome === 'bioma') setShowBiomeSelection(null);
+    else if (nome === 'jogos') setShowSaves(false);
+    else if (nome === 'idioma') setShowLanguage(false);
+    else if (nome === 'configuracoes') setShowSettings(false);
+    else if (nome === 'informacoes') setShowInfoModal(false);
+    else if (nome === 'pausa') setShowPause(false);
+  };
+
+  /**
    * Esc fecha o que estiver aberto, da camada mais alta para a mais baixa, e
    * na falta de qualquer modal abre a pausa.
    *
@@ -805,32 +850,14 @@ export default function App() {
     const handleKeyDown = (event) => {
       if (event.key !== 'Escape' || isFullscreenActive()) return;
 
-      if (showFinale) fecharFinale();
-      else if (showUtilityShopModal) setShowUtilityShopModal(false);
-      else if (showBiomeSelect) setShowBiomeSelection(null);
-      else if (showSaves) setShowSaves(false);
-      else if (showLanguage) setShowLanguage(false);
-      else if (showSettings) setShowSettings(false);
-      else if (showInfoModal) setShowInfoModal(false);
-      else if (showExitDecision) setShowExitDecision(false);
-      else if (showPause) setShowPause(false);
-      else if (pauseAvailable) setShowPause(true);
+      if (fechaTelaDoTopo(telasAbertas, fecharTelaPeloNome)) return;
+
+      if (pauseAvailable) setShowPause(true);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    showFinale,
-    showUtilityShopModal,
-    showBiomeSelect,
-    showSaves,
-    showLanguage,
-    showSettings,
-    showInfoModal,
-    showExitDecision,
-    showPause,
-    pauseAvailable
-  ]);
+  }, [telasAbertas, pauseAvailable]);
 
   /** Um timer que sobrevive ao unmount derrubaria a tela depois dela ter saído. */
   useEffect(
@@ -1563,6 +1590,109 @@ export default function App() {
     fecharFinale();
   };
 
+  const [controleConectado, setControleConectado] = useState(false);
+  const [controleNome, setControleNome] = useState(null);
+
+  /**
+   * Controle: lê a cada quadro e entrega para quem está em foco.
+   *
+   * ## Uma leitura só, num lugar só
+   *
+   * `getGamepads()` é consultado aqui e em mais lugar nenhum. Duas leituras por
+   * quadro dariam duas bordas de clique para a mesma mão, e a segunda leria como
+   * "ainda pressionado" — metade dos cliques sumiria, e não de forma constante, o
+   * que é o pior tipo de bug.
+   *
+   * ## Para onde vai cada comando
+   *
+   * Com uma tela aberta, o comando vai para a navegação de menu. Sem nenhuma, ele
+   * vai para a cena do Phaser, que move o cursor de tile. A divisão é o que
+   * impede que o direcional mova o cursor da caverna por baixo de um modal — o
+   * bug clássico de controle em jogo com HTML sobre o canvas: a pessoa mexe o
+   * direcional, o cursor anda escondido, e parece quebrado.
+   *
+   * ## O laço lê por ref e o efeito não depende de nada
+   *
+   * `telasAbertas` e `fecharTelaPeloNome` são recriados a cada render, e tê-los na
+   * lista de dependências recriaria o leitor também — o que zera o estado de
+   * borda e faz metade dos cliques sumir.
+   *
+   * ## Por que `requestAnimationFrame` e não `setInterval`
+   *
+   * A leitura tem de acontecer no mesmo relógio que a pintura. Um `setInterval`
+   * roda em 60 Hz mesmo com a aba escondida, gastando bateria para não pintar
+   * nada, e pode ler duas vezes entre duas pinturas — devolvendo bordas que
+   * ninguém vai ver.
+   */
+  const controleRef = useRef({ telas: null, fechar: null, podePausar: false });
+
+  controleRef.current = { telas: telasAbertas, fechar: fecharTelaPeloNome, podePausar: pauseAvailable };
+
+  useEffect(() => {
+    const leitor = criarLeitorDeControle();
+    const nav = criarNavegadorDeFoco({
+      raiz: document.body,
+      elementoAtivo: () => document.activeElement
+    });
+
+    let animacao = null;
+    let conectadoAntes = null;
+
+    const quadro = () => {
+      const estado = leitor.ler();
+      const atual = controleRef.current;
+      const nomeDaTela = telaDoTopo(atual.telas);
+      const shell = shellRef.current;
+
+      if (estado.conectado !== conectadoAntes) {
+        conectadoAntes = estado.conectado;
+        setControleConectado(estado.conectado);
+        setControleNome(estado.conectado ? leitor.nomeDoControle() : null);
+      }
+
+      let foiParaOMenu = false;
+
+      if (nomeDaTela) {
+        foiParaOMenu = true;
+
+        if (estado.bordas.pausa && nomeDaTela === 'pausa') {
+          atual.fechar('pausa');
+        } else if (estado.bordas.voltar) {
+          atual.fechar(nomeDaTela);
+        } else if (estado.direcoes.dominante) {
+          nav.moverComRepeticao(estado.direcoes.dominante);
+        } else if (estado.bordas.confirmar) {
+          nav.ativar();
+        }
+      } else if (estado.bordas.pausa || (estado.bordas.voltar && atual.podePausar)) {
+        // Sem tela aberta, `voltar` também abre a pausa: é o que o `Esc` faz, e
+        // os dois precisam concordar.
+        foiParaOMenu = true;
+        setShowPause(true);
+      }
+
+      // O anel de foco. `:focus-visible` sozinho não serviria, porque o navegador
+      // só o mostra em foco programático quando a última interação foi de
+      // teclado — e aqui ela foi de controle, que ele não conhece.
+      if (shell) {
+        if (foiParaOMenu && estado.conectado) shell.setAttribute('data-controle', '1');
+        else shell.removeAttribute('data-controle');
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('cob-controle', { detail: { estado, telaAberta: nomeDaTela } })
+      );
+
+      animacao = requestAnimationFrame(quadro);
+    };
+
+    animacao = requestAnimationFrame(quadro);
+
+    return () => {
+      if (animacao !== null) cancelAnimationFrame(animacao);
+    };
+  }, []);
+
   const continueToNextCave = () => {
     const baseState = stateRef.current;
     const reward = rewardOptions.find((item) => item.id === selectedRewardId);
@@ -1895,6 +2025,10 @@ export default function App() {
           </div>
         )}
 
+        {controleConectado && controleNome && showGameHud && (
+          <span className="hud-controller">{t('hud.controller', { name: controleNome })}</span>
+        )}
+
         {showGameHud && fullscreenAvailable && (
           <button
             type="button"
@@ -2156,6 +2290,10 @@ export default function App() {
               <span className="pause-hint">
                 <kbd>Esc</kbd> {t('pause.hint')}
               </span>
+
+              {controleConectado && (
+                <span className="pause-hint pause-hint-controle">{t('pause.controllerHint')}</span>
+              )}
             </div>
           </div>
         )}
