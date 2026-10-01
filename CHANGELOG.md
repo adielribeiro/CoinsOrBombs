@@ -7,6 +7,27 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Galeria de Vento também tem lore.** Quatro painéis: o vento arranca o capacete,
+  o mineiro lê a ventania como sinal de que a saída está por perto, sonha com um
+  banho, e vai. Uma expressão nova entrou (`minerador_segurando_capacete`) — a pose
+  certa para um painel que abre com um grito de vento. As outras três já vinham de
+  outros roteiros, e `furioso` volta aqui com a mesma energia das Ruínas Abissais por
+  outro motivo: lá era pressa, aqui é só vento na cara.
+
+  Um acerto no texto, e um só: `proóxima`, que trazia o acento no O em vez do A.
+
+  ## Faltam 27 MB de arte, e uma decisão a tomar
+
+  As onze expressões já pesam **27,3 MB** com o canal alfa. Elas só baixam quando a
+  lore abre, mas ler uma lore agora puxa ~20 MB de uma vez — e a pessoa que mais vai
+  ver o mineiro é a que abre o jogo pela primeira vez.
+
+  Dá para reduzir boa parte disso sem diferença visível na tarja: PNG com paleta
+  indexada, ou recomprimir em WebP. As imagens são pintadas, com gradiente na pele e
+  na madeira, o que é justamente o que mais sofre com paleta de 256 cores. **WebP**
+  com alfa é o caminho que não mexe na arte: mesmo visual, talvez um terço do
+  peso.
+
 - **Ruínas Abissais também tem lore.** Quatro painéis: o mineiro se estranha com o
   lugar, identifica as ruínas, sonha em voltar outro dia, e então decide seguir em
   frente. Duas expressões novas entraram (`minerador_sorridente` e

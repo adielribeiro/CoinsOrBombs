@@ -334,4 +334,8 @@ export default {
   'lore.ruins.p2.a': 'Sono rovine di una civiltà antica!',
   'lore.ruins.p3.a': 'Forse un giorno tornerò per esplorare meglio!',
   'lore.ruins.p4.a': 'Ora devo avanzare!!',
+  'lore.wind.p1.a': 'AHOOO...TIENITI!!',
+  'lore.wind.p2.a': "Probabilmente questa bufera vuol dire che l'uscita è vicina.",
+  'lore.wind.p3.a': "Non vedo l'ora di farmi un bagno!",
+  'lore.wind.p4.a': 'ANDIAMO AVANTI!',
 };

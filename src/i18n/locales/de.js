@@ -334,4 +334,8 @@ export default {
   'lore.ruins.p2.a': 'Das sind Ruinen einer alten Zivilisation!',
   'lore.ruins.p3.a': 'Vielleicht komme ich eines Tages zurück, um mehr zu erkunden!',
   'lore.ruins.p4.a': 'Jetzt muss ich vorankommen!!',
+  'lore.wind.p1.a': 'HUOO...FESTHALTEN!!',
+  'lore.wind.p2.a': 'Dieser Sturm deutet wohl darauf hin, dass der Ausgang nahe ist.',
+  'lore.wind.p3.a': 'Ich kann es kaum erwarten, ein Bad zu nehmen!',
+  'lore.wind.p4.a': "LOS GEHT'S!",
 };

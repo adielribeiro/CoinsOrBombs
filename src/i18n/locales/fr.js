@@ -335,4 +335,8 @@ export default {
   'lore.ruins.p2.a': "Ce sont les ruines d'une ancienne civilisation !",
   'lore.ruins.p3.a': 'Peut-être que je reviendrai explorer tout ça un jour !',
   'lore.ruins.p4.a': 'Maintenant, je dois avancer !!',
+  'lore.wind.p1.a': 'HOOO...ACCROCHE-TOI !!',
+  'lore.wind.p2.a': 'Cette bourrasque veut sans doute dire que la sortie est proche.',
+  'lore.wind.p3.a': "J'ai hâte de prendre un bain !",
+  'lore.wind.p4.a': 'EN AVANC !',
 };

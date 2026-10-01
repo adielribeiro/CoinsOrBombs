@@ -330,4 +330,8 @@ export default {
   'lore.ruins.p2.a': 'These are ruins of some ancient civilization!',
   'lore.ruins.p3.a': "Maybe one day I'll come back to explore more!",
   'lore.ruins.p4.a': 'Now I need to push forward!!',
+  'lore.wind.p1.a': 'WHOOO...HOLD ON!!',
+  'lore.wind.p2.a': 'This wind probably means the exit is close by.',
+  'lore.wind.p3.a': "I can't wait to take a bath!",
+  'lore.wind.p4.a': "LET'S MOVE!",
 };

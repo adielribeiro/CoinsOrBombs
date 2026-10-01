@@ -333,4 +333,8 @@ export default {
   'lore.ruins.p2.a': 'これは古代文明の遺跡だ!',
   'lore.ruins.p3.a': 'いつかまた来て、もっと探してみよう!',
   'lore.ruins.p4.a': 'さあ、ここから先へ進むぞ!!',
+  'lore.wind.p1.a': 'ウォォォ...つかまって!!',
+  'lore.wind.p2.a': 'この暴風は、出口が近いということだ。',
+  'lore.wind.p3.a': '早くお風呂に入りたい!',
+  'lore.wind.p4.a': '行くぞ!',
 };

@@ -352,4 +352,8 @@ export default {
   'lore.ruins.p2.a': 'To ruiny jakiejś starożytnej cywilizacji!',
   'lore.ruins.p3.a': 'Może kiedyś wrócę, żeby zbadać to dokładniej!',
   'lore.ruins.p4.a': 'Teraz muszę iść dalej!!',
+  'lore.wind.p1.a': 'WHOOO...TRZYMAJ SIĘ!!',
+  'lore.wind.p2.a': 'Ta wichura chyba oznacza, że wyjście jest już blisko.',
+  'lore.wind.p3.a': 'Nie mogę się doczekać kąpieli!',
+  'lore.wind.p4.a': 'DO PRZODU!',
 };

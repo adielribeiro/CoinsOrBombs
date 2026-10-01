@@ -365,4 +365,8 @@ export default {
   'lore.ruins.p2.a': 'São ruínas de alguma civilização antiga!',
   'lore.ruins.p3.a': 'Talvez algum dia eu volte para explorar mais!',
   'lore.ruins.p4.a': 'Agora preciso avançar!!',
+  'lore.wind.p1.a': 'AHOOO...SEGURAA!!',
+  'lore.wind.p2.a': 'Provavelmente essa ventania indica que a saída está próxima.',
+  'lore.wind.p3.a': 'Não vejo a hora de tomar um banho!',
+  'lore.wind.p4.a': 'VAMOS EM FRENTE!',
 };

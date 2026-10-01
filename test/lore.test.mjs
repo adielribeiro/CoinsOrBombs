@@ -51,9 +51,9 @@ const todosOsPaineis = Object.entries(LORE_POR_BIOMA).flatMap(([bioma, paineis])
 
 // --- a Mina Solar tem, os outros não -------------------------------------
 
-const COM_ROTEIRO = ['sunstone', 'frost', 'ember', 'ruins'];
+const COM_ROTEIRO = ['sunstone', 'frost', 'ember', 'ruins', 'wind'];
 
-test('são os quatro primeiros biomas a ter roteiro, e só eles', () => {
+test('são os cinco primeiros biomas a ter roteiro, e só eles', () => {
   // A lista de controle existe para que "um bioma novo entra sem roteiro" não passe em silêncio".
   // Entrar sem roteiro é o certo; o que não pode é ninguém notar que a lista
   // de controle ficou velha.
@@ -456,6 +456,40 @@ test('o texto das Ruínas Abissais está intacto, palavra por palavra', () => {
     'lore.ruins.p2.a': 'São ruínas de alguma civilização antiga!',
     'lore.ruins.p3.a': 'Talvez algum dia eu volte para explorar mais!',
     'lore.ruins.p4.a': 'Agora preciso avançar!!'
+  });
+});
+
+test('os quatro painéis da Galeria de Vento são os do roteiro, na ordem', () => {
+  // Uma expressão nova, `segurando_capacete`, que é a pose certa para um painel
+  // aberto com um grito de vento. As outras três já vinham de outros roteiros —
+  // `furioso` fecha as Ruínas Abissais e volta aqui, com a mesma energia mas por
+  // outro motivo: lá era pressa, aqui é só vento na cara.
+  assert.deepEqual(
+    paineisDoBioma('wind').map((painel) => painel.imagem),
+    [
+      'minerador_segurando_capacete',
+      'minerador_pensativo',
+      'minerador_exausto',
+      'minerador_furioso'
+    ]
+  );
+});
+
+test('o texto da Galeria de Vento está intacto, palavra por palavra', () => {
+  // Um acerto em relação ao material de origem, e um só: `proóxima`, que trazia o
+  // acento no O. O grito de abertura fica como está nos dez idiomas, porque é ele
+  // que dá o tom do bioma inteiro.
+  const falas = {};
+
+  for (const painel of paineisDoBioma('wind')) {
+    for (const chave of painel.falas) falas[chave] = dicionario[chave];
+  }
+
+  assert.deepEqual(falas, {
+    'lore.wind.p1.a': 'AHOOO...SEGURAA!!',
+    'lore.wind.p2.a': 'Provavelmente essa ventania indica que a saída está próxima.',
+    'lore.wind.p3.a': 'Não vejo a hora de tomar um banho!',
+    'lore.wind.p4.a': 'VAMOS EM FRENTE!'
   });
 });
 

@@ -332,4 +332,8 @@ export default {
   'lore.ruins.p2.a': '这是某个古代文明的遗迹!',
   'lore.ruins.p3.a': '也许哪天我会回来继续探索!',
   'lore.ruins.p4.a': '现在我得往前走了!!',
+  'lore.wind.p1.a': '呜噢噢...抓紧!!',
+  'lore.wind.p2.a': '这场狂风大概说明出口就在附近。',
+  'lore.wind.p3.a': '真等不及想洗个澡了!',
+  'lore.wind.p4.a': '出发!',
 };
