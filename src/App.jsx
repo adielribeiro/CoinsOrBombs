@@ -23,6 +23,7 @@ import {
 import {
   BIOMES,
   RELIC_CATALOG,
+  aplicarEfeitosDasMelhorias,
   createCollectionState,
   createImprovementState,
   createStatsState,
@@ -32,7 +33,6 @@ import {
   getBiomeProgress,
   getBiomeStartCave,
   getObjectiveProgressList,
-  improvementsDe,
   TOTAL_CAVES as TOTAL_CAVES_DO_JOGO,
   getTotalRelics,
   getUnlockedBiomes
@@ -52,7 +52,7 @@ import {
 import { criarLeitorDeControle } from './game/gamepad.js';
 import { criarNavegadorDeFoco } from './game/foco.js';
 import { fechaTelaDoTopo, telaDoTopo } from './game/telas.js';
-import { buildRewardCatalog, pickRewardOptions, shuffle } from './game/rewards.js';
+import { buildRewardCatalog, getRewardVisual, pickRewardOptions, shuffle } from './game/rewards.js';
 import './styles/app.css';
 
 const firstBiome = getBiomeForCave(1);
@@ -211,6 +211,63 @@ const DEFAULT_SETTINGS = {
   developerMode: false
 };
 
+/**
+ * Lê as configurações, descartando as chaves que deixaram de existir.
+ *
+ * `readStorage` faz merge com o que está salvo, e é o comportamento certo para
+ *_defaults_ novos. Mas para uma chave REMOVIDA ele é o contrário do que se
+ * quer: o `showGrid: true` de um jogador que tinha ligado a grade voltava do
+ * navegador e entrava no estado, mesmo sem mais nenhum interruptor na tela.
+ *
+ * O efeito prático era o pior dos dois: a cena recebia `showGrid: true` e
+ * desenhava a grade, e o jogador não tinha caminho para desligar. `buildSceneSettings`
+ * já neutraliza isso, mas deixar a chave no estado é armadilha para quem for
+ * mexer aqui depois — um `settings.showGrid` lido em qualquer lugar voltaria a
+ * valer sem ninguém saber por quê.
+ *
+ * Descartar na leitura faz o `localStorage` se curar sozinho na próxima
+ * gravação, e o estado passa a descrever só o que existe.
+ */
+const CHAVES_DE_SETTINGS_REMOVIDAS = ['reducedMotion', 'showGrid'];
+
+function readSettings() {
+  const lido = readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
+  const limpo = { ...lido };
+
+  for (const chave of CHAVES_DE_SETTINGS_REMOVIDAS) {
+    delete limpo[chave];
+  }
+
+  // O idioma é resolvido DEPOIS do merge, e nunca a partir dele. Um valor
+  // salvo que não existe mais no jogo — idioma removido numa atualização, ou
+  // storage editado à mão — é ignorado, e a detecção do navegador assume. Sem
+  // isso o estado descreveria um idioma que nenhuma cadeia sabe traduzir, e o
+  // `createTranslator` cairia no português calado em vez de detectar.
+  limpo.language = readStoredLocale(SETTINGS_STORAGE_KEY);
+
+  return limpo;
+}
+
+function readStorage(key, fallback) {
+  if (typeof window === 'undefined') return fallback;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(key, value) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // modo privado / storage bloqueado: o jogo segue funcionando sem persistir
+  }
+}
 function isCoarsePointerDevice() {
   if (typeof window === 'undefined') return false;
   if (typeof window.matchMedia !== 'function') return false;
@@ -615,7 +672,7 @@ export default function App() {
     if (nome === 'final') fecharFinale();
     else if (nome === 'saida') setShowExitDecision(false);
     else if (nome === 'utilitaria') setShowUtilityShopModal(false);
-    else if (nome === 'bioma') setShowBiomeSelection(null);
+    else if (nome === 'bioma') setShowBiomeSelect(false);
     else if (nome === 'jogos') setShowSaves(false);
     else if (nome === 'idioma') setShowLanguage(false);
     else if (nome === 'configuracoes') setShowSettings(false);
@@ -954,11 +1011,12 @@ export default function App() {
       },
       collection: baseState.collection ?? createCollectionState(),
       stats: baseState.stats ?? createStatsState(),
-      // As melhorias sobrevivem a morte, que e o que a pessoa espera depois de
-      // escolher uma. Sem esta linha o `...initialState` acima zerava todas, e
-      // a run voltava ao começo levando junto a recompensa por ter chegado
-      // ate ali -- que e o oposto de uma recompensa.
-      ...improvementsDe(baseState),
+      // As melhorias sobrevivem a morte, e o que elas produzem tambem. Sem esta
+      // linha o `...initialState` acima trazia `maxHp: 2` e `pickaxePower: 1`,
+      // e a pessoa voltava com o cartao dizendo Vitalidade 01 e duas de vida na
+      // HUD. `aplicarEfeitosDasMelhorias` traz os niveis e recalcula o que eles
+      // produzem.
+      ...aplicarEfeitosDasMelhorias(baseState),
       bestCave: baseState.bestCave ?? 1,
       lastRelicFound: baseState.lastRelicFound ?? null,
       lastMessage: message
@@ -1544,10 +1602,10 @@ export default function App() {
       },
       collection: baseState.collection ?? createCollectionState(),
       stats: baseState.stats ?? createStatsState(),
-      // As melhorias sobrevivem a morte. Sem esta linha o `...initialState`
-      // acima zerava todas, e a pessoa perdia a recompensa por ter chegado
-      // ate ali ao perder uma vida na caverna seguinte.
-      ...improvementsDe(baseState),
+      // As melhorias sobrevivem a morte, e o que elas produzem tambem. Trocar de
+      // biomac e morrer reconstroem o estado do mesmo jeito, entao as duas
+      // precisam do mesmo cuidado: sem recalcular, o nivel voltava e a vida nao.
+      ...aplicarEfeitosDasMelhorias(baseState),
       // bestCave só avança quando a cave é concluída. A versão anterior
       // fazia Math.max(bestCave, cave) também ao morrer, o que destravava
       // o próximo bioma sem nunca ter concluído nenhuma cave dele.

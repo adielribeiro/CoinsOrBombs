@@ -70,6 +70,41 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   perguntando se ele acha pedra quebrável a partir da entrada. O que não está:
   a sensação na mão.
 
+
+- **Corrigido: o jogo nao abria mais.** O commit anterior publicou uma versão
+  que quebrava na tela branca com `readSettings is not defined`. A causa foi um
+  bloco movido de arquivo, e a extração levou embora quatro funções que nada
+  tinham a ver com o movimento: `readSettings`, `readStorage`, `writeStorage` e
+  a lista de chaves removidas. Restauradas.
+
+- **Corrigido: a melhoria sobrevivia, mas o que ela produz não.** Verifiquei no
+  navegador que `vitalityLevel: 1` voltava da morte e do F5 — e a HUD mostrava
+  **2 de vida**. O nível é um dos doze campos; a vida máxima que ele produz não
+  é melhoria nenhuma, e vinha do `...initialState`, que tem `maxHp: 2`. O mesmo
+  valia para `pickaxePower`, que é o que decide quantos cliques a rocha custa.
+
+  Agora o nível manda e o resto é recalculado (`aplicarEfeitosDasMelhorias`).
+  Guardar o derivado também não resolveria: passaria a haver duas verdades, o
+  nível e o que ele produz, e elas divergiriam assim que uma fosse corrigida
+  sozinha.
+
+- **Corrigido: `setShowBiomeSelection` não existe.** Fechar a tela de bioma pelo
+  botão de voltar do controle jogava `ReferenceError`. É resíduo de uma
+  renomeação: o estado se chama `showBiomeSelect` desde `c5cd552`, e esta linha
+  ficou para trás. Quebrou sozinho, sem ninguém tocar nela.
+
+- **Nenhum nome usado pode estar sem definição** (`test/declaracoes.test.mjs`).
+  O teste que faltava para essa clase de erro. O `npm run build` **passava** com
+  o jogo quebrado: o esbuild não verifica identificador indefinido, porque para
+  ele `readSettings` é um nome qualquer, e um nome que não existe só vira erro
+  em tempo de execução. Os 270 testes passavam também — nenhum deles tocava
+  `App.jsx`.
+
+  O teste analisa cada arquivo com o parser do Babel e confere que todo nome
+  usado tem de onde vir. Tem dois contra-testes: um que prova que ele pega um
+  nome que sumiu, e outro que prova que ele **não** acusa `maxHp` em
+  `{ maxHp: 2 }` nem `localStorage` em `window.localStorage`. Sem eles, um
+  analisador vazio passaria em silêncio.
 ### Removido
 
 - **A decoração espalhada da caverna.** Colunas nas Ruínas, cristais, lanternas,

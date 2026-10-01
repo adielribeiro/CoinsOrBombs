@@ -361,6 +361,55 @@ export function improvementsDe(estado) {
   return pego;
 }
 
+/** A vida máxima que um nível de vitalidade dá. A base é 2, e cada nível soma 1. */
+export function maxHpDe(vitalityLevel) {
+  return 2 + (vitalityLevel ?? 0);
+}
+
+/** O nível de picareta que um nível de melhoria dá. Base 1, e cada um soma 1. */
+export function pickaxeLevelDe(pickaxeUpgradeLevel) {
+  return Math.min(5, 1 + (pickaxeUpgradeLevel ?? 0));
+}
+
+/**
+ * Recalcula o que as melhorias **derivam**, a partir dos níveis das melhorias.
+ *
+ * Duas melhorias não terminam em si mesmas. Vitalidade 3 não é só o número 3: é
+ * também 5 de vida máxima. Picareta 2 não é só o número 2: é também 2 de nível e
+ * de força. Quem salva a melhoria guarda o **nível**, e o nível é a verdade — o que
+ * ele produz é derivado, e por isso se recalcula em vez de se salvar.
+ *
+ * ## O bug que esta função conserta
+ *
+ * `improvementsDe` carregava os doze níveis ao reiniciar a run, mas `maxHp` e
+ * `pickaxePower` vinham do `...initialState` — que tem `maxHp: 2` e
+ * `pickaxePower: 1`. O resultado no navegador: a pessoa escolhia Vitalidade 1,
+ * morria, e voltava com `vitalityLevel: 1` no save e **2 de vida** na HUD. A tela
+ * mostrava o nívelcontradizendo o próprio número que dava o nome à melhoria.
+ *
+ * Guardar o derivado também não resolveria: passaria a haver duas verdades — o
+ * nível e o que ele produz — e elas divergiriam assim que um deles fosse
+ * corrigido sozinho. Uma regra só: o nível manda, o resto é consequence.
+ *
+ * `hp` é a **vida cheia**, e não a atual. Esta função só roda ao entrar numa
+ * caverna, e lá a pessoa sempre começa com a vida cheia. Perder vida no meio da
+ * caverna é outra coisa, e é o `maxHp` que limita o ganho de fora.
+ */
+export function aplicarEfeitosDasMelhorias(estado) {
+  const melhorias = improvementsDe(estado);
+  const maxHp = maxHpDe(melhorias.vitalityLevel);
+  const pickaxeLevel = pickaxeLevelDe(melhorias.pickaxeUpgradeLevel);
+
+  return {
+    ...estado,
+    ...melhorias,
+    maxHp,
+    hp: maxHp,
+    pickaxeLevel,
+    pickaxePower: pickaxeLevel
+  };
+}
+
 /**
  * O inventário de utilidades, zerado.
  *

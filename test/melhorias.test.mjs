@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 
 import {
   IMPROVEMENT_FIELDS,
+  aplicarEfeitosDasMelhorias,
   createImprovementState,
-  improvementsDe
+  improvementsDe,
+  maxHpDe,
+  pickaxeLevelDe
 } from '../src/game/progression.js';
 import { PERSISTENTE, partePersistente } from '../src/game/saves.js';
 import { buildRewardCatalog, pickRewardOptions } from '../src/game/rewards.js';
@@ -115,6 +118,103 @@ test('quatro opções saem de um catálogo com mais de quatro itens', () => {
   const catalogo = buildRewardCatalog(estadoNovo(), tFalso);
 
   assert.ok(catalogo.length >= 6, `o catálogo tem ${catalogo.length} itens, e a história diz que são mais`);
+});
+
+test('o nível da melhoria volta E o que ele produz', () => {
+  // O bug real, encontrado no navegador: escolher Vitalidade 1, morrer, e voltar
+  // com `vitalityLevel: 1` no save e 2 de vida na HUD. O nível voltava porque é
+  // um dos doze campos; a vida não, porque `maxHp` não é melhoria nenhuma — vem do
+  // `...initialState`, que tem `maxHp: 2`. A tela mostrava o cartão dizendo
+  // "Vitalidade 01" ao lado de duas vidas.
+  const resultado = aplicarEfeitosDasMelhorias({ ...createImprovementState(), vitalityLevel: 1 });
+
+  assert.equal(resultado.vitalityLevel, 1, 'o nível não atravessou');
+  assert.equal(resultado.maxHp, 3, `a vida máxima ficou ${resultado.maxHp}, e o nível 1 exige 3`);
+  assert.equal(resultado.hp, 3, 'a vida atual não foi para a cheia ao entrar na caverna');
+});
+
+test('a vitalidade acumulada continua valendo depois de várias mortes', () => {
+  // Este teste existe porque a falha era de quem morre. Uma vez pode ser
+  // descuido; a terceira morte seguida é regra errada.
+  let estado = createImprovementState();
+  for (let vez = 1; vez <= 3; vez += 1) {
+    estado = aplicarEfeitosDasMelhorias({ ...estado, vitalityLevel: vez });
+    assert.equal(estado.maxHp, 2 + vez, `na ${vez}ª morte a vida máxima ficou ${estado.maxHp}`);
+  }
+});
+
+test('o nível da picareta volta E a força que ele dá', () => {
+  // Picareta é o outro caso: `pickaxePower` também não é campo de melhoria, e é
+  // ele que decide quantos cliques a rocha custa.
+  const resultado = aplicarEfeitosDasMelhorias({ ...createImprovementState(), pickaxeUpgradeLevel: 2 });
+
+  assert.equal(resultado.pickaxeUpgradeLevel, 2, 'o nível não atravessou');
+  assert.equal(resultado.pickaxePower, 3, `a força ficou ${resultado.pickaxePower}, e o nível 2 dá 3`);
+  assert.equal(resultado.pickaxeLevel, 3, 'o nível mostrado na HUD não acompanhou');
+});
+
+test('a força da picareta não passa do limite de 5', () => {
+  // O teto é o mesmo do catálogo: acima de 4 melhorias, a 5ª carta não existe.
+  const resultado = aplicarEfeitosDasMelhorias({ ...createImprovementState(), pickaxeUpgradeLevel: 9 });
+
+  assert.equal(resultado.pickaxePower, 5, `a força estourou o teto: ${resultado.pickaxePower}`);
+  assert.equal(resultado.pickaxeLevel, 5);
+});
+
+test('sem melhoria nenhuma, a caverna começa como sempre: 2 de vida, picareta 1', () => {
+  // O contra-teste. Sem ele, `aplicarEfeitosDasMelhorias` podia estar sempre
+  // acrescentando um ponto de vida e o jogo inteiro passaria a ficar mais fácil.
+  const resultado = aplicarEfeitosDasMelhorias(createImprovementState());
+
+  assert.equal(resultado.maxHp, 2, `a vida sem melhoria ficou ${resultado.maxHp}`);
+  assert.equal(resultado.hp, 2);
+  assert.equal(resultado.pickaxePower, 1, `a picareta sem melhoria ficou ${resultado.pickaxePower}`);
+});
+
+test('as fórmulas de vida e picareta são as mesmas em toda parte', () => {
+  // Duas funções separadas, um número escrito nas duas. A vitalidade aparece como
+  // `2 + nivel` no cálculo e no texto do card; a picareta, como `1 + nivel` com
+  // teto. Se uma mudar e a outra não, o nível na tela mente.
+  for (const nivel of [0, 1, 4, 8]) {
+    assert.equal(maxHpDe(nivel), 2 + nivel, `maxHpDe(${nivel})`);
+  }
+  for (const nivel of [0, 1, 2, 3, 4, 9]) {
+    assert.equal(pickaxeLevelDe(nivel), Math.min(5, 1 + nivel), `pickaxeLevelDe(${nivel})`);
+  }
+});
+
+test('recalcular depois de escolher a carta não muda o que ela deu', () => {
+  // As duas metades têm de concordar. A carta diz que vitalidade 1 dá +1 vida e
+  // escreve `maxHp: 3`; a regra de recálculo, usada ao reiniciar a run, deriva 3
+  // do nível 1. Se as duas divergirem, o jogador escolhe uma carta, morre, e a
+  // vida muda de valor sozinha — e isso só aparece jogando.
+  //
+  // O teste recalcula a partir do estado que a carta deixou, e é por isso que
+  // compara os dois `maxHp` no mesmo nível: comparar o recálculo do estado
+  // anterior ao escolha mediria outra coisa, e passaria com as regras erradas.
+  for (const trilha of ['vitality', 'pickaxe']) {
+    const antes = createImprovementState();
+    const carta = buildRewardCatalog(antes, tFalso).find((r) => r.track === trilha);
+    const comCarta = carta.apply(antes);
+    const recalculado = aplicarEfeitosDasMelhorias(comCarta);
+
+    const campo = trilha === 'vitality' ? 'maxHp' : 'pickaxePower';
+    assert.equal(
+      recalculado[campo],
+      comCarta[campo],
+      `a carta ${carta.id} deu ${comCarta[campo]} e o recálculo deu ${recalculado[campo]}`
+    );
+  }
+});
+
+test('o que a melhoria produz atravessa a troca de bioma', () => {
+  // Trocar de bioma reconstrói o estado do mesmo jeito que a morte. Se só um dos
+  // dois caminhos sabe disso, a melhoria funciona numa hora e some na outra.
+  const comVitalidade = { ...createImprovementState(), vitalityLevel: 3 };
+  const depois = aplicarEfeitosDasMelhorias(comVitalidade);
+
+  assert.equal(depois.vitalityLevel, 3);
+  assert.equal(depois.maxHp, 5, `ao trocar de bioma a vida ficou ${depois.maxHp}, e o nível 3 dá 5`);
 });
 
 test('a melhoria também atravessa a troca de bioma', () => {

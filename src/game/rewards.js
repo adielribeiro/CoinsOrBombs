@@ -37,7 +37,15 @@ export function shuffle(list) {
   return cloned;
 }
 
-function getRewardVisual(track) {
+/**
+ * O ícone e a cor de um tipo de melhoria.
+ *
+ * Exportado porque a tela do lobby desenha o cartão: ela precisa do ícone e da cor
+ * de cada opção. Fica aqui, e não no componente, para que o par texto visual do
+ * tipo não se separe em dois lugares — o catálogo dizendo `coins` e a tela
+ * procurando `coin` por conta própria.
+ */
+export function getRewardVisual(track) {
   const visuals = {
     pickaxe: { icon: '⛏️', accent: 'pickaxe' },
     vitality: { icon: '🛡️', accent: 'vitality' },
