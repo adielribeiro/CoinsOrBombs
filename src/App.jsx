@@ -12,6 +12,7 @@ import {
   toggleFullscreen
 } from './game/fullscreen.js';
 import { introJaVista, marcarIntroVista } from './game/intro.js';
+import { BLACK_SCREEN_MS, LOGO_FADE_MS } from './game/temposDeEntrada.js';
 import {
   LOCALES,
   createTranslator,
@@ -165,9 +166,21 @@ const ENTRY_PHASE = {
   PLAYING: 'playing'
 };
 
-const BLACK_SCREEN_MS = 900;
-const LOGO_FADE_MS = 2200;
-const GAME_VERSION = '0.2.0';
+/* `BLACK_SCREEN_MS` e `LOGO_FADE_MS` moram em `game/temposDeEntrada.js`. A
+   animação do logo é CSS e não lê nada de JavaScript, então o acoplamento entre os
+   dois é só de conversa — e é testado contra a folha de estilo. */
+/**
+ * A versão do jogo, mostrada no rodapé do menu e usada para armar o splash.
+ *
+ * ## Mudar aqui rearma o splash de todo mundo
+ *
+ * É o único lugar que decide isso. `intro.js` guarda a **versão** em que o splash
+ * foi visto, e compara com este número: enquanto os dois batem, o splash não
+ * repete; quando um sobe, ele volta para todo mundo. Uma correção de arte sem
+ * subir a versão deixa o logo novo invisível justamente para quem já viu o
+ * antigo.
+ */
+const GAME_VERSION = '0.3.0';
 
 /**
  * Quanto tempo a carta do final leva para subir.
@@ -1144,12 +1157,12 @@ export default function App() {
     setShowSettings(false);
     setShowInfoModal(false);
 
-    if (introJaVista()) {
+    if (introJaVista(null, GAME_VERSION)) {
       irParaOJogo();
       return;
     }
 
-    marcarIntroVista();
+    marcarIntroVista(null, GAME_VERSION);
     setEntryPhase(ENTRY_PHASE.BLACK);
 
     const logoTimeout = window.setTimeout(() => {

@@ -7,6 +7,44 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **A Gruta de Gelo também tem lore.** Cinco painéis com o roteiro novo: o
+  mineiro sente o frio, dá nome ao lugar por conta própria, desiste de achar que
+  seria fácil, e depois encontra recursos que ajudam a sair. Duas expressões
+  novas entraram (`minerador_frio` e `minerador_surpreso`), com o mesmo recorte de
+  transparência das outras.
+
+  Três acertos no texto, e só três: `esse recursos` (que errava o número),
+  `rapido` e `por ai` sem acento, e `Gruta De Gelo` com D maiúsculo — que passa a
+  bater com o nome que o cartão do bioma já mostra. A Gruta de Gelo é a segunda de
+  seis; as outras quatro continuam sem roteiro e entram direto na caverna.
+
+- **O splash da ArchangelSoft volta uma vez por versão do jogo.**
+
+  Ele era marcado como "já vi" para sempre, o que resolvia a repetitividade que
+  motivou a mudança e criava o problema oposto: quem jogou uma vez parava de ver
+  o logo para sempre, inclusive depois de versões novas. As duas queixas eram
+  verdade ao mesmo tempo — a cena estava no código, e o storage não tinha como
+  dizer que era outra coisa.
+
+  Agora o storage guarda **a versão** em que o splash foi visto. Enquanto os
+  números batem ele não repete; quando a versão sobe, ele volta para todo mundo.
+  Quem tinha a marca antiga `sim` vê uma última vez, e a partir daí a marca vira a
+  versão de verdade. O jogo foi para **0.3.0**.
+
+  ## E a animação, que nunca terminava de aparecer
+
+  A animação durava **3s** e o logo ficava na tela **2,2s**. A conta dá 0,71 de
+  opacidade no instante em que o logo some: ele nunca aparecia inteiro, numa tela
+  que existe para ser mostrada uma vez e ser notada. Quem não viu a fade inteira
+  não sabe que ela existe, e o sintoma é "a cena não sobe" — que parece ausência,
+  não corte.
+
+  Agora a animação dura o mesmo que a exibição, sobe nos primeiros 25% e segura.
+  O número mora em `game/temposDeEntrada.js` e o teste compara com a folha de
+  estilo: é a única leitura de fonte do projeto, e ela é a única forma de
+  verificar um valor que mora em dois lugares — a animação é CSS, o tempo é
+  JavaScript, e nenhum dos dois lê o outro.
+
 - **Lore de entrada do bioma: o mineiro fala ao chegar numa caverna nova.** A
   mina aparece ao fundo, a tarja do mineiro fica na frente, e o texto sai dentro
   da parte amarelada. O `Enter` do teclado e o `B`/`Quadrado` do controle pulam a

@@ -319,4 +319,10 @@ export default {
   'lore.sunstone.p4.a': '問題はここが爆弾だらけってことだ!!',
   'lore.sunstone.p5.a': '一歩も間違えたら「BOOM」...',
   'lore.sunstone.p6.a': 'ふむ...ずっとここにいるわけにはいかないな..行くぞ!!!',
+  'lore.frost.p1.a': '寒い.....',
+  'lore.frost.p2.a': '地図にはこんな場所がない。氷の洞窟と呼ぼう。',
+  'lore.frost.p3.a': 'もっと簡単だと思っていた.....',
+  'lore.frost.p4.a': '見たところ、ばら撒かれているのは爆弾だけではない!!',
+  'lore.frost.p4.b': '見つけた物資を使えば、ここから早く出られる!!',
+  'lore.frost.p5.a': '行くぞ!!',
 };

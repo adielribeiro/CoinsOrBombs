@@ -321,4 +321,10 @@ export default {
   'lore.sunstone.p4.a': '¡El problema es que este lugar está lleno de Bombas!!',
   'lore.sunstone.p5.a': 'Un paso en falso y "BOOM"...',
   'lore.sunstone.p6.a': 'Bueno...no me voy a quedar aquí para siempre entonces..¡VAMOS!!!',
+  'lore.frost.p1.a': 'Qué frío.....',
+  'lore.frost.p2.a': 'Mis mapas no muestran un sitio así, lo llamaré la Gruta Helada.',
+  'lore.frost.p3.a': 'Pensé que sería más fácil....',
+  'lore.frost.p4.a': 'Bueno, por lo que vi no hay solo bombas esparcidas por ahí!!',
+  'lore.frost.p4.b': '¡Puedo usar esos recursos que encontré para salir de aquí más rápido!!',
+  'lore.frost.p5.a': '¡Sigamos!!',
 };

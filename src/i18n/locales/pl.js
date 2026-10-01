@@ -338,4 +338,10 @@ export default {
   'lore.sunstone.p4.a': 'Problem w tym, że to miejsce jest pełne bomb!!',
   'lore.sunstone.p5.a': 'Jeden zły krok i "BOOM"...',
   'lore.sunstone.p6.a': 'No...nie zostanę tu na zawsze więc..RUCHAMY!!!',
+  'lore.frost.p1.a': 'Jak zimno.....',
+  'lore.frost.p2.a': 'Na mojej mapie nie ma takiego miejsca, nazwijmy to Lodową Jaskinią.',
+  'lore.frost.p3.a': 'Myślałem, że będzie łatwiej....',
+  'lore.frost.p4.a': 'No bo, z tego co widzę, to nie tylko bomby porozrzucane dookoła!!',
+  'lore.frost.p4.b': 'Mogę użyć tych zasobów, które znalazłem, żeby szybciej stąd wydostać!!',
+  'lore.frost.p5.a': 'Lecimy dalej!!',
 };

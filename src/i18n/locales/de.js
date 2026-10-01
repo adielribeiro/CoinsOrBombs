@@ -320,4 +320,10 @@ export default {
   'lore.sunstone.p4.a': 'Das Problem ist, dass dieser Ort voller Bomben ist!!',
   'lore.sunstone.p5.a': 'Ein falscher Schritt und "BOOM"...',
   'lore.sunstone.p6.a': 'Nun... dann bleibe ich nicht für immer hier..LOS!!!',
+  'lore.frost.p1.a': 'So kalt.....',
+  'lore.frost.p2.a': 'Auf meinen Karten ist so ein Ort nicht, ich nenne ihn die Frostgrotte.',
+  'lore.frost.p3.a': 'Ich dachte, es wäre leichter....',
+  'lore.frost.p4.a': 'Naja, wie ich sehe, liegen hier nicht nur Bomben herum!!',
+  'lore.frost.p4.b': 'Ich kann die Vorräte benutzen, die ich gefunden habe, um schneller hier rauszukommen!!',
+  'lore.frost.p5.a': "Weiter geht's!!",
 };

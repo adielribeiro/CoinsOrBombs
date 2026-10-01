@@ -486,15 +486,27 @@ button {
   object-position: center;
   opacity: 0;
   transform: scale(1.04);
-  animation: splashFade 3s ease forwards;
+  /* A duração **tem** de ser a mesma que `LOGO_FADE_MS` no `App.jsx`. Ela era
+     3s contra 2,2s de exibição, e a conta dava 0,71 de opacidade no instante em
+     que o logo sumia: um fade que nunca terminava de aparecer, justamente na
+     única vez que ele aparece. Os dois números estão anotados nos dois arquivos
+     de propósito — mudar um e esquecer o outro reintroduz o corte. */
+  animation: splashFade 2200ms ease forwards;
 }
 
+/* Entra rápido e segura. Um fade linear de 3s passava a maior parte do tempo
+   quase invisível; 25% da duração é o suficiente para o olho pegar a imagem e
+   sobra 1,65s de tela com o logo inteiro, que é o que a cena existe para fazer. */
 @keyframes splashFade {
-  from {
+  0% {
     opacity: 0;
     transform: scale(1.04);
   }
-  to {
+  25% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
     opacity: 1;
     transform: scale(1);
   }

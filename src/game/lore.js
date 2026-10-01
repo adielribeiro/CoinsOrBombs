@@ -46,6 +46,18 @@ export const CHAVE_FALANTE = 'lore.falante';
  * momentos (`assustado` nos painéis 1 e 5) porque é assim que o roteiro foi
  * escrito, e refazer a ordem para usar cada arquivo uma vez só seria trocar o texto
  * que existe por um texto inventado.
+ *
+ * ## A Gruta de Gelo é mais curta, e é assim que o roteiro é
+ *
+ * Cinco painéis, contra seis da Mina Solar. A regra é a mesma — a ordem e as
+ * expressões são do texto, não da lista de arquivos. Completar este roteiro com
+ * imagens que sobraram seria inventar cena, e foi o que a Mina Solar quase veio.
+ *
+ * ## As expressões são do mesmo personagem
+ *
+ * O material de origem mistura `mineiro_` e `minerador_` para o mesmo mineiro, e
+ * o prefixo entra pelo nome de arquivo do projeto, sem exceção: `minerador_frio`,
+ * `minerador_surpreso`. A mistura só existia no zip.
  */
 export const LORE_POR_BIOMA = {
   sunstone: [
@@ -55,6 +67,13 @@ export const LORE_POR_BIOMA = {
     { imagem: 'minerador_exausto', falas: ['lore.sunstone.p4.a'] },
     { imagem: 'minerador_assustado', falas: ['lore.sunstone.p5.a'] },
     { imagem: 'minerador_normal', falas: ['lore.sunstone.p6.a'] }
+  ],
+  frost: [
+    { imagem: 'minerador_frio', falas: ['lore.frost.p1.a'] },
+    { imagem: 'minerador_surpreso', falas: ['lore.frost.p2.a'] },
+    { imagem: 'minerador_exausto', falas: ['lore.frost.p3.a'] },
+    { imagem: 'minerador_pensativo', falas: ['lore.frost.p4.a', 'lore.frost.p4.b'] },
+    { imagem: 'minerador_normal', falas: ['lore.frost.p5.a'] }
   ]
 };
 

@@ -318,4 +318,10 @@ export default {
   'lore.sunstone.p4.a': '问题是这个地方到处都是炸弹!!',
   'lore.sunstone.p5.a': '一步走错就是"BOOM"……',
   'lore.sunstone.p6.a': '好吧...我不可能永远待在这里..出发!!!',
+  'lore.frost.p1.a': '好冷.....',
+  'lore.frost.p2.a': '我的地图上可没有这种地方，就叫它冰窟吧。',
+  'lore.frost.p3.a': '我以为会更容易.....',
+  'lore.frost.p4.a': '嗯，看样子这里可不只是炸弹乱放!!',
+  'lore.frost.p4.b': '我可以利用找到的补给更快地离开这里!!',
+  'lore.frost.p5.a': '继续走吧!!',
 };

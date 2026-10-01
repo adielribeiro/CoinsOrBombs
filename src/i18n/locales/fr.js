@@ -321,4 +321,10 @@ export default {
   'lore.sunstone.p4.a': "Le problème, c'est que cet endroit est plein de Bombes !!",
   'lore.sunstone.p5.a': 'Un faux pas et "BOOM"...',
   'lore.sunstone.p6.a': "Bon...je ne vais pas rester ici éternellement alors..C'EST PARTI !!!",
+  'lore.frost.p1.a': 'Quel froid.....',
+  'lore.frost.p2.a': "Mes cartes n'ont rien de pareil. Je l'appellerai la Grotte de Glace.",
+  'lore.frost.p3.a': 'Je croyais que ce serait plus facile....',
+  'lore.frost.p4.a': "Bon, d'après ce que j'ai vu, il n'y a pas que des bombes éparpillées par là !!",
+  'lore.frost.p4.b': "Je peux utiliser les ressources que j'ai trouvées pour sortir d'ici plus vite !!",
+  'lore.frost.p5.a': 'On continue !!',
 };

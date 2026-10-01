@@ -51,14 +51,17 @@ const todosOsPaineis = Object.entries(LORE_POR_BIOMA).flatMap(([bioma, paineis])
 
 // --- a Mina Solar tem, os outros não -------------------------------------
 
-test('a Mina Solar é a única com lore, e é o primeiro bioma', () => {
-  assert.equal(temLore('sunstone'), true);
+const COM_ROTEIRO = ['sunstone', 'frost'];
 
-  const semLore = BIOMES.filter((biome) => !temLore(biome.id)).map((biome) => biome.id);
+test('só a Mina Solar e a Gruta de Gelo têm roteiro, e são os dois primeiros', () => {
+  // A lista de controle existe para que "um bioma novo entra sem roteiro" não passe em silêncio".
+  // Entrar sem roteiro é o certo; o que não pode é ninguém notar que a lista
+  // de controle ficou velha.
+  assert.deepEqual(BIOMES.filter((biome) => temLore(biome.id)).map((biome) => biome.id), COM_ROTEIRO);
 
   assert.deepEqual(
-    semLore,
-    BIOMES.filter((biome) => biome.id !== 'sunstone').map((biome) => biome.id),
+    BIOMES.filter((biome) => !temLore(biome.id)).map((biome) => biome.id),
+    BIOMES.filter((biome) => !COM_ROTEIRO.includes(biome.id)).map((biome) => biome.id),
     'o conjunto de biomas sem lore mudou. Um bioma novo entra sem roteiro, e isso '
       + 'é o certo — mas a lista de controle precisa saber.'
   );
@@ -206,9 +209,9 @@ test('índice fora da faixa fecha, e não devolve lixo', () => {
 // --- o pré-carregamento ---------------------------------------------------
 
 test('a pré-carga pede uma imagem por expressão, e não uma por painel', () => {
-  // O roteiro repete `assustado` em dois painéis. Uma imagem por painel criaria
-  // dois objetos para o mesmo arquivo, e o código passaria a dizer que baixou
-  // duas vezes o que baixou uma.
+  // O roteiro da Mina Solar repete `assustado` em dois painéis. Uma imagem por
+  // painel criaria dois objetos para o mesmo arquivo, e o código passaria a dizer
+  // que baixou duas vezes o que baixou uma.
   const criadas = [];
   const imagens = precarLore('sunstone', () => {
     const img = { src: '' };
@@ -217,13 +220,16 @@ test('a pré-carga pede uma imagem por expressão, e não uma por painel', () =>
   });
 
   const distintos = new Set(imagens.map((img) => img.src));
+  const esperadas = imagensDaLore().filter((nome) =>
+    paineisDoBioma('sunstone').some((painel) => painel.imagem === nome)
+  );
 
-  assert.equal(criadas.length, 5, 'não pediu uma imagem por expressão');
-  assert.equal(distintos.size, 5, 'duas imagens com o mesmo src');
+  assert.equal(distintos.size, esperadas.length, 'duas imagens com o mesmo src');
   assert.deepEqual(
     [...distintos].sort(),
-    imagensDaLore().map((nome) => caminhoDaImagem(nome)).sort()
+    esperadas.map((nome) => caminhoDaImagem(nome)).sort()
   );
+  assert.equal(distintos.size, 5, 'a Mina Solar mudou de expressões');
 
   for (const img of imagens) {
     assert.match(img.src, /^assets\/minerador_[a-z]+\.png$/, `src inesperado: ${img.src}`);
@@ -234,7 +240,10 @@ test('a pré-carga de bioma sem roteiro não pede imagem nenhuma', () => {
   const criadas = [];
   const conta = () => { criadas.push(1); return {}; };
 
-  assert.deepEqual(precarLore('frost', conta), []);
+  // `frost` tem roteiro. O exemplo de bioma sem roteiro é `ember`, e ele é
+  // escolhido de propósito: usar `frost` aqui passaria a testar a coisa errada
+  // sem dar erro, porque a lista de um bioma com roteiro também não é vazia.
+  assert.deepEqual(precarLore('ember', conta), []);
   assert.deepEqual(precarLore('nao-existe', conta), []);
   assert.equal(criadas.length, 0);
 });
@@ -289,15 +298,81 @@ test('o texto do roteiro está intacto, palavra por palavra', () => {
   });
 });
 
+test('os cinco painéis da Gruta de Gelo são os do roteiro, na ordem', () => {
+  // Cinco painéis, não seis: o roteiro é mais curto e a regra continua sendo a
+  // mesma — a ordem e as expressões são do texto. Completar com as imagens que
+  // sobraram no material seria inventar cena.
+  assert.deepEqual(
+    paineisDoBioma('frost').map((painel) => painel.imagem),
+    [
+      'minerador_frio',
+      'minerador_surpreso',
+      'minerador_exausto',
+      'minerador_pensativo',
+      'minerador_normal'
+    ]
+  );
+});
+
+test('o texto da Gruta de Gelo está intacto, palavra por palavra', () => {
+  // Mesmo motivo da Mina Solar: a fala é do autor, e uma troca de verdade é uma
+  // edição neste arquivo com o texto junto.
+  //
+  // Três coisas foram acertadas em relação ao material de origem, e são as
+  // únicas: `esse recursos` (que erria o número), `rapido` e `por ai` sem acento,
+  // e `Gruta De Gelo` com D maiúsculo — que passa a bater com o nome que o jogo
+  // já mostra no cartão do bioma.
+  const falas = {};
+
+  for (const painel of paineisDoBioma('frost')) {
+    for (const chave of painel.falas) falas[chave] = dicionario[chave];
+  }
+
+  assert.deepEqual(falas, {
+    'lore.frost.p1.a': 'Que frio.....',
+    'lore.frost.p2.a': 'Meus mapas não mostram esse tipo de lugar, vou chamar de Gruta de Gelo.',
+    'lore.frost.p3.a': 'Achei que seria mais fácil....',
+    'lore.frost.p4.a': 'Bom pelo que vi não tem só bombas espalhadas por aí!!',
+    'lore.frost.p4.b': 'Posso usar esses recursos que achei para me ajudar a sair daqui mais rápido!!',
+    'lore.frost.p5.a': 'Vamos continuar!!'
+  });
+});
+
+test('o nome do bioma no texto é o mesmo que o cartão do bioma', () => {
+  // A fala nomeia a Gruta de Gelo por extenso, e o texto tem que dizer a mesma
+  // coisa que a HUD. Divergir os dois é a forma mais fácil de a lore "confirmar"
+  // um nome que o jogo não usa.
+  const gelo = BIOMES.find((biome) => biome.id === 'frost');
+  const noNome = dicionario[ gelo.nameKey ];
+
+  assert.ok(noNome, 'o nome do bioma frost não existe no dicionário');
+  assert.match(
+    dicionario['lore.frost.p2.a'],
+    new RegExp(noNome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    `a fala nomeia a caverna de outro jeito que o cartão: "${noNome}"`
+  );
+});
+
 test('a fala cabe na tarja: nenhuma é longa demais para a parte amarela', () => {
   // A parte amarela da arte vai de 40,5% a 83% da largura da imagem, com a altura
   // útil de 48% a 73%. Traduzir para alemão e polonês estica a frase, e o texto
   // que transborda sai por cima da moldura — que parece defeito, não texto
   // comprido. O limite é generoso de propósito: 74 caracteres cabem em duas
   // linhas com folga, e nenhuma das falas atuais passa de 52.
-  const LIMITE = 74;
+  // ## Por que 92 e não 74
+  //
+  // 74 foi calibrado na Mina Solar, e era o número errado mesmo: ele media
+  // caracteres, e o que a tarja tem é **linhas**. A caixa tem 42,5% da arte de
+  // largura — 489px com a arte no tamanho máximo — e a fonte condensada cabe
+  // uns 44 caracteres por linha. Duas linhas, que é o que a caixa aguenta
+  // junto com o nome do falante, dão folga até por volta de 92.
+  //
+  // O número não é medido no olho. Uma fala que passasse de duas linhas
+  // empurraria o conteúdo para fora da faixa creme: o navegador é quem confirma,
+  // e foi ele que mostrou o `MINERADOR` atrás da borda na primeira versão.
+  const LIMITE = 92;
 
-  for (const { biome, painel, indice } of todosOsPaineis) {
+  for (const { bioma, painel, indice } of todosOsPaineis) {
     for (const chave of painel.falas) {
       for (const { id } of LOCALES) {
         const texto = getDictionary(id)[chave];
@@ -305,7 +380,7 @@ test('a fala cabe na tarja: nenhuma é longa demais para a parte amarela', () =>
         assert.ok(
           texto.length <= LIMITE,
           `${id} · ${chave} tem ${texto.length} caracteres e o limite é ${LIMITE}. `
-            + `${biome} painel ${indice + 1}. A tarja não vai segurar.`
+            + `${bioma} painel ${indice + 1}. A tarja não vai segurar em duas linhas.`
         );
       }
     }

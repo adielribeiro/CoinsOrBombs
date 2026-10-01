@@ -316,4 +316,10 @@ export default {
   'lore.sunstone.p4.a': 'The problem is this place is full of Bombs!!',
   'lore.sunstone.p5.a': 'One wrong step and "BOOM"...',
   'lore.sunstone.p6.a': "Well...I'm not staying here forever, then..OFF WE GO!!!",
+  'lore.frost.p1.a': 'So cold.....',
+  'lore.frost.p2.a': "My maps don't show a place like this, so I'll call it the Frost Grotto.",
+  'lore.frost.p3.a': 'I thought it would be easier....',
+  'lore.frost.p4.a': "Well, from what I saw there aren't just bombs lying around!!",
+  'lore.frost.p4.b': 'I can use the supplies I found to get out of here faster!!',
+  'lore.frost.p5.a': "Let's keep going!!",
 };
