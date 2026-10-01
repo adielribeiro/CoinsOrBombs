@@ -344,4 +344,8 @@ export default {
   'lore.frost.p4.a': 'No bo, z tego co widzę, to nie tylko bomby porozrzucane dookoła!!',
   'lore.frost.p4.b': 'Mogę użyć tych zasobów, które znalazłem, żeby szybciej stąd wydostać!!',
   'lore.frost.p5.a': 'Lecimy dalej!!',
+  'lore.ember.p1.a': 'JAK SIĘ PIERWSZY....',
+  'lore.ember.p2.a': 'Muszę się skupić, zostało jeszcze dużo...',
+  'lore.ember.p3.a': 'Jeśli utrzymam to tempo, szybko skończę!!',
+  'lore.ember.p4.a': 'Skoro tak...UCIERAJ!!!!',
 };

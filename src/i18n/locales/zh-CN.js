@@ -324,4 +324,8 @@ export default {
   'lore.frost.p4.a': '嗯，看样子这里可不只是炸弹乱放!!',
   'lore.frost.p4.b': '我可以利用找到的补给更快地离开这里!!',
   'lore.frost.p5.a': '继续走吧!!',
+  'lore.ember.p1.a': '太热了....',
+  'lore.ember.p2.a': '我得保持专注，还早着呢...',
+  'lore.ember.p3.a': '照这个速度，我很快就能完成!!',
+  'lore.ember.p4.a': '话虽如此....快跑!!!!',
 };

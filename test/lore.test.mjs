@@ -51,9 +51,9 @@ const todosOsPaineis = Object.entries(LORE_POR_BIOMA).flatMap(([bioma, paineis])
 
 // --- a Mina Solar tem, os outros não -------------------------------------
 
-const COM_ROTEIRO = ['sunstone', 'frost'];
+const COM_ROTEIRO = ['sunstone', 'frost', 'ember'];
 
-test('só a Mina Solar e a Gruta de Gelo têm roteiro, e são os dois primeiros', () => {
+test('são os três primeiros biomas a ter roteiro, e só eles', () => {
   // A lista de controle existe para que "um bioma novo entra sem roteiro" não passe em silêncio".
   // Entrar sem roteiro é o certo; o que não pode é ninguém notar que a lista
   // de controle ficou velha.
@@ -240,10 +240,17 @@ test('a pré-carga de bioma sem roteiro não pede imagem nenhuma', () => {
   const criadas = [];
   const conta = () => { criadas.push(1); return {}; };
 
-  // `frost` tem roteiro. O exemplo de bioma sem roteiro é `ember`, e ele é
-  // escolhido de propósito: usar `frost` aqui passaria a testar a coisa errada
-  // sem dar erro, porque a lista de um bioma com roteiro também não é vazia.
-  assert.deepEqual(precarLore('ember', conta), []);
+  // O exemplo sai da lista real, e não de um nome escrito aqui. Da última vez
+  // este teste usava `ember`, que acabou de ganhar roteiro — e continuou
+  // passando, porque `precarLore` de um bioma COM roteiro devolve uma lista
+  // cheia, não vazia, e o `deepEqual` acusaria. O problema é o momento: quem
+  // lê `assert.deepEqual(precarLore('ember', conta), [])` não vê que o nome
+  // deixou de descrever o caso.
+  const semRoteiro = BIOMES.find((biome) => !temLore(biome.id));
+  assert.ok(semRoteiro, 'todos os biomas têm roteiro; a lista de controle precisa de revisão');
+  assert.equal(temLore(semRoteiro.id), false);
+
+  assert.deepEqual(precarLore(semRoteiro.id, conta), []);
   assert.deepEqual(precarLore('nao-existe', conta), []);
   assert.equal(criadas.length, 0);
 });
@@ -351,6 +358,69 @@ test('o nome do bioma no texto é o mesmo que o cartão do bioma', () => {
     new RegExp(noNome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
     `a fala nomeia a caverna de outro jeito que o cartão: "${noNome}"`
   );
+});
+
+test('os quatro painéis das Profundezas Rubras são os do roteiro, na ordem', () => {
+  // Quatro painéis, o mais curto até agora. A regra segue a mesma dos outros: a
+  // ordem e as expressões são do texto. `exausto`, `pensativo` e `normal` já
+  // vinham de outros roteiros — a expressão nova é só `calor`.
+  assert.deepEqual(
+    paineisDoBioma('ember').map((painel) => painel.imagem),
+    ['minerador_calor', 'minerador_exausto', 'minerador_pensativo', 'minerador_normal']
+  );
+});
+
+test('o texto das Profundezas Rubras está intacto, palavra por palavra', () => {
+  // Um acerto em relação ao material de origem, e um só: `Se manter` virou
+  // `Se mantiver`, que é o condicional que a frase pede ("se eu mantiver esse
+  // avanço, logo vou finalizar").
+  //
+  // Os gritos ficaram como estão: "QUENTEEEEE" e "BORAAA" são a voz do
+  // roteiro, e traduzi-los para um grito contido seria trocar o personagem.
+  const falas = {};
+
+  for (const painel of paineisDoBioma('ember')) {
+    for (const chave of painel.falas) falas[chave] = dicionario[chave];
+  }
+
+  assert.deepEqual(falas, {
+    'lore.ember.p1.a': 'QUENTEEEEE....',
+    'lore.ember.p2.a': 'Preciso manter o foco, ainda falta muito...',
+    'lore.ember.p3.a': 'Se mantiver esse avanço logo vou finalizar!!',
+    'lore.ember.p4.a': 'Dito isso....BORAAA!!'
+  });
+});
+
+test('a gritaria do autor sobrevive em todos os idiomas', () => {
+  // As duas falas gritadas, e a propriedade que as sustenta: pontuacao de
+  // gritaria. "QUENTEEEEE...." e "Dito isso....BORAAA!!" tem ponto e exclamacao
+  // porque o mineiro esta sufocando, e isso e contavel em qualquer idioma.
+  //
+  // Uma versao anterior deste teste tentava reconhecer o grito com um regex por
+  // idioma. Era o teste se ajustando ate passar, e ele parava na primeira falha:
+  // o japones e o chines nem chegaram a ser avaliados.
+  const GRITADAS = ['lore.ember.p1.a', 'lore.ember.p4.a'];
+  const MARCADORES = /[.!?]/gu;
+  const MINIMO = 4;
+
+  for (const chave of GRITADAS) {
+    const original = dicionario[chave];
+    assert.ok(
+      (original.match(MARCADORES) ?? []).length >= MINIMO,
+      `a fala original ${chave} perdeu a pontuacao de gritaria: "${original}"`
+    );
+
+    for (const { id } of LOCALES) {
+      const texto = getDictionary(id)[chave];
+      const quantos = (texto.match(MARCADORES) ?? []).length;
+
+      assert.ok(
+        quantos >= MINIMO,
+        `${id} · ${chave} tem ${quantos} marca(s) de pontuacao e o minimo e ${MINIMO}. `
+          + `"${texto}" — o mineiro esta sufocando e uma voz calma quebra o painel.`
+      );
+    }
+  }
 });
 
 test('a fala cabe na tarja: nenhuma é longa demais para a parte amarela', () => {

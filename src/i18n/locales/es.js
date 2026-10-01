@@ -327,4 +327,8 @@ export default {
   'lore.frost.p4.a': 'Bueno, por lo que vi no hay solo bombas esparcidas por ahí!!',
   'lore.frost.p4.b': '¡Puedo usar esos recursos que encontré para salir de aquí más rápido!!',
   'lore.frost.p5.a': '¡Sigamos!!',
+  'lore.ember.p1.a': '¡QUEEEEE CALOR!!!!',
+  'lore.ember.p2.a': 'Necesito mantener el foco, todavía falta mucho...',
+  'lore.ember.p3.a': '¡Si mantengo este avance pronto terminaré!!',
+  'lore.ember.p4.a': 'Dicho esto....¡CORREE!!',
 };

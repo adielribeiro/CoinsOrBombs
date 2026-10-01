@@ -322,4 +322,8 @@ export default {
   'lore.frost.p4.a': "Well, from what I saw there aren't just bombs lying around!!",
   'lore.frost.p4.b': 'I can use the supplies I found to get out of here faster!!',
   'lore.frost.p5.a': "Let's keep going!!",
+  'lore.ember.p1.a': "IT'S SO HOT....",
+  'lore.ember.p2.a': "I need to stay focused, there's a long way to go...",
+  'lore.ember.p3.a': "If I keep this pace I'll be done in no time!!",
+  'lore.ember.p4.a': 'That said....RUN!!!!',
 };

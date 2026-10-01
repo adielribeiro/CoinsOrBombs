@@ -326,4 +326,8 @@ export default {
   'lore.frost.p4.a': 'Naja, wie ich sehe, liegen hier nicht nur Bomben herum!!',
   'lore.frost.p4.b': 'Ich kann die Vorräte benutzen, die ich gefunden habe, um schneller hier rauszukommen!!',
   'lore.frost.p5.a': "Weiter geht's!!",
+  'lore.ember.p1.a': 'ES IST HEISS....',
+  'lore.ember.p2.a': 'Ich muss mich konzentrieren, es ist noch weit...',
+  'lore.ember.p3.a': 'Wenn ich dieses Tempo halte, bin ich bald durch!!',
+  'lore.ember.p4.a': 'Nun...LOS!!!!',
 };

@@ -7,6 +7,42 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Profundezas Rubras também tem lore.** Quatro painéis, o roteiro mais curto
+  até agora: o mineiro reclama do calor, se obriga a manter o foco, avalia o
+  próprio avanço e então desiste de tudo e sai correndo. Uma expressão nova
+  entrou (`minerador_calor`), com o mesmo recorte de transparência das outras.
+
+  Um acerto no texto, e um só: `Se manter` virou `Se mantiver`, que é o
+  condicional que a frase pede. Os gritos ficaram como estão — `QUENTEEEEE` e
+  `BORAAA` são a voz do roteiro, e traduzi-los para um tom contido seria trocar
+  o personagem.
+
+  ## Um teste que eu escrevi errado e reescrevi
+
+  A primeira versão do teste "o grito sobrevive à tradução" reconhecia a
+  gritaria com um regex por idioma — `QUEN` no português, `hot` no inglês, e
+  assim por diante. Era o teste se ajustando até passar, e acrescentar palavras ao
+  padrão só mexe no sintoma. Pior: ele parava na primeira falha, então o japonês e
+  o chinês nunca chegaram a ser avaliados.
+
+  A propriedade que substitui o regex é a **pontuação de gritaria**, que é
+  contável em qualquer idioma: as duas falas gritadas precisam de no mínimo 4
+  marcas de `.`, `!` ou `?` nos dez idiomas. Um tradutor que entregar "está muito
+  quente" sem os pontos quebra a regra sem precisar de dicionário de gritaria em
+  dez línguas.
+
+  E o teste logo pegou uma tradução ruim que ele mesmo não pegaria: o hindi de
+  "QUENTEEEEE" estava `बहुत गर्म है` — a tradução correta da palavra e a voz
+  errada, porque o mineiro está sufocando. Virou `कितना गरम है`.
+
+  ## E um teste que mentia sem dar erro
+
+  O teste de pré-carga usava `ember` como exemplo de bioma **sem** roteiro. Ele
+  continuou passando quando o `ember` ganhou roteiro — e é justamente aí que o
+  teste é perigoso: `assert.deepEqual(precarLore('ember', conta), [])` continua
+  legível, e quem lê não vê que o nome deixou de descrever o caso. O exemplo
+  agora sai da lista real.
+
 - **A Gruta de Gelo também tem lore.** Cinco painéis com o roteiro novo: o
   mineiro sente o frio, dá nome ao lugar por conta própria, desiste de achar que
   seria fácil, e depois encontra recursos que ajudam a sair. Duas expressões
