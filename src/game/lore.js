@@ -80,6 +80,12 @@ export const LORE_POR_BIOMA = {
     { imagem: 'minerador_exausto', falas: ['lore.ember.p2.a'] },
     { imagem: 'minerador_pensativo', falas: ['lore.ember.p3.a'] },
     { imagem: 'minerador_normal', falas: ['lore.ember.p4.a'] }
+  ],
+  ruins: [
+    { imagem: 'minerador_surpreso', falas: ['lore.ruins.p1.a'] },
+    { imagem: 'minerador_normal', falas: ['lore.ruins.p2.a'] },
+    { imagem: 'minerador_sorridente', falas: ['lore.ruins.p3.a'] },
+    { imagem: 'minerador_furioso', falas: ['lore.ruins.p4.a'] }
   ]
 };
 

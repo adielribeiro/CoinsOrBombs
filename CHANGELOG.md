@@ -7,6 +7,37 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Ruínas Abissais também tem lore.** Quatro painéis: o mineiro se estranha com o
+  lugar, identifica as ruínas, sonha em voltar outro dia, e então decide seguir em
+  frente. Duas expressões novas entraram (`minerador_sorridente` e
+  `minerador_furioso`); `surpreso` e `normal` já vinham de outros roteiros.
+
+  Um acerto no texto, e um só: `ruinas` sem acento virou **ruínas**. A exclamação
+  de abertura fica com os quatro pontos em todos os idiomas, porque é ela que faz o
+  painel abrir com o mineiro tonto de espanto.
+
+  ## O teste da gritaria agora se deriva do texto
+
+  Ele tinha a lista na mão, com as duas falas das Profundezas Rubras. O roteiro
+  seguinte com grito entraria sem ser coberto, e ninguém notaria até alguém
+  traduzir a frase para um tom contido.
+
+  A lista agora sai do próprio texto: **toda fala de lore com quatro ou mais marcas
+  de pontuação no português precisa gritar em qualquer idioma**. Uma fala de preciso
+  ("ainda falta muito...", três pontos) fica de fora sozinha, e um roteiro novo
+  entra na cobertura sem ninguém mexer no teste.
+
+- **Um teste novo: nenhum arquivo tem caractere de alfabeto errado.** Ele achou um
+  caractere chinês no lugar da palavra "chão", no meio de uma frase em português no
+  `CaveScene.js`, commitado havia semanas. Nenhum build acusa isso: um comentário com
+  ideograma é um comentário perfeito para o compilador, e o único sintoma é alguém
+  lendo e achando estranho — que é o pior tipo de bug, porque não avisa ninguém e
+  não some sozinho.
+
+  Kana, han, cirílico e hangul são erro no código. A exceção é `src/i18n/` e o teste
+  que afirma as traduções, onde esses caracteres são o conteúdo. A varredura é do
+  repositório inteiro e não do diff, porque o que já está commitado é justamente o
+  que ninguém vai revisitar.
 - **Profundezas Rubras também tem lore.** Quatro painéis, o roteiro mais curto
   até agora: o mineiro reclama do calor, se obriga a manter o foco, avalia o
   próprio avanço e então desiste de tudo e sai correndo. Uma expressão nova

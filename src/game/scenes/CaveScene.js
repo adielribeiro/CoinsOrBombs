@@ -1704,7 +1704,7 @@ export class CaveScene extends Phaser.Scene {
     }
 
     if (tile.type !== 'rock') {
-      // Clicar em chão não é erro, é地板. Nada a dizer.
+      // Clicar em chão não é erro, é o chão. Nada a dizer.
       return;
     }
 

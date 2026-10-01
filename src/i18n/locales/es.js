@@ -331,4 +331,8 @@ export default {
   'lore.ember.p2.a': 'Necesito mantener el foco, todavía falta mucho...',
   'lore.ember.p3.a': '¡Si mantengo este avance pronto terminaré!!',
   'lore.ember.p4.a': 'Dicho esto....¡CORREE!!',
+  'lore.ruins.p1.a': '¡Qué lugar INCREÍBLE!!!!',
+  'lore.ruins.p2.a': '¡Son ruinas de alguna civilización antigua!',
+  'lore.ruins.p3.a': '¡Quizás algún día vuelva para explorar más!',
+  'lore.ruins.p4.a': '¡Ahora necesito avanzar!!',
 };

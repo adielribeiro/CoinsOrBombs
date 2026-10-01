@@ -328,4 +328,8 @@ export default {
   'lore.ember.p2.a': '我得保持专注，还早着呢...',
   'lore.ember.p3.a': '照这个速度，我很快就能完成!!',
   'lore.ember.p4.a': '话虽如此....快跑!!!!',
+  'lore.ruins.p1.a': '这地方太不可思议了!!!!',
+  'lore.ruins.p2.a': '这是某个古代文明的遗迹!',
+  'lore.ruins.p3.a': '也许哪天我会回来继续探索!',
+  'lore.ruins.p4.a': '现在我得往前走了!!',
 };

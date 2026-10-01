@@ -329,4 +329,8 @@ export default {
   'lore.ember.p2.a': '集中を保ちたい、まだかなり奥だ...',
   'lore.ember.p3.a': 'このペースのまま라면すぐ終わりだ!!',
   'lore.ember.p4.a': 'それはさておき...走れ!!!!',
+  'lore.ruins.p1.a': 'とんでもない場所だ!!!!',
+  'lore.ruins.p2.a': 'これは古代文明の遺跡だ!',
+  'lore.ruins.p3.a': 'いつかまた来て、もっと探してみよう!',
+  'lore.ruins.p4.a': 'さあ、ここから先へ進むぞ!!',
 };

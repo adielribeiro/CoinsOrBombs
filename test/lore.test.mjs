@@ -51,9 +51,9 @@ const todosOsPaineis = Object.entries(LORE_POR_BIOMA).flatMap(([bioma, paineis])
 
 // --- a Mina Solar tem, os outros não -------------------------------------
 
-const COM_ROTEIRO = ['sunstone', 'frost', 'ember'];
+const COM_ROTEIRO = ['sunstone', 'frost', 'ember', 'ruins'];
 
-test('são os três primeiros biomas a ter roteiro, e só eles', () => {
+test('são os quatro primeiros biomas a ter roteiro, e só eles', () => {
   // A lista de controle existe para que "um bioma novo entra sem roteiro" não passe em silêncio".
   // Entrar sem roteiro é o certo; o que não pode é ninguém notar que a lista
   // de controle ficou velha.
@@ -392,24 +392,34 @@ test('o texto das Profundezas Rubras está intacto, palavra por palavra', () => 
 });
 
 test('a gritaria do autor sobrevive em todos os idiomas', () => {
-  // As duas falas gritadas, e a propriedade que as sustenta: pontuacao de
-  // gritaria. "QUENTEEEEE...." e "Dito isso....BORAAA!!" tem ponto e exclamacao
-  // porque o mineiro esta sufocando, e isso e contavel em qualquer idioma.
+  // A propriedade e pontuacao de gritaria, que e contavel em qualquer idioma:
+  // "Que lugar INCRIVEL!!!!" e "BORAAA!!" tem ponto e exclamacao porque o
+  // mineiro esta gritando ou sufocando.
   //
-  // Uma versao anterior deste teste tentava reconhecer o grito com um regex por
-  // idioma. Era o teste se ajustando ate passar, e ele parava na primeira falha:
-  // o japones e o chines nem chegaram a ser avaliados.
-  const GRITADAS = ['lore.ember.p1.a', 'lore.ember.p4.a'];
+  // ## Por que a lista se deriva em vez de ser escrita
+  //
+  // A versao anterior tinha a lista na mao, com as duas falas das Profundezas
+  // Rubras. O proximo roteiro com grito — as Ruinas Abissais, que abrem com
+  // "Que lugar INCRIVEL!!!!" — entraria sem ser coberto, e ninguem notaria ate
+  // alguem traduzir a frase para um tom contido.
+  //
+  // Derivar do proprio texto resolve: toda fala de lore que tem quatro ou mais
+  // marcas de pontuacao no portugues e uma fala que precisa gritar em qualquer
+  // idioma. Uma falas de preciso (`ainda falta muito...`, tres pontos) fica de
+  // fora sozinha, e um roteiro novo entra na cobertura sem mexer no teste.
   const MARCADORES = /[.!?]/gu;
   const MINIMO = 4;
 
-  for (const chave of GRITADAS) {
-    const original = dicionario[chave];
-    assert.ok(
-      (original.match(MARCADORES) ?? []).length >= MINIMO,
-      `a fala original ${chave} perdeu a pontuacao de gritaria: "${original}"`
-    );
+  const gritadas = Object.entries(dicionario).filter(
+    ([chave, valor]) =>
+      chave.startsWith('lore.') &&
+      typeof valor === 'string' &&
+      (valor.match(MARCADORES) ?? []).length >= MINIMO
+  );
 
+  assert.ok(gritadas.length > 0, 'nenhuma fala de lore foi reconhecida como gritaria');
+
+  for (const [chave, original] of gritadas) {
     for (const { id } of LOCALES) {
       const texto = getDictionary(id)[chave];
       const quantos = (texto.match(MARCADORES) ?? []).length;
@@ -417,10 +427,36 @@ test('a gritaria do autor sobrevive em todos os idiomas', () => {
       assert.ok(
         quantos >= MINIMO,
         `${id} · ${chave} tem ${quantos} marca(s) de pontuacao e o minimo e ${MINIMO}. `
-          + `"${texto}" — o mineiro esta sufocando e uma voz calma quebra o painel.`
+          + `"${texto}" — o original grita ("${original}") e a traducao nao.`
       );
     }
   }
+});
+
+test('os quatro painéis das Ruínas Abissais são os do roteiro, na ordem', () => {
+  // Duas expressões novas (`sorridente` e `furioso`); `surpreso` e `normal` já
+  // vinham de outros roteiros. A ordem é a do texto: estranha o lugar, identifica
+  // o que é, sonha em voltar, e decide seguir.
+  assert.deepEqual(
+    paineisDoBioma('ruins').map((painel) => painel.imagem),
+    ['minerador_surpreso', 'minerador_normal', 'minerador_sorridente', 'minerador_furioso']
+  );
+});
+
+test('o texto das Ruínas Abissais está intacto, palavra por palavra', () => {
+  // Um acerto em relação ao material de origem, e um só: `ruinas` sem acento.
+  const falas = {};
+
+  for (const painel of paineisDoBioma('ruins')) {
+    for (const chave of painel.falas) falas[chave] = dicionario[chave];
+  }
+
+  assert.deepEqual(falas, {
+    'lore.ruins.p1.a': 'Que lugar INCRÍVEL!!!!',
+    'lore.ruins.p2.a': 'São ruínas de alguma civilização antiga!',
+    'lore.ruins.p3.a': 'Talvez algum dia eu volte para explorar mais!',
+    'lore.ruins.p4.a': 'Agora preciso avançar!!'
+  });
 });
 
 test('a fala cabe na tarja: nenhuma é longa demais para a parte amarela', () => {

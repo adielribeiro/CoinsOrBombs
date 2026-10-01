@@ -326,4 +326,8 @@ export default {
   'lore.ember.p2.a': "I need to stay focused, there's a long way to go...",
   'lore.ember.p3.a': "If I keep this pace I'll be done in no time!!",
   'lore.ember.p4.a': 'That said....RUN!!!!',
+  'lore.ruins.p1.a': 'What an AMAZING place!!!!',
+  'lore.ruins.p2.a': 'These are ruins of some ancient civilization!',
+  'lore.ruins.p3.a': "Maybe one day I'll come back to explore more!",
+  'lore.ruins.p4.a': 'Now I need to push forward!!',
 };

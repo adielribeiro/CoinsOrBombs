@@ -348,4 +348,8 @@ export default {
   'lore.ember.p2.a': 'Muszę się skupić, zostało jeszcze dużo...',
   'lore.ember.p3.a': 'Jeśli utrzymam to tempo, szybko skończę!!',
   'lore.ember.p4.a': 'Skoro tak...UCIERAJ!!!!',
+  'lore.ruins.p1.a': 'Co za MIEJSCE!!!!',
+  'lore.ruins.p2.a': 'To ruiny jakiejś starożytnej cywilizacji!',
+  'lore.ruins.p3.a': 'Może kiedyś wrócę, żeby zbadać to dokładniej!',
+  'lore.ruins.p4.a': 'Teraz muszę iść dalej!!',
 };
