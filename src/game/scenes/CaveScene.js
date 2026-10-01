@@ -368,7 +368,17 @@ export class CaveScene extends Phaser.Scene {
             altura: this.mapData.height,
             metricas: { tileWidth, tileHeight }
           },
-          (col, row) => this.mapData.tiles[row]?.[col]?.type !== 'rock'
+          // O cursor pode ficar sobre a pedra. Este filtro é o que permite
+          // quebrar: o `A` chama `handleTileClick` no tile **de baixo** do
+          // cursor, e `handleTileClick` sai na hora se o tile não for pedra.
+          //
+          // Com o filtro antigo (`type !== 'rock'`) o cursor estava preso ao
+          // chão, e o botão de confirmar não tinha como acertar uma pedra —
+          // nenhuma, nunca. A gamepad movia o losango pelo mapa e não quebrava
+          // nada. O filtro agora só recusa tile que **não existe**; a borda da
+          // caverna, que decide o que pode ser quebrado, continua sendo
+          // `isFrontierRock` no `handleTileClick`.
+          (col, row) => Boolean(this.mapData.tiles[row]?.[col])
         );
       }
 

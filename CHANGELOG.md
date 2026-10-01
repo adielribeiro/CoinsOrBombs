@@ -20,6 +20,36 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   - **Trocar de bioma troca a lista**, e limpar a cave escolhida. Sem limpar, a
     cave 9 continuaria marcada com o cartao da Gruta de Gelo selecionado.
   - **A lista de caves sai de `startCave` e `endCave`**, os mesmos numeros que
+
+- **Corrigido: pelo controle nao dava para quebrar pedra nenhuma.** O cursor era
+  filtrado para ficar somente sobre tiles **sem** pedra, e o botao de confirmar age
+  sobre o tile **de baixo** do cursor -- que, por Construction, nunca era uma
+  pedra. O `handleTileClick` sai na hora quando o tile nao e pedra.
+
+  O resultado era o pior tipo de bug: nao dava erro, nao dava aviso, e nada na tela
+  denunciava. O controle movia o losango pela caverna e nao quebrava nada. Agora o
+  filtro so recusa tile que **nao existe**, e a borda da caverna continua decidindo
+  o que pode ser quebrado, em `isFrontierRock`.
+
+  O comentario do `proximoTileValido` descrevia a razao do filtro antigo com a
+  premissseta ao avesso -- ele dizia que o filtro evitava o cursor ficar preso numa
+  pedra, quando na verdade era ele que impedia o cursor de alcancar uma.
+
+- **Corrigido: um teste que falhava em ~1,6% das execucoes.**
+  `de dentro da entrada, o cursor acha uma pedra que dá para quebrar` falhou na CI
+  em `ember`, com "em 96 passos o cursor não achou pedra quebrável", e passou nas
+  outras nove vezes em que rodei. `generateMap` sorteia o mapa, e o teste sorteava
+  **um** mapa por bioma: denunciava o sorteio, nao a regra.
+
+  Alem disso ele media a coisa errada. Procurava uma pedra **vizinha** do cursor,
+  descrevendo um jogo que nunca existiu -- e por isso passava quase sempre, mesmo
+  com o controle quebrado. Passa a procurar a pedra **de baixo** do cursor, que e o
+  que o botao quebra, e a usar o filtro que a cena usa de verdade.
+
+  Com o cursor podendo ficar sobre a pedra, a mediana e 1,5 passo e o pior caso
+  medido em 2400 mapas e 5, contra um orcamento de 96. O teste sorteia 20 mapas por
+  bioma, e tem um contra-teste que mostra o filtro antigo quebrando o controle,
+  para ninguem o reintroduzir achando que e mais seguro.
     ja decidem a que bioma uma cave pertence. Uma lista nova aqui seria uma
     quarta verdade sobre as mesmas faixas.
 

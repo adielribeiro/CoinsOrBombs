@@ -163,13 +163,21 @@ export function tileInicialDoCursor(entrada, largura, altura) {
 /**
  * O próximo tile alcançável a partir de um tile.
  *
- * É o mesmo cálculo, mas pulando tiles que o mapa rejeita. Um cursor que *pode*
- * estar sobre chão oco não tem problema; o que incomoda é o cursor ficar preso
- * numa pedra que não dá para quebrar, sem caminho para sair — e como o jogador
- * só anda pela borda, "preso" aqui quer dizer preso de verdade.
+ * É o mesmo cálculo, mas pulando tiles que o mapa rejeita. `podeEntrar` é o que
+ * separa o que o cursor pode ocupar do que ele não pode, e entra como função para
+ * que a decisão sobre o que é válido fique com o mapa, e não com o cursor.
  *
- * `podeEntrar` é o que separa as duas coisas, e entra como função para que a
- * decisão sobre o que é válido fique com o mapa, e não com o cursor.
+ * ## O cursor pode ficar sobre a pedra
+ *
+ * Passa, e é intencional. O botão de confirmar age sobre o tile **de baixo** do
+ * cursor, e é esse tile que `handleTileClick` tenta quebrar. Um filtro que
+ * recusasse pedra deixaria o cursor confinado ao chão — e o controle passaria a
+ * mover o losango pelo mapa sem nunca quebrar nada, que foi o que aconteceu até
+ * aqui.
+ *
+ * O que a pedra não pode é ser quebrada sem caminho. Isso é do mapa, e continua
+ * sendo `isFrontierRock`, no `handleTileClick`: o cursor pode mirar numa pedra
+ * do meio do paredão, e ela acende de vermelho ao apertar o botão.
  */
 export function proximoTileValido(col, row, dx, dy, opcoes, podeEntrar) {
   const { largura, altura, metricas } = opcoes ?? {};
