@@ -15,7 +15,7 @@
  * ("aplicar vitalidade sobe maxHp") sem montar o jogo.
  */
 
-import { MELHORIAS_DE_PICARETA } from './progression.js';
+import { MELHORIAS_DE_PICARETA, PICARETA_MAXIMA } from './progression.js';
 
 function tierLabel(value) {
   return String(value).padStart(2, '0');
@@ -63,11 +63,12 @@ export function getRewardVisual(track) {
 export function buildRewardCatalog(state, t) {
   const rewards = [];
 
-  // pickaxePower é limitado a 5 (1 base + 4 upgrades). O catálogo antigo
-  // oferecia até 7 níveis, então "Picareta 05/06/07" eram cartas mortas:
-  // aplicavam +1 em um valor já saturado e não mudavam nada na run.
-  // O teto vem de `MELHORIAS_DE_PICARETA`, que é o mesmo número que o modo
-  // desenvolvedor usa para entregar a picareta máxima.
+  // O teto vem de `MELHORIAS_DE_PICARETA`, e o `apply` abaixo usa **o mesmo
+  // número** para o `Math.min`. Eles já divergiram uma vez: o catálogo foi
+  // estendido para 7 níveis e o `apply` continuou com `Math.min(5)`, o que
+  // transformou "Picareta 05/06/07" em cartas mortas — elas apareciam, eram
+  // escolhidas, e não mudavam nada na run. Nenhum teste pegou, porque nenhum teste
+  // comparava o teto do catálogo com o teto do `apply`.
   const nextPickaxe = (state.pickaxeUpgradeLevel ?? 0) + 1;
   if (nextPickaxe <= MELHORIAS_DE_PICARETA) {
     rewards.push({
@@ -83,8 +84,12 @@ export function buildRewardCatalog(state, t) {
       apply: (currentState) => ({
         ...currentState,
         pickaxeUpgradeLevel: nextPickaxe,
-        pickaxeLevel: Math.min(5, (currentState.pickaxeLevel ?? 1) + 1),
-        pickaxePower: Math.min(5, (currentState.pickaxePower ?? 1) + 1)
+        // O teto é `PICARETA_MAXIMA`, o mesmo número que `pickaxeLevelDe` usa e que
+        // o modo desenvolvedor entrega. Com o `5` escrito aqui, a picareta parava
+        // em 5 enquanto o catálogo continuava oferecendo cartas — e elas eram
+        // mortas.
+        pickaxeLevel: Math.min(PICARETA_MAXIMA, (currentState.pickaxeLevel ?? 1) + 1),
+        pickaxePower: Math.min(PICARETA_MAXIMA, (currentState.pickaxePower ?? 1) + 1)
       })
     });
   }

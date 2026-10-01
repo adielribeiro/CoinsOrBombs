@@ -369,17 +369,35 @@ export function maxHpDe(vitalityLevel) {
 /**
  * Quantas melhorias de picareta o catálogo oferece.
  *
- * Vive aqui porque é o teto da picareta, e o teto aparece em dois lugares que
- * precisam concordar: o catálogo, que para de oferecer melhoria, e o modo
- * desenvolvedor, que começa com a picareta no máximo. Com o número escrito nos dois
- * lados, um dia o catálogo sobe para 5 e o modo dev continua entregando 5+1 — que
- * não existe, e a pessoa receberia uma picareta que o jogo nunca dá.
+ * São 9, o que leva a picareta do nível 1 ao 10. Antes eram 4.
+ *
+ * ## Por que este número mora aqui, e não escrito em dois lugares
+ *
+ * O teto da picareta aparece em três: o catálogo, que para de oferecer melhoria;
+ * o `Math.min` do `apply`, que satura o valor; e o modo desenvolvedor, que começa
+ * com a picareta no máximo. Com o número nos três, um dia o catálogo sobe e os
+ * outros dois ficam para trás — e o sintoma é pior que um erro.
+ *
+ * Já aconteceu. O catálogo chegou a oferecer 7 níveis com o `apply` ainda em
+ * `Math.min(5)`, e "Picareta 05/06/07" viraram **cartas mortas**: apareciam no
+ * lobby, eram escolhidas, e não mudavam nada na run. Nenhum teste pegou, porque
+ * nenhum comparava o teto do catálogo com o teto do `apply`. Agora existe um.
+ *
+ * ## Por que 9 e não 10
+ *
+ * A picareta começa no 1, e cada melhoria soma 1. Então 9 melhorias levam ao 10.
+ * `PICARETA_MAXIMA` é derivado daqui e não escrito, para os dois nunca discordarem.
  */
-export const MELHORIAS_DE_PICARETA = 4;
+export const MELHORIAS_DE_PICARETA = 9;
 
-/** O nível de picareta que um nível de melhoria dá. Base 1, e cada um soma 1. */
+/**
+ * O nível de picareta que um nível de melhoria dá. Base 1, e cada um soma 1.
+ *
+ * É esta fórmula que `aplicarEfeitosDasMelhorias` usa ao recalcular o estado, e é
+ * ela que decide o que a HUD mostra depois de uma morte.
+ */
 export function pickaxeLevelDe(pickaxeUpgradeLevel) {
-  return Math.min(MELHORIAS_DE_PICARETA + 1, 1 + (pickaxeUpgradeLevel ?? 0));
+  return Math.min(PICARETA_MAXIMA, 1 + (pickaxeUpgradeLevel ?? 0));
 }
 
 /**

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import {
   IMPROVEMENT_FIELDS,
+  MELHORIAS_DE_PICARETA,
+  PICARETA_MAXIMA,
   aplicarEfeitosDasMelhorias,
   createImprovementState,
   improvementsDe,
@@ -203,12 +205,31 @@ test('o nível da picareta volta E a força que ele dá', () => {
   assert.equal(resultado.pickaxeLevel, 3, 'o nível mostrado na HUD não acompanhou');
 });
 
-test('a força da picareta não passa do limite de 5', () => {
-  // O teto é o mesmo do catálogo: acima de 4 melhorias, a 5ª carta não existe.
-  const resultado = aplicarEfeitosDasMelhorias({ ...createImprovementState(), pickaxeUpgradeLevel: 9 });
+test('a forca da picareta nao passa do teto', () => {
+  // O teto vem de `PICARETA_MAXIMA`, e nao e um numero escrito aqui. O teste
+  // antigo fixava 5 e passou a reprovar quando o teto subiu para 10 -- que e o
+  // comportamento certo dele, e a razao de o numero estar numa constante so.
+  const resultado = aplicarEfeitosDasMelhorias({
+    ...createImprovementState(),
+    pickaxeUpgradeLevel: MELHORIAS_DE_PICARETA
+  });
 
-  assert.equal(resultado.pickaxePower, 5, `a força estourou o teto: ${resultado.pickaxePower}`);
-  assert.equal(resultado.pickaxeLevel, 5);
+  assert.equal(
+    resultado.pickaxePower,
+    PICARETA_MAXIMA,
+    `aforca no maximo das melhorias deu ${resultado.pickaxePower}`
+  );
+  assert.equal(resultado.pickaxeLevel, PICARETA_MAXIMA);
+
+  // E acima do teto nao ha invencao: um save com nivel a mais, de um futuro que
+  // nunca chega, nao pode virar uma picareta maior que a maxima.
+  const acima = aplicarEfeitosDasMelhorias({
+    ...createImprovementState(),
+    pickaxeUpgradeLevel: MELHORIAS_DE_PICARETA + 20
+  });
+
+  assert.equal(acima.pickaxePower, PICARETA_MAXIMA, 'aforca estourou o teto');
+  assert.equal(acima.pickaxeLevel, PICARETA_MAXIMA);
 });
 
 test('sem melhoria nenhuma, a caverna começa como sempre: 2 de vida, picareta 1', () => {
@@ -221,15 +242,19 @@ test('sem melhoria nenhuma, a caverna começa como sempre: 2 de vida, picareta 1
   assert.equal(resultado.pickaxePower, 1, `a picareta sem melhoria ficou ${resultado.pickaxePower}`);
 });
 
-test('as fórmulas de vida e picareta são as mesmas em toda parte', () => {
-  // Duas funções separadas, um número escrito nas duas. A vitalidade aparece como
-  // `2 + nivel` no cálculo e no texto do card; a picareta, como `1 + nivel` com
-  // teto. Se uma mudar e a outra não, o nível na tela mente.
+test('as formulas de vida e picareta sao as mesmas em toda parte', () => {
+  // Duas funcoes separadas, um numero escrito nas duas. A vitalidade aparece como
+  // `2 + nivel` no calculo e no texto do card; a picareta, como `1 + nivel` com
+  // teto. Se uma mudar e a outra nao, o nivel na tela mente.
   for (const nivel of [0, 1, 4, 8]) {
     assert.equal(maxHpDe(nivel), 2 + nivel, `maxHpDe(${nivel})`);
   }
-  for (const nivel of [0, 1, 2, 3, 4, 9]) {
-    assert.equal(pickaxeLevelDe(nivel), Math.min(5, 1 + nivel), `pickaxeLevelDe(${nivel})`);
+  for (const nivel of [0, 1, 2, 3, 4, 8, 9]) {
+    assert.equal(
+      pickaxeLevelDe(nivel),
+      Math.min(PICARETA_MAXIMA, 1 + nivel),
+      `pickaxeLevelDe(${nivel})`
+    );
   }
 });
 

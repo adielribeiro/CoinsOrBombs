@@ -329,6 +329,21 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **A picareta vai até o nível 10, e cada nível tira um clique da pedra.** São 9
+  melhorias em vez de 4, na mesma lógica de sempre: cada uma soma 1 no nível e 1
+  na força. Na caverna 60, onde a picareta é testada de verdade, cada degrau tira
+  exatamente um clique da pedra mais difícil — de 14 cliques com a picareta 5 para
+  9 com a picareta 10.
+
+  - **O `Math.min` do `apply` deixou de ter um `5` escrito dentro.** Ele já tinha
+    divergido do catálogo uma vez: o catálogo chegou a oferecer 7 níveis com o
+    `apply` ainda saturando em 5, e "Picareta 05/06/07" viraram cartas mortas —
+    apareciam, eram escolhidas, e não mudavam nada na run. Nenhum teste pegou,
+    porque nenhum comparava os dois tetos. Agora existem testes que aplicam cada
+    carta e conferem que a força subiu, e a esticar a picareta de novo é uma linha.
+  - **O modo desenvolvedor acompanha**: a picareta máxima passa a ser a 10, derivada
+    da mesma constante e não escrita à mão.
+
 - **A contagem de relíquias do card bate com a do HUD.** As duas usavam a mesma
   palavra e respondiam coisas diferentes: o HUD soma as quantidades, e o card
   contava os tipos diferentes. Com uma relíquia achada duas vezes, o card dizia "1
