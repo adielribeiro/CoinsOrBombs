@@ -7,6 +7,60 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Lore de entrada do bioma: o mineiro fala ao chegar numa caverna nova.** A
+  mina aparece ao fundo, a tarja do mineiro fica na frente, e o texto sai dentro
+  da parte amarelada. O `Enter` do teclado e o `B`/`Quadrado` do controle pulam a
+  sequência inteira; o `Espaço`, o `A`/`X` e o clique avançam um painel.
+
+  - **Só a Mina Solar tem roteiro.** São 6 painéis e 5 expressões — `assustado`
+    volta no começo e no fim do susto, que é como o texto foi escrito. Os outros
+    cinco biomas entram sem lore e vão direto para a caverna, como antes: um bioma
+    sem roteiro não pode virar um painel em branco esperando alguém apertar tecla.
+  - **Aparece na primeira caverna do bioma**, e é por isso que a lore entra pelo
+    mesmo caminho de entrada que roda depois de escolher a melhoria — quando os
+    outros cinco biomas tiverem roteiro, ela vai aparecer nessa hora.
+  - **A fala é chave de tradução**, não texto: moram nos dez idiomas.
+
+  ## Três coisas que só o navegador pegou
+
+  Nenhuma delas quebrava o build e nenhuma quebrava o `npm test`:
+
+  1. **O fundo da mina não aparecia.** A URL da caverna estava numa variável CSS,
+     e `./assets/...` dentro de uma variável resolve contra o arquivo `.css` — que
+     depois do build mora em `/assets/`. Virava `/assets/assets/cave_bg_sunstone.png`,
+     que dá 404 sem erro no console e deixa a mina como fundo preto. A URL foi para
+     o `backgroundImage` do estilo embutido, que resolve contra o documento.
+  2. **O nome do falante ficava atrás da borda da tarja.** A caixa de texto tinha
+     `top` **e** `translateY(-50%)`. O `top` posiciona a borda superior, não o
+     centro: o `translateY` subia a caixa mais metade da altura dela, e o texto
+     aparecia em 34%–62% da arte em vez de 48%–76% — que é exatamente onde fica a
+     moldura de cima.
+  3. **A arte vinha com fundo azul-escuro opaco**, e a mina ficava tapada atrás de
+     um retângulo escuro. As cinco expressões passaram por um recorte que torna
+     transparente o fundo escuro, por enchimento a partir das bordas: o fundo é um
+     gradiente com grão entre `#1E1E23` e `#2B292F`, então apagar uma cor não
+     resolveria, e o critério é quase neutro (`#1E1E23` e a franja da barba
+     `#6B4F2C` não se confundem).
+
+  ## As porcentagens da caixa de texto são medidas, não chutadas
+
+  A faixa creme da arte foi medida pixel a pixel: vai de **40,5% a 83%** da largura
+  e de **48,6% a 76,2%** da altura. A caixa usa `left: 40.5%`, `width: 42.5%`,
+  `top: 48%` e `height: 28%` — a faixa inteira, com o texto centralizado dentro.
+
+  ## O peso das imagens
+
+  As cinco expressões são 2172x724 e somam **12 MB** com o canal alfa. Elas não
+  pesam no jogo normal: só são baixadas quando a lore abre. E a sequência as
+  **pré-carrega** ao abrir, porque cada painel é um arquivo — sem isso o segundo
+  painel passaria um segundo e meio em branco no meio de uma frase.
+
+  ## O texto do roteiro não muda de leve
+
+  As falas estão num teste, palavra por palavra. Mexer num acento sem querer
+  reescreve uma cena sem ninguém avisar; a troca de verdade é uma edição no teste,
+  com a troca do texto junto.
+
 - **Melhorias fixas e temporárias, que são coisas diferentes.** São separadas pelo
   **quando** a escolha acontece:
 

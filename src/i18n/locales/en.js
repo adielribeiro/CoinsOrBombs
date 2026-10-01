@@ -301,5 +301,19 @@ export default {
 
   // --- text drawn inside the scene ---------------------------------------
   'scene.markerIn': 'IN',
-  'scene.markerOut': 'EXIT'
+  'scene.markerOut': 'EXIT',
+
+  // --- lore de entrada dos biomas -----------------------------------------
+  'lore.falante': 'Miner',
+  'lore.dicaAvancar': 'Click or A to continue',
+  'lore.dicaPular': 'Enter or B to skip',
+  'lore.painel': '{n}/{total}',
+  'lore.sunstone.p1.a': 'What was that noise??',
+  'lore.sunstone.p2.a': "Of course! I'm lost!",
+  'lore.sunstone.p2.b': "I knew I shouldn't have come this deep!!",
+  'lore.sunstone.p3.a': 'At least I have my gear!!',
+  'lore.sunstone.p3.b': 'Now I just need to get out of here!!',
+  'lore.sunstone.p4.a': 'The problem is this place is full of Bombs!!',
+  'lore.sunstone.p5.a': 'One wrong step and "BOOM"...',
+  'lore.sunstone.p6.a': "Well...I'm not staying here forever, then..OFF WE GO!!!",
 };

@@ -305,5 +305,19 @@ export default {
 
   // --- In der Szene gezeichneter Text ------------------------------------------------
   'scene.markerIn': 'IN',
-  'scene.markerOut': 'AUSGANG'
+  'scene.markerOut': 'AUSGANG',
+
+  // --- lore de entrada dos biomas -----------------------------------------
+  'lore.falante': 'Bergmann',
+  'lore.dicaAvancar': 'Klicken oder A zum Fortfahren',
+  'lore.dicaPular': 'Enter oder B zum Überspringen',
+  'lore.painel': '{n}/{total}',
+  'lore.sunstone.p1.a': 'Was war das für ein Geräusch??',
+  'lore.sunstone.p2.a': 'Na klar! Ich habe mich verlaufen!',
+  'lore.sunstone.p2.b': 'Ich wusste, dass ich nicht so tief kommen darf!!',
+  'lore.sunstone.p3.a': 'Immerhin habe ich meine Ausrüstung!!',
+  'lore.sunstone.p3.b': 'Jetzt muss ich hier nur noch raus!!',
+  'lore.sunstone.p4.a': 'Das Problem ist, dass dieser Ort voller Bomben ist!!',
+  'lore.sunstone.p5.a': 'Ein falscher Schritt und "BOOM"...',
+  'lore.sunstone.p6.a': 'Nun... dann bleibe ich nicht für immer hier..LOS!!!',
 };

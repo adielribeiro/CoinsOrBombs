@@ -306,5 +306,19 @@ export default {
 
   // --- texto dibujado en la escena ----------------------------------------
   'scene.markerIn': 'IN',
-  'scene.markerOut': 'SALIDA'
+  'scene.markerOut': 'SALIDA',
+
+  // --- lore de entrada dos biomas -----------------------------------------
+  'lore.falante': 'Minero',
+  'lore.dicaAvancar': 'Haz clic o A para continuar',
+  'lore.dicaPular': 'Enter o B para omitir',
+  'lore.painel': '{n}/{total}',
+  'lore.sunstone.p1.a': '¿Qué ruido fue ese??',
+  'lore.sunstone.p2.a': '¡Claro que sí! ¡Estoy perdido!',
+  'lore.sunstone.p2.b': '¡Sabía que no debía haber venido tan lejos!!',
+  'lore.sunstone.p3.a': '¡Al menos tengo mi equipo!!',
+  'lore.sunstone.p3.b': '¡Ahora tengo que salir de aquí!!',
+  'lore.sunstone.p4.a': '¡El problema es que este lugar está lleno de Bombas!!',
+  'lore.sunstone.p5.a': 'Un paso en falso y "BOOM"...',
+  'lore.sunstone.p6.a': 'Bueno...no me voy a quedar aquí para siempre entonces..¡VAMOS!!!',
 };

@@ -314,5 +314,19 @@ export default {
 
   // --- दृश्य में बनाया गया टेक्स्ट -----------------------------------------------------
   'scene.markerIn': 'IN',
-  'scene.markerOut': 'निकास'
+  'scene.markerOut': 'निकास',
+
+  // --- lore de entrada dos biomas -----------------------------------------
+  'lore.falante': 'खनिक',
+  'lore.dicaAvancar': 'जारी रखने के लिए क्लिक करें या A दबाएं',
+  'lore.dicaPular': 'छोड़ने के लिए Enter या B दबाएं',
+  'lore.painel': '{n}/{total}',
+  'lore.sunstone.p1.a': 'ये आवाज़ कैसी थी??',
+  'lore.sunstone.p2.a': 'बिल्कुल! मैं रास्ता भूल गया हूँ!',
+  'lore.sunstone.p2.b': 'मुझे पता था कि इतनी गहराई तक नहीं आना चाहिए!!',
+  'lore.sunstone.p3.a': 'कम से कम मेरा उपकरण तो है!!',
+  'lore.sunstone.p3.b': 'अब बस यहाँ से निकलना है!!',
+  'lore.sunstone.p4.a': 'समस्या यह है कि यह जगह बमों से भरी हुई है!!',
+  'lore.sunstone.p5.a': 'एक गलत कदम और "BOOM"...',
+  'lore.sunstone.p6.a': 'अच्छा...तो मैं यहाँ हमेशा नहीं ठहरूँगा..चलो!!!',
 };

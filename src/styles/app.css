@@ -501,6 +501,145 @@ button {
 }
 
 /* ==========================================================================
+   Lore de entrada do bioma
+   ==========================================================================
+
+   A arte do painel é uma faixa 3:1 com o mineiro à esquerda e a tarja amarelada
+   à direita, e o texto tem que cair em cima do creme. As porcentagens da caixa
+   de texto saíram de medir os pixels da imagem (veja a nota no `App.jsx`), e por
+   isso a caixa usa `left: 40.5%` e não um palpite: a faixa creme de verdade vai
+   de 40,5% a 83% da largura e de 48,6% a 76,2% da altura, e a caixa usa uma
+   fatia mais apertada dessa faixa para o texto não encostar na moldura.
+
+   A largura máxima vem da proporção: em 1150px de largura a faixa tem 383px de
+   altura, que é onde o texto ainda cabe em duas linhas com a tarja inteira na
+   tela. Esticar mais deixa a arte grande e o texto pequeno, e encolher mais
+   deixa a tarja fina demais para segurar a fala mais longa.
+
+   A fonte do texto é a deukincondensada do jogo e não a serifada: o creme é
+   pequeno e a serifa de capitular (`Cinzel`) some nele. */
+.lore-overlay {
+  --lore-tinta: #2b1d0e;
+  --lore-tinta-fraca: #6b4f2c;
+  /* A URL do fundo vem no `backgroundImage` do estilo embutido, não daqui: uma
+     variável CSS resolveria a URL contra o arquivo `.css`, que mora em `/assets/`
+     depois do build, e viraria `/assets/assets/...`. */
+  background-color: #05070a;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  overflow: hidden;
+  /* Vinheta: escurece a mina sem apagá-la. Sem isto o fundo fica claro atrás da
+     tarja e o contorno dourado da arte perde o contraste. */
+  box-shadow: inset 0 0 0 100vmax rgba(5, 7, 10, 0.72);
+  /* A mina inteira é alvo do clique, não só a faixa da arte. */
+  cursor: pointer;
+}
+
+.lore-stage {
+  width: min(92vw, 1150px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.lore-frame {
+  position: relative;
+  width: 100%;
+  /* 2172x724 é exatamente 3:1. Declarar a proporção evita a arte piscar sem
+     altura no primeiro quadro, que é quando o texto se posiciona errado. */
+  aspect-ratio: 3 / 1;
+  user-select: none;
+}
+
+.lore-frame-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.lore-texto {
+  /* Medido na imagem: a faixa creme vai de 40,5% a 83% na largura e de 48,6% a
+     76,2% na altura. Esta caixa ocupa quase toda a faixa vertical, e não menos:
+     o painel mais longo tem nome do falante mais duas falas, e com uma caixa
+     menor o `justify-content: center` transborda para os dois lados — o nome
+     some atrás da borda superior da tarja, que é pior do que o texto encostar
+     embaixo, porque o nome parece estar cortado.
+
+     `top` posiciona a borda **superior** da caixa, não o centro. Com um
+     `translateY(-50%)` aqui, a caixa subia metade da própria altura e o texto
+     aparecia em 34%–62% em vez de 48%–76% — que é exatamente atrás da borda de
+     cima. Sem o transform, `top` e `height` dizem a faixa, e ponto. */
+  position: absolute;
+  left: 40.5%;
+  width: 42.5%;
+  top: 48%;
+  height: 28%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.22em;
+  color: var(--lore-tinta);
+  font-family: var(--font-cond);
+  text-align: left;
+  /* A sombra é clara e fina porque o texto é escuro sobre creme. Uma sombra
+     escura — a que serve para texto claro sobre foto — aqui viraria um borrão
+     bege em volta de cada letra. */
+  text-shadow: 0 1px 0 rgba(255, 250, 235, 0.75);
+}
+
+.lore-falante {
+  margin: 0;
+  font-size: clamp(10px, 1.35vw, 15px);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--lore-tinta-fraca);
+}
+
+.lore-fala {
+  margin: 0;
+  font-size: clamp(15px, 2.1vw, 25px);
+  line-height: 1.24;
+  font-weight: 600;
+}
+
+.lore-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 22px;
+  font-family: var(--font-ui);
+  font-size: clamp(11px, 1.2vw, 14px);
+  letter-spacing: var(--track-label);
+  color: var(--ink-dim);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.lore-contador {
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+/* Tela baixa: a faixa de 3:1 perde altura e o texto começa a encostar na
+   moldura. O padding horizontal da tela é o que dá de volta. */
+@media (max-height: 560px) {
+  .lore-stage {
+    width: min(96vw, 940px);
+    gap: 8px;
+  }
+
+  .lore-fala {
+    font-size: clamp(13px, 1.8vw, 20px);
+  }
+}
+
+/* ==========================================================================
    HUD
    ========================================================================== */
 

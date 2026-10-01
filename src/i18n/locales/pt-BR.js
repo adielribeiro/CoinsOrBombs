@@ -336,5 +336,19 @@ export default {
 
   // --- textos desenhados na cena -----------------------------------------
   'scene.markerIn': 'IN',
-  'scene.markerOut': 'SAÍDA'
+  'scene.markerOut': 'SAÍDA',
+
+  // --- lore de entrada dos biomas -----------------------------------------
+  'lore.falante': 'Minerador',
+  'lore.dicaAvancar': 'Clique ou A para continuar',
+  'lore.dicaPular': 'Enter ou B para pular',
+  'lore.painel': '{n}/{total}',
+  'lore.sunstone.p1.a': 'Que barulho foi esse??',
+  'lore.sunstone.p2.a': 'É oficial! Estou perdido!',
+  'lore.sunstone.p2.b': 'Sabia que não deveria ter vindo tão fundo!!',
+  'lore.sunstone.p3.a': 'Pelo menos tenho meu equipamento!!',
+  'lore.sunstone.p3.b': 'Agora precisa dar o fora daqui!!',
+  'lore.sunstone.p4.a': 'O problema é que este lugar está cheio de Bombas!!',
+  'lore.sunstone.p5.a': 'Um passo em falso e "BOOM"...',
+  'lore.sunstone.p6.a': 'Bom...não vou ficar aqui pra sempre então..PARTIU!!!',
 };

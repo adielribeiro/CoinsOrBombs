@@ -306,5 +306,19 @@ export default {
 
   // --- texte dessiné dans la scène -------------------------------------------------
   'scene.markerIn': 'IN',
-  'scene.markerOut': 'SORTIE'
+  'scene.markerOut': 'SORTIE',
+
+  // --- lore de entrada dos biomas -----------------------------------------
+  'lore.falante': 'Mineur',
+  'lore.dicaAvancar': 'Cliquez ou A pour continuer',
+  'lore.dicaPular': 'Entrée ou B pour passer',
+  'lore.painel': '{n}/{total}',
+  'lore.sunstone.p1.a': "C'était quoi ce bruit ??",
+  'lore.sunstone.p2.a': 'Super ! Je suis perdu !',
+  'lore.sunstone.p2.b': 'Je savais que je ne devais pas descendre aussi loin !!',
+  'lore.sunstone.p3.a': "Au moins j'ai mon équipement !!",
+  'lore.sunstone.p3.b': "Maintenant, il faut se tirer d'ici !!",
+  'lore.sunstone.p4.a': "Le problème, c'est que cet endroit est plein de Bombes !!",
+  'lore.sunstone.p5.a': 'Un faux pas et "BOOM"...',
+  'lore.sunstone.p6.a': "Bon...je ne vais pas rester ici éternellement alors..C'EST PARTI !!!",
 };

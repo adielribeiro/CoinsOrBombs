@@ -62,6 +62,15 @@ import { criarLeitorDeControle } from './game/gamepad.js';
 import { criarNavegadorDeFoco } from './game/foco.js';
 import { fechaTelaDoTopo, telaDoTopo } from './game/telas.js';
 import { buildRewardCatalog, getRewardVisual, pickRewardOptions, shuffle } from './game/rewards.js';
+import {
+  CHAVE_FALANTE,
+  caminhoDaImagem,
+  paineisDoBioma,
+  precarLore,
+  proximoIndice,
+  temLore
+} from './game/lore.js';
+import { getBackdropKey } from './game/backdrops.js';
 import './styles/app.css';
 
 const firstBiome = getBiomeForCave(1);
@@ -152,6 +161,7 @@ const ENTRY_PHASE = {
   MENU: 'menu',
   BLACK: 'black',
   LOGO: 'logo',
+  LORE: 'lore',
   PLAYING: 'playing'
 };
 
@@ -485,6 +495,8 @@ export default function App() {
   const finaleTimerRef = useRef(null);
   const [rewardRefreshCost, setRewardRefreshCost] = useState(10);
   const [entryPhase, setEntryPhase] = useState(ENTRY_PHASE.MENU);
+  const [loreBioma, setLoreBioma] = useState(null);
+  const [loreIndice, setLoreIndice] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showPause, setShowPause] = useState(false);
@@ -727,6 +739,51 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [telasAbertas, pauseAvailable]);
+
+  /**
+   * As teclas da lore.
+   *
+   * ## `Enter` pula, `Espaço` avança, e são botões diferentes de propósito
+   *
+   * São duas vontades diferentes: "quero ler o resto" e "chega, me deixa
+   * jogar". Juntar as duas num botão só faria quem quer ler perder o roteiro
+   * inteiro, e faria quem quer pular ter que apertar seis vezes.
+   *
+   * ## O efeito depende do índice, e não da função
+   *
+   * `avancarLore` é recriada a cada render. Depender dela rebindaria o listener
+   * do `window` em cada quadro do React, e o par `telasAbertas`/`fecharTelaPeloNome`
+   * do efeito do `Esc` acima mostra o que isso custa. Dependendo dos primitivos
+   * que a função lê (`loreBioma`, `loreIndice`), o listener só é reamarrado quando
+   * o painel muda — que é a única vez que ele precisa.
+   *
+   * ## `event.repeat` é ignorado
+   *
+   * Segurar o `Enter` dispara `keydown` a cada ~30ms. Pular a lore é idempotente,
+   * então não quebraria nada, mas segurar o `Espaço` andaria os seis painéis de uma
+   * vez sem a pessoa ver nenhum — que é o oposto de "avançar".
+   */
+  useEffect(() => {
+    if (entryPhase !== ENTRY_PHASE.LORE) return undefined;
+
+    const handleLoreKey = (event) => {
+      if (event.repeat) return;
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        pularLore();
+        return;
+      }
+
+      if (event.key === ' ') {
+        event.preventDefault();
+        avancarLore();
+      }
+    };
+
+    window.addEventListener('keydown', handleLoreKey);
+    return () => window.removeEventListener('keydown', handleLoreKey);
+  }, [entryPhase, loreBioma, loreIndice]);
 
   /** Um timer que sobrevive ao unmount derrubaria a tela depois dela ter saído. */
   useEffect(
@@ -1002,6 +1059,79 @@ export default function App() {
    * A regra mora em `src/game/intro.js`, que é testada de verdade: o
    * `localStorage` entra como argumento, e o que se afirma é o que acontece.
    */
+  /**
+   * Entra no jogo, ou mostra a lore do bioma antes.
+   *
+   * ## Por que a lore mora aqui e não em `finalizeCaveEntry`
+   *
+   * A ordem importa. A splash da ArchangelSoft vem **antes** da lore: quem entra
+   * pelo menu vê o logo e depois o mineiro. Se a lore fosse aberta dentro de
+   * `finalizeCaveEntry`, ela apareceria por cima do logo — e, no caminho sem
+   * `playIntro`, entraria antes do `cob-enter-cave` ter pintado o primeiro quadro
+   * da caverna que fica logo atrás dela.
+   *
+   * Passar por aqui resolve as duas: `startEntrySequence` termina em
+   * `irParaOJogo`, e `finalizeCaveEntry` também.
+   *
+   * ## Só a primeira caverna do bioma
+   *
+   * `isBiomeStartCave` é o filtro. Passar por isto a cada caverna repetiria a
+   * mesma cena sessenta vezes, e o que resolve o mistério na segunda vista é
+   * justamente o que cansa na décima.
+   *
+   * ## Bioma sem roteiro vai direto
+   *
+   * Cinco dos seis biomas não têm painel escrito. `temLore` é o portão: sem ele,
+   * a tela abriria uma sequência vazia com a imagem do mineiro e nenhuma fala, e
+   * a pessoa ficaria apertando tecla para sair de um painel que não termina.
+   */
+  const irParaOJogo = (biomeId = stateRef.current?.biomeId) => {
+    if (temLore(biomeId) && isBiomeStartCave(stateRef.current?.cave ?? 1)) {
+      // Antes de mostrar o primeiro painel. As expressões pesam 12 MB e cada painel
+      // é um arquivo: sem isto, o segundo painel travaria no meio da frase.
+      precarLore(biomeId);
+
+      setLoreBioma(biomeId);
+      setLoreIndice(0);
+      setEntryPhase(ENTRY_PHASE.LORE);
+      return;
+    }
+
+    setEntryPhase(ENTRY_PHASE.PLAYING);
+  };
+
+  /**
+   * Um painel adiante, ou fecha a sequência se era o último.
+   *
+   * `proximoIndice` é quem decide que acabou: ele devolve `-1` no último painel e
+   * um índice fora da faixa. Reescrever essa conta aqui reintroduziu o painel
+   * `undefined` que a função existe para impedir.
+   */
+  const avancarLore = () => {
+    const paineis = paineisDoBioma(loreBioma);
+    const proximo = proximoIndice(paineis, loreIndice);
+
+    if (proximo === -1) {
+      setEntryPhase(ENTRY_PHASE.PLAYING);
+      return;
+    }
+
+    setLoreIndice(proximo);
+  };
+
+  /**
+   * Pula o resto da lore e entra na caverna.
+   *
+   * É o `Enter` do teclado e o `B`/`Quadrado` do controle. A ideia aqui é "não
+   * quero mais ver isto", e o índice não importa: a sequência é destruída e o
+   * bioma continua de onde estava.
+   */
+  const pularLore = () => {
+    setLoreBioma(null);
+    setLoreIndice(0);
+    setEntryPhase(ENTRY_PHASE.PLAYING);
+  };
+
   const startEntrySequence = () => {
     if (showRotateLock) return;
 
@@ -1015,7 +1145,7 @@ export default function App() {
     setShowInfoModal(false);
 
     if (introJaVista()) {
-      setEntryPhase(ENTRY_PHASE.PLAYING);
+      irParaOJogo();
       return;
     }
 
@@ -1027,7 +1157,7 @@ export default function App() {
     }, BLACK_SCREEN_MS);
 
     const playTimeout = window.setTimeout(() => {
-      setEntryPhase(ENTRY_PHASE.PLAYING);
+      irParaOJogo();
     }, BLACK_SCREEN_MS + LOGO_FADE_MS);
 
     entryTimeoutRef.current.push(logoTimeout, playTimeout);
@@ -1079,7 +1209,7 @@ export default function App() {
       return;
     }
 
-    setEntryPhase(ENTRY_PHASE.PLAYING);
+    irParaOJogo(nextState.biomeId);
   };
 
   /**
@@ -1571,9 +1701,31 @@ export default function App() {
    * nada, e pode ler duas vezes entre duas pinturas — devolvendo bordas que
    * ninguém vai ver.
    */
-  const controleRef = useRef({ telas: null, fechar: null, podePausar: false });
+  const controleRef = useRef({
+    telas: null,
+    fechar: null,
+    podePausar: false,
+    lore: null
+  });
 
-  controleRef.current = { telas: telasAbertas, fechar: fecharTelaPeloNome, podePausar: pauseAvailable };
+  /**
+   * A lore entra no laço por ref, e não como tela.
+   *
+   * `telasAbertas` é a lista de telas do jogo — menu, pausa, lista de jogos. A lore
+   * não entra nela porque **não é uma tela**: ela não abre sobre uma tela, é a
+   * própria entrada na caverna, e o `Esc` não deve fechá-la. Se fosse uma tela, o
+   * `Esc` fecharia a lore no meio da primeira frase, e o `fecharTelaPeloNome`
+   * precisaria de um caso para isso.
+   *
+   * Passar as duas funções pela ref mantém o laço sem `telas` mudar, que é a razão
+   * de o laço ler por ref e não por dependência.
+   */
+  controleRef.current = {
+    telas: telasAbertas,
+    fechar: fecharTelaPeloNome,
+    podePausar: pauseAvailable,
+    lore: entryPhase === ENTRY_PHASE.LORE ? { avancar: avancarLore, pular: pularLore } : null
+  };
 
   useEffect(() => {
     const leitor = criarLeitorDeControle();
@@ -1599,7 +1751,24 @@ export default function App() {
 
       let foiParaOMenu = false;
 
-      if (nomeDaTela) {
+      // A lore vem **antes** de `nomeDaTela`, e não depois. Durante a sequência
+      // não há tela nenhuma aberta, e sem esta guarda o `B` cairia no ramo de
+      // pausa ou passaria direto para a cena do Phaser — que moveria o cursor e
+      // quebraria uma pedra por baixo da tarja, sem a pessoa ver nada.
+      if (atual.lore) {
+        // `B`/`Circle` e `Square` pulam a lore inteira. São **dois** botões
+        // diferentes: `B` é o índice 1 do Xbox, `Square` é o índice 2 do
+        // PlayStation, e o desenho pediu os dois. Aceitar os dois índices é o que
+        // faz "B" funcionar no Xbox e "Quadrado" funcionar no PlayStation, e
+        // também o que faz quem trocou de controle não ficar preso.
+        if (estado.bordas.voltar || estado.bordas.pular) {
+          foiParaOMenu = true;
+          atual.lore.pular();
+        } else if (estado.bordas.confirmar) {
+          foiParaOMenu = true;
+          atual.lore.avancar();
+        }
+      } else if (nomeDaTela) {
         foiParaOMenu = true;
 
         if (estado.bordas.pausa && nomeDaTela === 'pausa') {
@@ -1626,8 +1795,14 @@ export default function App() {
         else shell.removeAttribute('data-controle');
       }
 
+      // A lore viaja como `telaAberta` mesmo não sendo uma tela. A cena usa esse campo
+      // para decidir se pode mexer no mapa — `telaAberta !== null` quer dizer "tem
+      // algo na frente", e devolve o cursor para casa. Sem esta linha, o direcional
+      // andaria o losango por baixo da tarja.
       window.dispatchEvent(
-        new CustomEvent('cob-controle', { detail: { estado, telaAberta: nomeDaTela } })
+        new CustomEvent('cob-controle', {
+          detail: { estado, telaAberta: nomeDaTela ?? (atual.lore ? 'lore' : null) }
+        })
       );
 
       animacao = requestAnimationFrame(quadro);
@@ -1767,6 +1942,20 @@ export default function App() {
 
   const showLobby = entryPhase === ENTRY_PHASE.PLAYING && gameState.inLobby;
   const showGameHud = entryPhase === ENTRY_PHASE.PLAYING && !showLobby;
+
+  /**
+   * O que a lore está mostrando agora.
+   *
+   * O `?? null` do painel é o que impede o painel `undefined` de chegar no JSX: se
+   * `loreIndice` for um número que não existe — o que acontece se o bioma mudar no
+   * meio da sequência, ou se o save for reidratado enquanto ela está na tela — o
+   * `entryPhase` logo abaixo é falso e nada é desenhado. Um painel vazio some; um
+   * painel com `painel.imagem` undefined quebra a imagem e polui a tela com o nome
+   * da chave em vez da fala.
+   */
+  const paineisLore = loreBioma ? paineisDoBioma(loreBioma) : [];
+  const painelLore = paineisLore[loreIndice] ?? null;
+  const showLore = entryPhase === ENTRY_PHASE.LORE && painelLore !== null;
   const isDeathLobby = gameState.lobbyReason === 'death';
   const resolvedOutcomeCave = gameState.outcomeCave ?? gameState.cave;
   const nextCaveNumber = gameState.nextCaveAvailable ?? gameState.cave + 1;
@@ -2398,6 +2587,72 @@ export default function App() {
               width="1280"
               height="1280"
             />
+          </div>
+        )}
+
+        {showLore && (
+          /*
+           * A camada da mina. O fundo é a arte do próprio bioma — a mesma que a
+           * cena do Phaser desenha — e por baixo da vinheta escura. Não é uma
+           * imagem nova: é a que o `BootScene` já carregou, então ela está no
+           * cache e não custa download.
+           */
+          <div
+            className="entry-overlay lore-overlay"
+            // O clique fica na camada inteira e não na arte. Com o clique preso à
+            // faixa 3:1, as laterais da mina eram territory morto — a pessoa
+            // clica no fundo, nada acontece, e parece quebrado. `div` e não
+            // `button` de propósito: um `<button>` reage sozinho ao `Enter` e ao
+            // `Espaço`, e os dois já têm dono (`Enter` pula a lore inteira,
+            // `Espaço` avança um painel) — com um botão embaixo, o `Enter`
+            // dispararia os dois.
+            role="button"
+            tabIndex={-1}
+            aria-label={t('lore.dicaAvancar')}
+            onClick={avancarLore}
+            style={{
+              // A URL vai no `backgroundImage` do estilo embutido, e **não** numa
+              // variável CSS. Numa variável, o `./assets/...` resolveria contra o
+              // arquivo `.css`, que depois do build mora em `/assets/` — e viraria
+              // `/assets/assets/cave_bg_sunstone.png`, que dá 404 sem erro nenhum e
+              // deixa a mina como fundo preto. No estilo embutido a URL resolve
+              // contra o documento, igual ao `<img src>` do splash logo acima.
+              backgroundImage: `url(./assets/${getBackdropKey(loreBioma)}.png)`
+            }}
+          >
+            <div className="lore-stage">
+              <div className="lore-frame">
+                <img
+                  className="lore-frame-img"
+                  src={`./${caminhoDaImagem(painelLore.imagem)}`}
+                  alt=""
+                />
+
+                {/*
+                 * A caixa de texto fica em cima da parte amarelada da arte, e as
+                 * porcentagens não são olho: elas vieram de medir o pixels da
+                 * imagem. A faixa creme de verdade vai de 40,5% a 83% da largura
+                 * e de 48,6% a 76,2% da altura; a caixa usa 50%..73% para ficar
+                 * dentro com folga, porque texto encostando na moldura parece
+                 * defeito de layout.
+                 */}
+                <div className="lore-texto">
+                  <p className="lore-falante">{t(CHAVE_FALANTE)}</p>
+
+                  {painelLore.falas.map((chave) => (
+                    <p key={chave} className="lore-fala">
+                      {t(chave)}
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              <div className="lore-rodape">
+                <span className="lore-dica">{t('lore.dicaAvancar')}</span>
+                <span className="lore-dica">{t('lore.dicaPular')}</span>
+                <span className="lore-contador">{t('lore.painel', { n: loreIndice + 1, total: paineisLore.length })}</span>
+              </div>
+            </div>
           </div>
         )}
 

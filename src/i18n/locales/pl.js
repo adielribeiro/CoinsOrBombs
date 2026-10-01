@@ -323,5 +323,19 @@ export default {
 
   // --- tekst rysowany w scenie ---------------------------------------------------------
   'scene.markerIn': 'IN',
-  'scene.markerOut': 'WYJŚCIE'
+  'scene.markerOut': 'WYJŚCIE',
+
+  // --- lore de entrada dos biomas -----------------------------------------
+  'lore.falante': 'Górnik',
+  'lore.dicaAvancar': 'Kliknij lub A, aby kontynuować',
+  'lore.dicaPular': 'Enter lub B, aby pominąć',
+  'lore.painel': '{n}/{total}',
+  'lore.sunstone.p1.a': 'Co to za hałas??',
+  'lore.sunstone.p2.a': 'Oczywiście! Zgubiłem się!',
+  'lore.sunstone.p2.b': 'Wiedziałem, że nie powinienem schodzić tak głęboko!!',
+  'lore.sunstone.p3.a': 'Przynajmniej mam swój sprzęt!!',
+  'lore.sunstone.p3.b': 'Teraz muszę tylko stąd uciec!!',
+  'lore.sunstone.p4.a': 'Problem w tym, że to miejsce jest pełne bomb!!',
+  'lore.sunstone.p5.a': 'Jeden zły krok i "BOOM"...',
+  'lore.sunstone.p6.a': 'No...nie zostanę tu na zawsze więc..RUCHAMY!!!',
 };

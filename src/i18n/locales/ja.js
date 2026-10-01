@@ -304,5 +304,19 @@ export default {
 
   // --- シーン内に描かれる文字---------------------------------------------------------------------------------
   'scene.markerIn': 'IN',
-  'scene.markerOut': '出口'
+  'scene.markerOut': '出口',
+
+  // --- lore de entrada dos biomas -----------------------------------------
+  'lore.falante': '鉱夫',
+  'lore.dicaAvancar': 'クリックまたは A で次へ',
+  'lore.dicaPular': 'Enter または B でスキップ',
+  'lore.painel': '{n}/{total}',
+  'lore.sunstone.p1.a': 'あの音は一体何だったんだ!?',
+  'lore.sunstone.p2.a': '最快だ! 道に迷子了!',
+  'lore.sunstone.p2.b': 'こんなに深いところまで来るべきじゃなかった!!',
+  'lore.sunstone.p3.a': 'せめて装備はあるからな!!',
+  'lore.sunstone.p3.b': 'さあ、ここから出るだけだ!!',
+  'lore.sunstone.p4.a': '問題はここが爆弾だらけってことだ!!',
+  'lore.sunstone.p5.a': '一歩も間違えたら「BOOM」...',
+  'lore.sunstone.p6.a': 'ふむ...ずっとここにいるわけにはいかないな..行くぞ!!!',
 };

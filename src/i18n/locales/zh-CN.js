@@ -303,5 +303,19 @@ export default {
 
   // --- 场景里画出来的文字 ---------------------------------------------------------------------
   'scene.markerIn': 'IN',
-  'scene.markerOut': '出口'
+  'scene.markerOut': '出口',
+
+  // --- lore de entrada dos biomas -----------------------------------------
+  'lore.falante': '矿工',
+  'lore.dicaAvancar': '点击或按 A 继续',
+  'lore.dicaPular': '按 Enter 或 B 跳过',
+  'lore.painel': '{n}/{total}',
+  'lore.sunstone.p1.a': '刚才那是什么声音??',
+  'lore.sunstone.p2.a': '好极了！我迷路了！',
+  'lore.sunstone.p2.b': '我就知道不该下到这么深!!',
+  'lore.sunstone.p3.a': '至少我还有装备!!',
+  'lore.sunstone.p3.b': '现在只要离开这里就行了!!',
+  'lore.sunstone.p4.a': '问题是这个地方到处都是炸弹!!',
+  'lore.sunstone.p5.a': '一步走错就是"BOOM"……',
+  'lore.sunstone.p6.a': '好吧...我不可能永远待在这里..出发!!!',
 };
