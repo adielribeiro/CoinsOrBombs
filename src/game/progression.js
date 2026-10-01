@@ -527,7 +527,121 @@ export function getBiomeStartCave(cave = 1) {
  * jogador contradizendo o próprio nível da melhoria.
  */
 /**
- * Este save conta progresso?
+ * As melhorias fixas, zeradas.
+ *
+ * ## O que é uma melhoria fixa
+ *
+ * São as que o jogador ganha ao **finalizar a última caverna de um bioma** — a
+ * hora de escolher são 4 opções, e a escolhida vale até o fim do jogo, mesmo
+ * depois de morrer e recomeçar o bioma. Tudo o que vem das outras cavernas é
+ * temporário: 3 opções, e a escolha se perde na morte.
+ *
+ * ## Por que um piso, e não duas listas
+ *
+ * A tentação é guardar "o que é fixo" e "o que é temporário" em listas separadas.
+ * Seria duas fontes de verdade para a mesma coisa: `pickaxeUpgradeLevel` valendo 2
+ * e `pickaxeUpgradeLevelFixo` valendo 1 significaria que a picareta é 2, e alguém
+ * teria de lembrar que o que a HUD mostra é a soma dos dois — em todo lugar que lê
+ * o campo, incluindo a cena e os objetivos.
+ *
+ * Aqui os doze campos continuam sendo **o valor efetivo**, o que a HUD mostra e a
+ * cena lê, sem soma nenhuma. `melhoriasFixas` é só o **piso**: o mínimo que a
+ * morte devolve. Subir uma melhoria é mexer nos doze; morrer é copiar o piso por
+ * cima. Uma regra só, e ela cabe numa linha.
+ *
+ * ## Por que o piso é uma cópia, e não uma lista de ids
+ *
+ * "Fixar a Vitalidade 2" como id exigiria, na morte, reconstruir os doze campos
+ * aplicando ids na ordem em que foram fixados — e a ordem importa, porque os
+ * campos interagem (`coinBonusLevel` sem `coinBonusChance` não faz nada). Uma
+ * cópia do resultado não tem ordem, não tem interação e não pode ficar
+ * inconsistente: ela é o que a tela mostrava no momento em que foi fixada.
+ */
+export function createMelhoriasFixasState() {
+  return createImprovementState();
+}
+
+/** Só as melhorias fixas de um estado, completadas com zero onde faltarem. */
+export function melhoriasFixasDe(estado) {
+  const base = createMelhoriasFixasState();
+  const pego = {};
+
+  for (const campo of IMPROVEMENT_FIELDS) {
+    pego[campo] = estado?.melhoriasFixas?.[campo] ?? base[campo];
+  }
+
+  return pego;
+}
+
+/**
+ * Torna fixo o que a melhoria escolhida na virada de bioma mexeu.
+ *
+ * ## Por que a carta diz quais campos toca
+ *
+ * A primeira versão comparava o estado de antes com o de depois e promovia tudo o
+ * que tinha subido. Isso estava errado, e um teste pegou: se a pessoa ganhou
+ * moedas na terceira caverna e escolhe vitalidade na décima, a comparação promove
+ * as **duas** — porque a de moedas também difere do piso, só que subiu dez
+ * cavernas atrás. E a temporária passaria a sobreviver à morte, que é exatamente
+ * o que ela não pode fazer.
+ *
+ * A pergunta "subiu?" não distingue uma coisa da outra. O que distingue é **qual
+ * carta foi escolhida**, e por isso cada carta declara os campos que mexe, no
+ * próprio lugar onde os aplica. Nada de mapa de track para campo em outro arquivo:
+ * um dia um campo novo entra na melhoria, o mapa não sabe dele, e a falha é
+ * silenciosa.
+ *
+ * Só sobe, nunca desce. Uma melhoria que já é fixa não perde o status porque o
+ * jogador escolheu outra coisa.
+ */
+export function fixarMelhoriaEscolhida(estado, campos) {
+  const fixasAntes = melhoriasFixasDe(estado);
+  const fixas = { ...fixasAntes };
+
+  for (const campo of campos ?? []) {
+    // Um campo que não é melhoria é ignorado em vez de criar uma chave estranha no
+    // piso: o piso tem doze campos, e um décimo terceiro não tem onde ficar.
+    if (!IMPROVEMENT_FIELDS.includes(campo)) continue;
+
+    const agora = estado?.[campo] ?? 0;
+
+    if (agora > (fixasAntes[campo] ?? 0)) fixas[campo] = agora;
+  }
+
+  return { ...estado, melhoriasFixas: fixas };
+}
+
+/**
+ * A morte: as melhorias temporárias voltam ao piso, e as fixas ficam.
+ *
+ * Copia `melhoriasFixas` por cima dos doze campos e recalcula o que elas produzem
+ * — vida máxima e força de picareta. Sem o recálculo o jogador voltaria com
+ * "Vitalidade 01" escrita no card e duas de vida na HUD, que foi um bug real.
+ */
+export function resetarMelhoriasTemporarias(estado) {
+  const efeitos = aplicarEfeitosDasMelhorias({ ...estado, ...melhoriasFixasDe(estado) });
+
+  return { ...estado, ...efeitos };
+}
+
+/**
+ * Esta é a última caverna do bioma?
+ *
+ * É o que separa as duas menus: 4 opções fixas na virada, 3 temporárias nas outras.
+ * A pergunta é feita pela caverna **concluída**, não pela próxima, porque é
+ * concluí-la que libera a escolha.
+ */
+export function ehUltimaCaveDoBioma(cave) {
+  const biome = getBiomeForCave(cave);
+
+  return biome.endCave === cave;
+}
+
+/** Quantas opções o lobby oferece depois de concluir esta caverna. */
+export const OPCOES_TEMPORARIAS = 3;
+export const OPCOES_FIXAS = 4;
+
+/** Este save conta progresso?
  *
  * Uma função de uma linha, e ainda assim mora aqui. As três coisas que contam
  * progresso — a cave concluída, a relíquia e o `profile` global — precisam

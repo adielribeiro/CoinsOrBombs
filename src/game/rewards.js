@@ -73,6 +73,8 @@ export function buildRewardCatalog(state, t) {
     rewards.push({
       id: `pickaxe_${nextPickaxe}`,
       track: 'pickaxe',
+      /** Os campos de melhoria que esta carta mexe. Ver `fixarMelhoriaEscolhida`. */
+      campos: ['pickaxeUpgradeLevel'],
       name: t('reward.pickaxe.name', { tier: tierLabel(nextPickaxe) }),
       description:
         nextPickaxe === 1
@@ -92,6 +94,8 @@ export function buildRewardCatalog(state, t) {
     rewards.push({
       id: `vitality_${nextVitality}`,
       track: 'vitality',
+      /** Os campos de melhoria que esta carta mexe. Ver `fixarMelhoriaEscolhida`. */
+      campos: ['vitalityLevel'],
       name: t('reward.vitality.name', { tier: tierLabel(nextVitality) }),
       description: t('reward.vitality.description'),
       apply: (currentState) => ({
@@ -108,6 +112,8 @@ export function buildRewardCatalog(state, t) {
     rewards.push({
       id: `coins_${nextCoins}`,
       track: 'coins',
+      /** Os campos de melhoria que esta carta mexe. Ver `fixarMelhoriaEscolhida`. */
+      campos: ['coinBonusLevel', 'coinBonusChance', 'coinBonusAmount'],
       name: t('reward.coins.name', { tier: tierLabel(nextCoins) }),
       // `count` é a QUANTIDADE e `chance` é a probabilidade. A plural tem que
       // seguir a quantidade: mandar `chance` no lugar trocaria "+2 moedas" por
@@ -127,6 +133,8 @@ export function buildRewardCatalog(state, t) {
     rewards.push({
       id: `rocks_${nextRocks}`,
       track: 'rocks',
+      /** Os campos de melhoria que esta carta mexe. Ver `fixarMelhoriaEscolhida`. */
+      campos: ['rockBonusLevel', 'rockBonusChance', 'rockBonusAmount'],
       name: t('reward.rocks.name', { tier: tierLabel(nextRocks) }),
       description: t('reward.rocks.description', { chance: nextRocks * 1, count: nextRocks }),
       apply: (currentState) => ({
@@ -147,6 +155,8 @@ export function buildRewardCatalog(state, t) {
     rewards.push({
       id: `utility_${nextUtility}`,
       track: 'utility',
+      /** Os campos de melhoria que esta carta mexe. Ver `fixarMelhoriaEscolhida`. */
+      campos: ['utilityDropLevel', 'utilityDropChance'],
       name: t('reward.utility.name', { tier: tierLabel(nextUtility) }),
       description: t('reward.utility.description', { chance: Math.round(nextChance * 100) }),
       apply: (currentState) => ({
@@ -162,6 +172,8 @@ export function buildRewardCatalog(state, t) {
     rewards.push({
       id: `bomb_${nextBomb}`,
       track: 'bomb',
+      /** Os campos de melhoria que esta carta mexe. Ver `fixarMelhoriaEscolhida`. */
+      campos: ['bombRevealLevel', 'bombRevealChance'],
       name: t('reward.bomb.name', { tier: tierLabel(nextBomb) }),
       description: t('reward.bomb.description', { chance: nextBomb * 1 }),
       apply: (currentState) => ({

@@ -1258,6 +1258,29 @@ button {
   gap: 16px;
 }
 
+/* A frase que acompanha o título do lobby.
+ *
+ * A versão do fim de bioma é o destaque: é o único momento em que 4 opções são
+ * oferecidas, e é o único em que uma delas vai valer até o fim do jogo. Uma frase
+ * cinza do mesmo tamanho da de sempre passava batido, e o jogador teria de descobrir
+ * a regra morrendo. Por isso ela muda de cor, ganha uma barra lateral e um pouco
+ * mais de corpo.
+ */
+.lobby-upgrade-sub {
+  margin: 6px 0 0;
+  color: var(--ink-dim);
+}
+
+.lobby-upgrade-sub.is-fixed {
+  margin: 10px 0 2px;
+  padding: 10px 14px;
+  border-left: 3px solid #f0b45a;
+  background: color-mix(in srgb, #f0b45a 9%, transparent);
+  color: #ffd9a0;
+  font-size: clamp(14px, 1.5vw, 16px);
+  line-height: 1.5;
+}
+
 .reward-line-grid {
   display: grid;
   /* Quatro opções: quatro colunas em tela larga, e 2x2 quando não cabe. Com três
@@ -1292,6 +1315,27 @@ button {
 .reward-line-card:hover {
   border-color: var(--line);
   background: var(--bg-raise);
+}
+
+.reward-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+/* O aviso de melhoria fixa. Âmbar, e não o acento do bioma: é um aviso sobre a
+   duração da escolha, e a cor do bioma é a cor do cartão. */
+.reward-fixed-badge {
+  flex: none;
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, #f0b45a 50%, transparent);
+  color: #f0b45a;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .reward-line-card.selected {

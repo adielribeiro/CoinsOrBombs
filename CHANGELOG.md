@@ -7,6 +7,43 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Melhorias fixas e temporárias, que são coisas diferentes.** São separadas pelo
+  **quando** a escolha acontece:
+
+  - **Fim de bioma** (a décima caverna): 4 opções, e a escolhida vale até o fim do
+    jogo, mesmo depois de morrer e recomeçar o bioma.
+  - **Todas as outras cavernas**: 3 opções, e a escolha se perde na morte.
+
+  O estado tem **um piso**, `melhoriasFixas`, em vez de duas listas de melhorias.
+  Os doze campos continuam sendo o valor efetivo — o que a HUD mostra e a cena lê,
+  sem soma nenhuma — e o piso é só o mínimo que a morte devolve. Guardar
+  "fixas" e "temporárias" em listas separadas seriam duas verdades para a mesma
+  coisa, e alguém teria de lembrar que a picareta é a soma das duas em todo lugar
+  que lê o campo. O piso também é uma cópia do resultado e não uma lista de ids:
+  reconstruir os doze campos aplicando ids dependeria da ordem, porque
+  `coinBonusLevel` sem `coinBonusChance` não faz nada.
+
+  - **Cada carta declara os campos que ela mexe.** A primeira versão comparava o
+    estado de antes com o de depois e promovia o que tinha subido, e um teste pegou
+    que estava errado: quem ganhou moedas na terceira caverna e escolhe vitalidade
+    na décima via as **duas** para o piso, porque a de moedas também difere do
+    piso — só que subiu sete cavernas atrás. A temporária sobreviveria à morte
+    por acidente, que é o oposto do que ela é.
+  - **Trocar de bioma não zera as temporárias.** Só a morte zera, como pedido.
+  - **O "Trocar · 10" respeita a contagem do lobby.** Ele tinha um 3 escrito
+    dentro: na virada de bioma um "trocar" entregaria 3 opções num menu que
+    prometeu 4, e a pessoa perderia uma escolha que já tinha pago.
+  - **O cartão diz "FIXA"** na hora da escolha. Sem o aviso o jogador descobre a
+    regra morrendo, que é a forma mais cara de descobrir.
+
+- **A frase do fim de bioma diz o que a escolha vale.** "Parabéns, você
+  finalizou o bioma **{biome}**. Como prêmio, escolha uma melhoria para te
+  acompanhar até o fim do jogo." — em vez de "Escolha 1 melhoria para a próxima
+  cave", que é verdade mas não diz nada. O texto só aparece na virada: a mesma
+  frase em toda caverna seria mentira em 9 de cada 10. Está destacado em âmbar,
+  com barra lateral, porque é o único momento em que 4 opções aparecem e o único
+  em que uma delas muda o resto da partida.
+
 - **O modo desenvolvedor não pode mais contaminar o jogo de verdade.** São três
   regras, e as três são sobre progresso. O modo dá picareta máxima e pula direto
   para a cave que a pessoa quiser: uma tarde de teste passaria por 60 cavernas

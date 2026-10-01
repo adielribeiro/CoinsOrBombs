@@ -38,6 +38,7 @@ import {
   POCOES_CAMINHO_SEGURO_NO_DEV,
   createCollectionState,
   createImprovementState,
+  createMelhoriasFixasState,
   createStatsState,
   createUtilityInventory,
   getBiomeForCave,
@@ -72,6 +73,10 @@ export const PERSISTENTE = [
   // `bestCave`. Uma flag que mora só no registro do save exigiria mandá-la à mão
   // em cada evento, e um dia alguém esqueceria um.
   'dev',
+  // O piso das melhorias fixas. Sem ele no disco, um save com uma melhoria fixa
+  // voltaria do F5 sem ela — e o jogador perderia, num recarregando de página, a
+  // única coisa que a escolha dele comprou.
+  'melhoriasFixas',
   // As melhorias entram aqui porque elas são permanentes. Antes elas viviam só na
   // memória do `App.jsx`: o jogador escolhia "Vitalidade 2", fechava a aba, e a
   // melhoria não estava em lugar nenhum. Não basta um save de uma linha que não
@@ -183,7 +188,11 @@ export function estadoInicial(cave = 1) {
     // Todo jogo começa marcado como jogo de verdade. Um save antigo, de antes do
     // modo desenvolvedor, recebe `false` — e é exatamente isso que impede que ele
     // abra com o modo ligado e leve um bestCave de teste para o jogo de verdade.
-    dev: false
+    dev: false,
+    // Nenhuma melhoria é fixa até o jogador escolher uma na virada de bioma. Todo
+    // save nasce com o piso zerado, inclusive o de quem já morreu: as melhorias
+    // temporárias morrem, as fixas é que estão no piso.
+    melhoriasFixas: createMelhoriasFixasState()
   };
 }
 
@@ -249,7 +258,11 @@ export function hidratarEstado(bruto, caveInicial = 1) {
     // Só `true` marca um save de teste. Um save antigo não tem a chave, e
     // `undefined` não pode virar "deixa passar": o ponto do bloqueio é proteger o
     // jogo de verdade, e a dúvida tem que resolver para o lado seguro.
-    dev: bruto?.dev === true
+    dev: bruto?.dev === true,
+    // O piso das fixas também é completado. Um save antigo não tem a chave, e a
+    // tela lê `melhoriasFixas` direto na morte — sem isto a cópia do piso seria
+    // `undefined` e a morte zeraria as doze melhorias.
+    melhoriasFixas: { ...createMelhoriasFixasState(), ...(bruto?.melhoriasFixas ?? {}) }
   };
 }
 

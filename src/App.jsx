@@ -26,6 +26,11 @@ import {
   aplicarEfeitosDasMelhorias,
   cavesDoBioma,
   contaProgresso,
+  ehUltimaCaveDoBioma,
+  fixarMelhoriaEscolhida,
+  resetarMelhoriasTemporarias,
+  OPCOES_FIXAS,
+  OPCOES_TEMPORARIAS,
   createCollectionState,
   createImprovementState,
   createStatsState,
@@ -450,6 +455,15 @@ export default function App() {
   const [selectedUtility, setSelectedUtility] = useState(null);
   const [rewardOptions, setRewardOptions] = useState([]);
   const [selectedRewardId, setSelectedRewardId] = useState(null);
+  /**
+   * A escolha deste lobby é uma melhoria **fixa**?
+   *
+   * True só na última caverna do bioma, que é onde o lobby oferece 4 opções. Serve
+   * para duas coisas: escrever o aviso no cartão, e decidir no momento de confirmar
+   * se a melhoria entra no piso — porque uma temporária que virasse fixa por
+   * acidente sobreviveria à morte, que é o oposto do que ela é.
+   */
+  const [rewardIsFixed, setRewardIsFixed] = useState(false);
   const [showRotateLock, setShowRotateLock] = useState(needsLandscapeGate());
   const [showUtilityShopModal, setShowUtilityShopModal] = useState(false);
   const [showExitDecision, setShowExitDecision] = useState(false);
@@ -857,6 +871,10 @@ export default function App() {
         ...stateRef.current,
         ...(event.detail ?? {})
       });
+      // São 4 opções na última caverna do bioma e 3 nas outras. A que for escolhida
+      // na virada vira melhoria fixa; as outras somem na morte.
+      const caveConcluida = mergedState.outcomeCave ?? mergedState.cave;
+      const viradaDeBioma = ehUltimaCaveDoBioma(caveConcluida);
 
       setGameState(mergedState);
       setSelectedUtility(null);
@@ -864,7 +882,10 @@ export default function App() {
       setShowUtilityShopModal(false);
       setShowExitDecision(false);
       setRewardRefreshCost(10);
-      setRewardOptions(pickRewardOptions(mergedState, t, 4));
+      setRewardOptions(
+        pickRewardOptions(mergedState, t, viradaDeBioma ? OPCOES_FIXAS : OPCOES_TEMPORARIAS)
+      );
+      setRewardIsFixed(viradaDeBioma);
     };
 
     const handlePlayerDead = (event) => {
@@ -877,6 +898,9 @@ export default function App() {
       setShowExitDecision(false);
       setRewardRefreshCost(10);
       setRewardOptions([]);
+      // A morte não oferece escolha nenhuma, e o que for escolhido agora é
+      // temporário: nada de "fixa" sobrando de uma caverna anterior.
+      setRewardIsFixed(false);
     };
 
     const handleExitDecision = (event) => {
@@ -1032,11 +1056,9 @@ export default function App() {
       },
       collection: baseState.collection ?? createCollectionState(),
       stats: baseState.stats ?? createStatsState(),
-      // As melhorias sobrevivem a morte, e o que elas produzem tambem. Sem esta
-      // linha o `...initialState` acima trazia `maxHp: 2` e `pickaxePower: 1`,
-      // e a pessoa voltava com o cartao dizendo Vitalidade 01 e duas de vida na
-      // HUD. `aplicarEfeitosDasMelhorias` traz os niveis e recalcula o que eles
-      // produzem.
+      // Trocar de bioma NÃO zera as melhorias temporárias: o pedido foi que elas se
+      // percam na morte, e trocar de bioma não é morrer. O que vai para cá são os
+      // níveis que já estão no estado, mais o que as fixas produzem.
       ...aplicarEfeitosDasMelhorias(baseState),
       bestCave: baseState.bestCave ?? 1,
       lastRelicFound: baseState.lastRelicFound ?? null,
@@ -1305,6 +1327,7 @@ export default function App() {
     setShowExitDecision(false);
     setRewardRefreshCost(10);
     setRewardOptions([]);
+    setRewardIsFixed(false);
     finalizeCaveEntry(nextState);
   };
 
@@ -1327,7 +1350,10 @@ export default function App() {
     let nextOptions = rewardOptions;
 
     for (let attempt = 0; attempt < 6; attempt += 1) {
-      const candidate = shuffle(catalog).slice(0, 3);
+      // A mesma contagem que o lobby mostrou. Com o número escrito aqui, um "trocar"
+      // na virada de bioma entregaria 3 opções num menu que prometeu 4 — e a pessoa
+      // perderia uma escolha que ela já tinha pago para ter.
+      const candidate = shuffle(catalog).slice(0, rewardOptions.length);
       const candidateSignature = candidate
         .map((item) => item.id)
         .sort()
@@ -1621,13 +1647,21 @@ export default function App() {
     const progressedState = reward ? reward.apply(baseState) : baseState;
     const nextBiome = getBiomeForCave(targetCave);
 
+    // Na virada de bioma a escolhida vira piso e sobrevive à morte; nas outras
+    // cavernas ela é temporária e morre junto com a run. A carta declara os campos
+    // que mexe, então só ela entra no piso — uma temporária antiga não vira fixa
+    // por estar no mesmo estado.
+    const comPiso = reward && rewardIsFixed
+      ? fixarMelhoriaEscolhida(progressedState, reward.campos)
+      : progressedState;
+
     const nextState = normalizeProgressState({
-      ...progressedState,
+      ...comPiso,
       screen: 'cave',
       cave: targetCave,
       biomeId: nextBiome.id,
       biomeName: nextBiome.name,
-      hp: progressedState.maxHp,
+      hp: comPiso.maxHp,
       bombs: 0,
       inLobby: false,
       lobbyReason: null,
@@ -1654,6 +1688,7 @@ export default function App() {
     setShowExitDecision(false);
     setRewardRefreshCost(10);
     setRewardOptions([]);
+    setRewardIsFixed(false);
     finalizeCaveEntry(nextState);
   };
 
@@ -1675,10 +1710,11 @@ export default function App() {
       },
       collection: baseState.collection ?? createCollectionState(),
       stats: baseState.stats ?? createStatsState(),
-      // As melhorias sobrevivem a morte, e o que elas produzem tambem. Trocar de
-      // biomac e morrer reconstroem o estado do mesmo jeito, entao as duas
-      // precisam do mesmo cuidado: sem recalcular, o nivel voltava e a vida nao.
-      ...aplicarEfeitosDasMelhorias(baseState),
+      // A MORTE é o que zera as melhorias temporárias: elas voltam ao piso de
+      // `melhoriasFixas`, e só as fixas sobrevivem. O recálculo devolve a vida
+      // máxima e a picareta que combinam com o piso — sem ele a pessoa voltaria
+      // com "Vitalidade 01" no cartão e duas de vida na HUD.
+      ...resetarMelhoriasTemporarias(baseState),
       // bestCave só avança quando a cave é concluída. A versão anterior
       // fazia Math.max(bestCave, cave) também ao morrer, o que destravava
       // o próximo bioma sem nunca ter concluído nenhuma cave dele.
@@ -2034,7 +2070,20 @@ export default function App() {
                     <div className="section-title-wrap section-title-wrap-inline">
                       <div>
                         <h2>{t('lobby.chooseUpgrade')}</h2>
-                        <p>{t('lobby.chooseUpgradeSub')}</p>
+
+                        {/* Só na virada de bioma. A frase precisa dizer POR QUE são
+                            4 opções e o que elas valem: sem ela o jogador vê um selo
+                            "FIXA" nos cartões e nenhuma explicação do que significa
+                            ficar com a melhoria até o fim do jogo. */}
+                        {rewardIsFixed ? (
+                          <p className="lobby-upgrade-sub is-fixed">
+                            {t('lobby.chooseUpgradeFixedSub', {
+                              biome: t(getBiomeForCave(resolvedOutcomeCave).nameKey)
+                            })}
+                          </p>
+                        ) : (
+                          <p className="lobby-upgrade-sub">{t('lobby.chooseUpgradeSub')}</p>
+                        )}
                       </div>
 
                       <button
@@ -2065,7 +2114,18 @@ export default function App() {
                               onClick={() => setSelectedRewardId(reward.id)}
                             >
                               <div className="reward-icon-badge">{visual.icon}</div>
-                              <strong>{reward.name}</strong>
+
+                              <div className="reward-card-top">
+                                <strong>{reward.name}</strong>
+                                {/* Só na virada de bioma. O aviso importa mais do
+                                    que parece: sem ele a pessoa não tem como saber
+                                    que esta escolha sobrevive à morte e as outras
+                                    não — e descobre do jeito mais caro, morrendo. */}
+                                {rewardIsFixed && (
+                                  <span className="reward-fixed-badge">{t('reward.fixed')}</span>
+                                )}
+                              </div>
+
                               <p>{reward.description}</p>
                             </button>
                           );
