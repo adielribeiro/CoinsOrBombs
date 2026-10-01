@@ -34,6 +34,9 @@ export default {
   'saves.deleteConfirm': 'Supprimer « {name} » ? Ses pièces, ses reliques et sa caverne seront perdues. Action irréversible.',
   'saves.playedOn': 'Jouée le {date}',
   'saves.current': 'En cours',
+  'saves.testGame': 'Test',
+  'saves.blockedNeedsDev': 'Activez le mode développeur pour ouvrir une partie de test.',
+  'saves.blockedNeedsStandard': 'Désactivez le mode développeur pour ouvrir une vraie partie.',
   'saves.nameTaken': 'Une partie porte déjà ce nom. Vous pouvez quand même l’utiliser.',
   'saves.ariaList': 'Parties enregistrées',
 

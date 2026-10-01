@@ -34,6 +34,9 @@ export default {
   'saves.deleteConfirm': '„{name}“ löschen? Die Münzen, Relikte und die Höhle dieses Spiels gehen verloren. Das lässt sich nicht rückgängig machen.',
   'saves.playedOn': 'Gespielt am {date}',
   'saves.current': 'Läuft gerade',
+  'saves.testGame': 'Test',
+  'saves.blockedNeedsDev': 'Schalte den Entwicklermodus ein, um ein Testspiel zu öffnen.',
+  'saves.blockedNeedsStandard': 'Schalte den Entwicklermodus aus, um ein echtes Spiel zu öffnen.',
   'saves.nameTaken': 'Es gibt schon ein Spiel mit diesem Namen. Du kannst es trotzdem verwenden.',
   'saves.ariaList': 'Gespeicherte Spiele',
 

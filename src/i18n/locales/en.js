@@ -34,6 +34,9 @@ export default {
   'saves.deleteConfirm': 'Delete \"{name}\"? Its coins, relics and cave will be lost. This cannot be undone.',
   'saves.playedOn': 'Played on {date}',
   'saves.current': 'In progress',
+  'saves.testGame': 'Test',
+  'saves.blockedNeedsDev': 'Turn on developer mode to open a test game.',
+  'saves.blockedNeedsStandard': 'Turn off developer mode to open a real game.',
   'saves.nameTaken': 'A game with that name already exists. You can still use it.',
   'saves.ariaList': 'Saved games',
 

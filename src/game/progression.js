@@ -366,10 +366,34 @@ export function maxHpDe(vitalityLevel) {
   return 2 + (vitalityLevel ?? 0);
 }
 
+/**
+ * Quantas melhorias de picareta o catálogo oferece.
+ *
+ * Vive aqui porque é o teto da picareta, e o teto aparece em dois lugares que
+ * precisam concordar: o catálogo, que para de oferecer melhoria, e o modo
+ * desenvolvedor, que começa com a picareta no máximo. Com o número escrito nos dois
+ * lados, um dia o catálogo sobe para 5 e o modo dev continua entregando 5+1 — que
+ * não existe, e a pessoa receberia uma picareta que o jogo nunca dá.
+ */
+export const MELHORIAS_DE_PICARETA = 4;
+
 /** O nível de picareta que um nível de melhoria dá. Base 1, e cada um soma 1. */
 export function pickaxeLevelDe(pickaxeUpgradeLevel) {
-  return Math.min(5, 1 + (pickaxeUpgradeLevel ?? 0));
+  return Math.min(MELHORIAS_DE_PICARETA + 1, 1 + (pickaxeUpgradeLevel ?? 0));
 }
+
+/**
+ * As utilidades que o modo desenvolvedor começa com.
+ *
+ * São 5 poções de Caminho Seguro, e só isso: o pedido foi Caminho Seguro, e
+ * inventar Vida e Revelar junto seria entregar um kit que ninguém pediu. A
+ * quantidade é 5 porque é o que dá para limpar uma caverna inteira sem parar, e
+ * não porque 5 tenha algum significado no resto do jogo — não tem.
+ */
+export const POCOES_CAMINHO_SEGURO_NO_DEV = 5;
+
+/** O nível de picareta do modo desenvolvedor: o máximo que o catálogo permite. */
+export const PICARETA_MAXIMA = MELHORIAS_DE_PICARETA + 1;
 
 /**
  * Recalcula o que as melhorias **derivam**, a partir dos níveis das melhorias.
@@ -502,6 +526,80 @@ export function getBiomeStartCave(cave = 1) {
  * faixas, e foi exatamente uma verdade duplicada que deixou a vida máxima do
  * jogador contradizendo o próprio nível da melhoria.
  */
+/**
+ * Este save conta progresso?
+ *
+ * Uma função de uma linha, e ainda assim mora aqui. As três coisas que contam
+ * progresso — a cave concluída, a relíquia e o `profile` global — precisam
+ * responder à mesma pergunta, e cada uma escrevia o teste por conta própria. Três
+ * `if` parecidos em três arquivos divergem no primeiro dia em que alguém ajusta um
+ * deles.
+ *
+ * Só `true` desliga. Um estado montado antes de o evento de entrada chegar conta
+ * como jogo normal, e é isso que faz a primeira caverna de uma sessão nova contar.
+ */
+export function contaProgresso(estado) {
+  return estado?.dev !== true;
+}
+
+/**
+ * O estado depois de uma cave ter sido concluída.
+ *
+ * `primeiraVez` existe por um motivo antigo que continua valendo: clicar na saída
+ * várias vezes na mesma caverna contava a mesma conclusão repetidamente, e o
+ * objetivo "Explorador" podia ser farmado sem avançar.
+ *
+ * Num save de teste o estado volta **igual**. Não "quase igual": igual. É o que
+ * garante que o `bestCave` não vá para 60 depois de uma passada de testes, e que o
+ * objetivo Explorador não encha sozinho.
+ */
+export function registrarCaveConcluida(estado, cave, primeiraVez = true) {
+  if (!contaProgresso(estado)) return estado;
+
+  return {
+    ...estado,
+    stats: {
+      ...createStatsState(),
+      ...estado?.stats,
+      ...(primeiraVez
+        ? { totalCavesCleared: (estado?.stats?.totalCavesCleared ?? 0) + 1 }
+        : {})
+    },
+    bestCave: Math.max(estado?.bestCave ?? 1, cave)
+  };
+}
+
+/**
+ * O estado depois de uma relíquia ter sido encontrada.
+ *
+ * Num save de teste a relíquia **aparece** — o efeito visual é o que o modo
+ * desenvolvedor serve para testar — mas não entra na coleção nem no contador. Por
+ * isso `lastRelicFound` fica de fora do desvio: é o que a tela mostra, e tirá-lo
+ * junto faria o modo de teste esconder justamente o que ele existe para mostrar.
+ */
+export function registrarReliquiaEncontrada(estado, relicId) {
+  const base = {
+    ...estado,
+    lastRelicFound: relicId
+  };
+
+  if (!contaProgresso(estado)) return base;
+
+  return {
+    ...base,
+    collection: {
+      ...createCollectionState(),
+      ...estado?.collection,
+      [relicId]: (estado?.collection?.[relicId] ?? 0) + 1
+    },
+    stats: {
+      ...createStatsState(),
+      ...estado?.stats,
+      totalRelicsFound: (estado?.stats?.totalRelicsFound ?? 0) + 1
+    }
+  };
+}
+
 export function cavesDoBioma(biome) {
   const caves = [];
 

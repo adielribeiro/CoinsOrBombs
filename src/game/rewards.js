@@ -15,6 +15,8 @@
  * ("aplicar vitalidade sobe maxHp") sem montar o jogo.
  */
 
+import { MELHORIAS_DE_PICARETA } from './progression.js';
+
 function tierLabel(value) {
   return String(value).padStart(2, '0');
 }
@@ -64,8 +66,10 @@ export function buildRewardCatalog(state, t) {
   // pickaxePower é limitado a 5 (1 base + 4 upgrades). O catálogo antigo
   // oferecia até 7 níveis, então "Picareta 05/06/07" eram cartas mortas:
   // aplicavam +1 em um valor já saturado e não mudavam nada na run.
+  // O teto vem de `MELHORIAS_DE_PICARETA`, que é o mesmo número que o modo
+  // desenvolvedor usa para entregar a picareta máxima.
   const nextPickaxe = (state.pickaxeUpgradeLevel ?? 0) + 1;
-  if (nextPickaxe <= 4) {
+  if (nextPickaxe <= MELHORIAS_DE_PICARETA) {
     rewards.push({
       id: `pickaxe_${nextPickaxe}`,
       track: 'pickaxe',

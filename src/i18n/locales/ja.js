@@ -41,6 +41,9 @@ export default {
   'saves.deleteConfirm': '「{name}」を削除しますか？このゲームのコイン・遺物・洞窟は失われます。元に戻せません。',
   'saves.playedOn': 'プレイ日時: {date}',
   'saves.current': 'プレイ中',
+  'saves.testGame': 'テスト',
+  'saves.blockedNeedsDev': 'テスト用存档を開くには開発者モードをオンにしてください。',
+  'saves.blockedNeedsStandard': '本物のゲームを開くには開発者モードをオフにしてください。',
   'saves.nameTaken': '同じ名前のゲームがすでにあります。そのまま使うこともできます。',
   'saves.ariaList': '保存されたゲーム',
 

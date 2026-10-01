@@ -47,6 +47,9 @@ export default {
   'saves.deleteConfirm': 'Usunąć „{name}”? Monety, relikwie i jaskinia tego zapisu zostaną utracone. Nie można tego cofnąć.',
   'saves.playedOn': 'Ostatnio grane {date}',
   'saves.current': 'W toku',
+  'saves.testGame': 'Test',
+  'saves.blockedNeedsDev': 'Włącz tryb dewelopera, aby otworzyć grę testową.',
+  'saves.blockedNeedsStandard': 'Wyłącz tryb dewelopera, aby otworzyć prawdziwą grę.',
   'saves.nameTaken': 'Zapis o tej nazwie już istnieje. Możesz go mimo to użyć.',
   'saves.ariaList': 'Zapisane gry',
 

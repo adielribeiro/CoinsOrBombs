@@ -33,6 +33,9 @@
  */
 import {
   IMPROVEMENT_FIELDS,
+  MELHORIAS_DE_PICARETA,
+  PICARETA_MAXIMA,
+  POCOES_CAMINHO_SEGURO_NO_DEV,
   createCollectionState,
   createImprovementState,
   createStatsState,
@@ -63,6 +66,12 @@ export const PERSISTENTE = [
   'stats',
   'lastRelicFound',
   'utilities',
+  // A marca de jogo de teste vai para o disco junto, e não como metadado à parte,
+  // por um motivo prático: é o **estado** que viaja para a cena do Phaser, e a cena
+  // precisa saber que está num save de teste para não contar relíquia nem avançar
+  // `bestCave`. Uma flag que mora só no registro do save exigiria mandá-la à mão
+  // em cada evento, e um dia alguém esqueceria um.
+  'dev',
   // As melhorias entram aqui porque elas são permanentes. Antes elas viviam só na
   // memória do `App.jsx`: o jogador escolhia "Vitalidade 2", fechava a aba, e a
   // melhoria não estava em lugar nenhum. Não basta um save de uma linha que não
@@ -170,7 +179,43 @@ export function estadoInicial(cave = 1) {
     stats: createStatsState(),
     lastRelicFound: null,
     utilities: createUtilityInventory(),
-    ...createImprovementState()
+    ...createImprovementState(),
+    // Todo jogo começa marcado como jogo de verdade. Um save antigo, de antes do
+    // modo desenvolvedor, recebe `false` — e é exatamente isso que impede que ele
+    // abra com o modo ligado e leve um bestCave de teste para o jogo de verdade.
+    dev: false
+  };
+}
+
+/**
+ * O estado inicial do modo desenvolvedor.
+ *
+ * Duas diferenças em relação a um jogo normal, e só duas:
+ *
+ * - **5 poções de Caminho Seguro**, para limpar a caverna sem medo de bomba. É o
+ *   que torna o modo utilizável para testar o chão, que é o que se quer testar.
+ * - **Picareta no máximo**, e não "picareta forte". O nível de melhoria vai junto,
+ *   senão o HUD mostraria uma picareta no 5 que o catálogo ainda ofereceu como
+ *   melhoria — e a primeira carta sorteada seria "Picareta 05", que é carta morta
+ *   por definição.
+ *
+ * O que **não** muda: as relíquias, o `bestCave` e as estatísticas começam zerados
+ * como sempre. O modo desenvolvedor não dá uma cabeça de progresso, e é justamente
+ * por não dar que um save dele não pode ser aberto no jogo normal.
+ */
+export function estadoInicialDev(cave = 1) {
+  const base = estadoInicial(cave);
+
+  return {
+    ...base,
+    pickaxeLevel: PICARETA_MAXIMA,
+    pickaxePower: PICARETA_MAXIMA,
+    pickaxeUpgradeLevel: MELHORIAS_DE_PICARETA,
+    utilities: {
+      ...base.utilities,
+      safePath: POCOES_CAMINHO_SEGURO_NO_DEV
+    },
+    dev: true
   };
 }
 
@@ -200,8 +245,44 @@ export function hidratarEstado(bruto, caveInicial = 1) {
     stats: { ...createStatsState(), ...(bruto?.stats ?? {}) },
     utilities: { ...createUtilityInventory(), ...(bruto?.utilities ?? {}) },
     biomeId: bruto?.biomeId ?? getBiomeForCave(cave).id,
-    biomeName: bruto?.biomeName ?? getBiomeForCave(cave).name
+    biomeName: bruto?.biomeName ?? getBiomeForCave(cave).name,
+    // Só `true` marca um save de teste. Um save antigo não tem a chave, e
+    // `undefined` não pode virar "deixa passar": o ponto do bloqueio é proteger o
+    // jogo de verdade, e a dúvida tem que resolver para o lado seguro.
+    dev: bruto?.dev === true
   };
+}
+
+/**
+ * Este save pode ser aberto com o modo desenvolvedor neste estado?
+ *
+ * O modo desenvolvedor é um risco para o progresso, e o risco é nos dois sentidos:
+ *
+ * - **Com o modo ligado, um jogo normal não abre.** O jogador testaria a cave 27
+ *   nele, o `bestCave` iria para 60, as 6 relíquias seriam contadas, e o jogo
+ *   "real" deixaria de valer alguma coisa. O pedido foi esse bloqueio, e é o que
+ *   importa.
+ * - **Com o modo desligado, um save de teste não abre.** Não foi pedido, mas é a
+ *   mesma contaminação pelo outro lado: um save de teste tem 5 poções e picareta
+ *   no máximo, e o que ele escrevesse em `bestCave` e nas relíquias contaminaria o
+ *   registro do jogo de verdade. Permitir seria trocar um problema conhecido por
+ *   outro, e o nome da regra passaria a mentir.
+ *
+ * Por isso a regra é de **igualdade**, e não de "não bloquear o normal". Modo
+ * ligado só abre save de teste; modo desligado só abre save normal.
+ */
+export function saveCompativelComOModo(estado, developerMode = false) {
+  // Estado ausente não abre nada. `Boolean(undefined?.dev)` dá `false`, e `false`
+  // casa com o modo desligado — então um `null` seria lido como "jogo normal" e
+  // passaria. Numa função cuja raison d'être é não deixar a dúvida resolver para o
+  // lado errado, "não sei" tem de ser "não".
+  if (!estado || typeof estado !== "object") return false;
+
+  // Sem a variável no meio, isto seria `a === true === b`, que só funciona porque
+  // `===` associa para a esquerda. Funciona, e é ilegível.
+  const eDeTeste = estado.dev === true;
+
+  return eDeTeste === Boolean(developerMode);
 }
 
 /**
@@ -372,6 +453,9 @@ export function resumoDoJogo(save) {
     name: save.name,
     cave: estado.cave,
     bestCave: estado.bestCave,
+    // A tela de jogos precisa disto para bloquear a entrada errada e para dizer
+    // POR QUE está bloqueado, em vez de só sumir com o botão.
+    dev: estado.dev === true,
     biomeId: estado.biomeId,
     biomeName: estado.biomeName,
     coins: estado.coins ?? 0,

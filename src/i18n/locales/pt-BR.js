@@ -56,6 +56,9 @@ export default {
   },
   'saves.playedOn': 'Jogado em {date}',
   'saves.current': 'Em andamento',
+  'saves.testGame': 'Teste',
+  'saves.blockedNeedsDev': 'Ligue o modo desenvolvedor para abrir um jogo de teste.',
+  'saves.blockedNeedsStandard': 'Desligue o modo desenvolvedor para abrir um jogo de verdade.',
   'saves.nameTaken': 'Já existe um jogo com esse nome. Pode usar assim mesmo.',
   'saves.ariaList': 'Jogos salvos',
 

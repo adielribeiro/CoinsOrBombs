@@ -2039,6 +2039,30 @@ button {
   white-space: nowrap;
 }
 
+/* O badge de jogo de teste é âmbar, e não o acento. Um save de teste não é um
+   save "em andamento" com outro rótulo: é outra coisa, e a cor é o que separa as
+   duas antes de a pessoa ler o texto. */
+.saves-badge.is-dev {
+  border-color: color-mix(in srgb, #f0b45a 45%, transparent);
+  color: #f0b45a;
+}
+
+/* Um card bloqueado fica visível e esmaecido. Esconder o card seria mais limpo e
+   pior: a pessoa veria o save sumir da lista e criaria outro, sem saber por quê. */
+.saves-card.is-blocked {
+  opacity: 0.62;
+}
+
+.saves-blocked {
+  margin: 0;
+  padding: 7px 10px;
+  border-left: 2px solid color-mix(in srgb, #f0b45a 55%, transparent);
+  background: color-mix(in srgb, #f0b45a 8%, transparent);
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .saves-card-where {
   margin: 0;
   color: var(--ink-dim);

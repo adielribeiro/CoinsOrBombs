@@ -25,6 +25,7 @@ import {
   RELIC_CATALOG,
   aplicarEfeitosDasMelhorias,
   cavesDoBioma,
+  contaProgresso,
   createCollectionState,
   createImprovementState,
   createStatsState,
@@ -42,13 +43,15 @@ import {
   apagarJogo,
   criarJogo,
   estadoInicial,
+  estadoInicialDev,
   gravarEstadoDoJogo,
   lerJogo,
   listarJogos,
   marcarUltimoJogado,
   migrarPerfilAntigo,
   normalizarNome,
-  renomearJogo
+  renomearJogo,
+  saveCompativelComOModo
 } from './game/saves.js';
 import { criarLeitorDeControle } from './game/gamepad.js';
 import { criarNavegadorDeFoco } from './game/foco.js';
@@ -757,16 +760,24 @@ export default function App() {
    * Ele não decide mais nada no jogo — o destravamento é por jogo, e o save de cada
    * slot carrega o seu. Fica como registro do quanto a pessoa chegou, e é a fonte
    * da migração para quem vier de uma versão sem slots.
+   *
+   * **Fora do modo desenvolvedor.** Este é o registro do jogo de verdade, e um save
+   * de teste escreveria aqui o mesmo que escreveria no jogo normal: `bestCave: 60`
+   * depois de uma passada de testes, e a pessoa perde a noção do quanto chegou
+   * jogando de verdade. Ele também não pode ficar parado enquanto o `bestCave` sobe,
+   * senão qualquer execução de teste baixa o registro real — e um `Math.max`
+   * resolveria o primeiro caso e não o segundo.
    */
   useEffect(() => {
     if (!settings.persistProgress) return;
+    if (!contaProgresso(gameState)) return;
 
     setProfile((current) =>
       Math.max(current.bestCave ?? 1, gameState.bestCave ?? 1) === (current.bestCave ?? 1)
         ? current
         : { ...current, bestCave: Math.max(current.bestCave ?? 1, gameState.bestCave ?? 1) }
     );
-  }, [settings.persistProgress, gameState.bestCave]);
+  }, [settings.persistProgress, gameState.bestCave, gameState.dev]);
 
   /**
    * Avisa a cena do Phaser sobre a pausa.
@@ -1097,6 +1108,10 @@ export default function App() {
     const carregado = lerJogo(null, id);
 
     if (!carregado) return;
+    // Rede de proteção. A tela de jogos já desabilita o botão, mas esta função é
+    // chamada de mais de um lugar, e um bloqueio que depende de a tela estar certa
+    // não é um bloqueio.
+    if (!saveCompativelComOModo(carregado, settings.developerMode)) return;
 
     setActiveSaveId(id);
     marcarUltimoJogado(null, id);
@@ -1121,6 +1136,7 @@ export default function App() {
     const carregado = lerJogo(null, id);
 
     if (!carregado) return;
+    if (!saveCompativelComOModo(carregado, settings.developerMode)) return;
 
     setActiveSaveId(id);
     marcarUltimoJogado(null, id);
@@ -1144,12 +1160,21 @@ export default function App() {
    * propósito não pode custar a progressão: o `bestCave` é o que destrava os
    * biomas, e um slot novo sem ele obrigaria a refazer as dez primeiras cavernas
    * só para chegar no gelo.
+   *
+   * No modo desenvolvedor o jogo nasce marcado como de teste, com o kit de teste —
+   * 5 poções de Caminho Seguro e picareta no máximo. E o `bestCave` **não** é
+   * herdado: copiar o progresso de um jogo de verdade para dentro de um save de
+   * teste seria deixar o arquivo de rascunho com cara de jogo de verdade, e é
+   * justamente o `bestCave` que a tela de jogos mostra para a pessoa decidir o que
+   * abrir.
    */
   const criarEEntrar = () => {
     const herdado = stateRef.current;
+    const dev = Boolean(settings.developerMode);
+    const inicial = dev ? estadoInicialDev(1) : estadoInicial(1);
     const id = criarJogo(null, saveNameDraft, {
       cave: 1,
-      estado: { ...estadoInicial(1), bestCave: herdado.bestCave ?? 1 }
+      estado: dev ? inicial : { ...inicial, bestCave: herdado.bestCave ?? 1 }
     });
 
     setActiveSaveId(id);
@@ -2342,19 +2367,36 @@ export default function App() {
                     const data = formatarDataDeJogo(jogo.playedAt, getLocale());
                     const renomeando = saveEdit?.tipo === 'renomear' && saveEdit.id === jogo.id;
                     const apagando = saveEdit?.tipo === 'apagar' && saveEdit.id === jogo.id;
+                    // Um jogo de teste não abre no jogo normal, e um jogo normal não
+                    // abre no modo desenvolvedor. O motivo é escrito na tela: um
+                    // botão que simplesmente não está lá deixa a pessoa achando que
+                    // o save sumiu, e ela acaba criando um jogo novo à toa.
+                    const bloqueado = !saveCompativelComOModo({ dev: jogo.dev }, settings.developerMode);
 
                     return (
                       <article
                         key={jogo.id}
-                        className={`saves-card${jogo.id === activeSaveId ? ' is-current' : ''}`}
+                        className={`saves-card${jogo.id === activeSaveId ? ' is-current' : ''}${bloqueado ? ' is-blocked' : ''}`}
                       >
                         <header className="saves-card-head">
                           <h3 className="saves-card-name">{jogo.name}</h3>
 
-                          {jogo.id === activeSaveId && (
+                          {jogo.dev && (
+                            <span className="saves-badge is-dev">{t('saves.testGame')}</span>
+                          )}
+
+                          {jogo.id === activeSaveId && !bloqueado && (
                             <span className="saves-badge">{t('saves.current')}</span>
                           )}
                         </header>
+
+                        {bloqueado && (
+                          <p className="saves-blocked">
+                            {jogo.dev
+                              ? t('saves.blockedNeedsStandard')
+                              : t('saves.blockedNeedsDev')}
+                          </p>
+                        )}
 
                         <p className="saves-card-where">
                           {getBiomeProgress(jogo.cave).label} · {t(biome.nameKey)}
@@ -2417,6 +2459,7 @@ export default function App() {
                               className="menu-primary-btn compact"
                               type="button"
                               onClick={() => entrarNoJogo(jogo.id)}
+                              disabled={bloqueado}
                             >
                               {t('saves.play')}
                             </button>
@@ -2425,6 +2468,7 @@ export default function App() {
                               className="ghost-btn"
                               type="button"
                               onClick={() => trocarBiomaDoJogo(jogo.id)}
+                              disabled={bloqueado}
                             >
                               {t('biomeSelect.title.menu')}
                             </button>
@@ -2787,9 +2831,18 @@ export default function App() {
                     // O slot em si sobrevive, com o nome que a pessoa deu: o botão
                     // se chama "Reiniciar progresso", e apagar o jogo inteiro é a
                     // ação da tela de jogos, com a confirmação dela.
+                    //
+                    // A marca de teste sobrevive também, e é o que tem de sobreviver:
+                    // reiniciar um save de teste com o estado inicial **normal**
+                    // produziria um save que o modo desenvolvedor recusa a abrir, e
+                    // a pessoa ficaria sem poder usá-lo até criar outro.
                     if (activeSaveId) {
+                      const emTeste = stateRef.current.dev === true;
                       const reiniciado = montarEstadoCarregado(
-                        { ...estadoInicial(1), bestCave: 1 },
+                        {
+                          ...(emTeste ? estadoInicialDev(1) : estadoInicial(1)),
+                          bestCave: 1
+                        },
                         t
                       );
 

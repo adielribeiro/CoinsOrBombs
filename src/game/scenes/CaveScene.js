@@ -49,7 +49,15 @@ function descreveTextura(scene, chave) {
   if (!textura) return 'vazio';
   return `${textura.key}${textura.key === chave ? ' (bate)' : ' (DIVERGE)'}`;
 }
-import { createCollectionState, createStatsState, getBiomeForCave, getRelicById, isRelicContent } from '../progression.js';
+import {
+  createCollectionState,
+  createStatsState,
+  getBiomeForCave,
+  getRelicById,
+  isRelicContent,
+  registrarCaveConcluida,
+  registrarReliquiaEncontrada
+} from '../progression.js';
 import { ROCK_DISPLAY, getRockFrameIndex, getRockJitter, getRockSheetKey } from '../rocks.js';
 import { generateMap } from '../systems/mapGenerator.js';
 import { findSafeRoute, getNeighbors4, isFrontierRock } from '../systems/helpers.js';
@@ -116,6 +124,11 @@ export class CaveScene extends Phaser.Scene {
       biomeId: getBiomeForCave(1).id,
       biomeName: getBiomeForCave(1).name,
       bestCave: 1,
+      // Um save de teste não conta progresso: nem relíquia, nem cave concluída, nem
+      // `bestCave`. O padrão é `false` — só `true` explícito marca teste, para que
+      // um `metaState` montado antes de o evento de entrada chegar conte como jogo
+      // normal em vez de perder o primeiro passo.
+      dev: false,
       collection: createCollectionState(),
       stats: createStatsState(),
       lastRelicFound: null,
@@ -1968,17 +1981,10 @@ export class CaveScene extends Phaser.Scene {
       const relic = getRelicById(revealedContent.relicId);
 
       if (relic) {
-        this.metaState.collection = {
-          ...createCollectionState(),
-          ...this.metaState.collection,
-          [relic.id]: (this.metaState.collection?.[relic.id] ?? 0) + 1
-        };
-        this.metaState.stats = {
-          ...createStatsState(),
-          ...this.metaState.stats,
-          totalRelicsFound: (this.metaState.stats?.totalRelicsFound ?? 0) + 1
-        };
-        this.metaState.lastRelicFound = relic.id;
+        // Num save de teste a relíquia **aparece** — é o efeito que se quer ver —
+        // mas não entra na coleção nem nas estatísticas. A regra disso mora em
+        // `registrarReliquiaEncontrada`, no mesmo lugar do resto.
+        this.metaState = registrarReliquiaEncontrada(this.metaState, relic.id);
         this.showRelicFoundEffect(rewardPos, relic);
         message = `${isBonus ? `${t('msg.coinBonus')} ` : ''}${t('msg.relicFound', { relic: t(relic.nameKey) })}`;
       } else {
@@ -2391,18 +2397,10 @@ export class CaveScene extends Phaser.Scene {
     if (reason === 'exit') {
       this.clearedCaves.add(resolvedCave);
 
-      // Sem este guard, clicar na saída várias vezes na mesma cave
-      // contava a cave como concluída repetidamente e o objetivo
-      // "Explorador" podia ser farmado sem avançar.
-      if (firstTimeClear) {
-        this.metaState.stats = {
-          ...createStatsState(),
-          ...this.metaState.stats,
-          totalCavesCleared: (this.metaState.stats?.totalCavesCleared ?? 0) + 1
-        };
-      }
-
-      this.metaState.bestCave = Math.max(this.metaState.bestCave ?? 1, resolvedCave);
+      // `registrarCaveConcluida` decide sozinho se este save conta. A regra mora em
+      // `progression.js` e é a mesma que a relíquia e o `profile` consultam — três
+      // `if` parecidos em três arquivos divergem assim que alguém ajusta um deles.
+      this.metaState = registrarCaveConcluida(this.metaState, resolvedCave, firstTimeClear);
     }
 
     this.metaState.inLobby = true;

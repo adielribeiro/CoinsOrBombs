@@ -44,6 +44,9 @@ export default {
   'saves.deleteConfirm': '\"{name}\" मिटा दें? इस खेल के सिक्के, अवशेष और गुफा खो जाएंगे। यह वापस नहीं लाया जा सकता।',
   'saves.playedOn': '{date} को खेला गया',
   'saves.current': 'चल रहा है',
+  'saves.testGame': 'टेस्ट',
+  'saves.blockedNeedsDev': 'टेस्ट गेम खोलने के लिए डेवलपर मोड चालू करें।',
+  'saves.blockedNeedsStandard': 'असली गेम खोलने के लिए डेवलपर मोड बंद करें।',
   'saves.nameTaken': 'इस नाम का खेल पहले से मौजूद है। आप फिर भी इसका उपयोग कर सकते हैं।',
   'saves.ariaList': 'सहेजे गए खेल',
 

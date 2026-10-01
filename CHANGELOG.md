@@ -7,6 +7,39 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **O modo desenvolvedor não pode mais contaminar o jogo de verdade.** São três
+  regras, e as três são sobre progresso. O modo dá picareta máxima e pula direto
+  para a cave que a pessoa quiser: uma tarde de teste passaria por 60 cavernas
+  e pelas 6 relíquias. Se isso contasse, o jogo de verdade deixaria de ter
+  sentido em uma tarde — e o dano é silencioso, porque nada na tela diz que
+  aquilo contou.
+
+  - **Um jogo de teste começa com 5 poções de Caminho Seguro e picareta no
+    máximo.** O nível da melhoria de picareta vai junto, senão a HUD mostraria
+    picareta 5 e o catálogo ainda ofereceria "Picareta 05", que é carta morta.
+    Vida e Revelar seguem zeradas: o pedido foi Caminho Seguro.
+  - **Cada save guarda se nasceu no modo desenvolvedor.** A marca viaja dentro do
+    estado, e não como metadado à parte, porque é o **estado** que chega à cena
+    do Phaser — e a cena precisa saber que está num save de teste para não
+    contar nada.
+  - **O modo desenvolvedor não abre um jogo normal.** Você testaria a cave 27
+    nele, o `bestCave` iria para 60 e as relíquias seriam contadas.
+  - **O jogo normal não abre um jogo de teste.** Não foi pedido, e é a mesma
+    contaminação pelo outro lado: um save de teste tem poções e picareta máxima, e
+    o que ele escrevesse no registro do jogo de verdade contaminaria o jogo de
+    verdade. A regra é de igualdade, e o card bloqueado escreve o motivo — um
+    botão que simplesmente some deixa a pessoa achando que o save sumiu.
+  - **Um save de teste não guarda melhor cave nem relíquias.** `bestCave` e
+    `totalCavesCleared` não andam, a coleção e o contador de relíquias ficam
+    zerados, e o `profile` global não é gravado. A relíquia **aparece** — o
+    efeito visual é o que o modo serve para testar — só não conta.
+
+  A regra mora em `contaProgresso`, `registrarCaveConcluida` e
+  `registrarReliquiaEncontrada`, no `progression.js`. Três `if` parecidos em três
+  arquivos divergem no primeiro dia em que alguém ajusta um deles, e a cena do
+  Phaser não sobe em Node — com a regra fora dela, dá para **executar** o teste
+  em vez de casar string do fonte.
+
 - **O modo desenvolvedor deixa escolher a cave, e nao so o bioma.** Antes ele
   levava sempre a primeira caverna do bioma, entao chegar na cave 27 exigia
   reiniciar o progresso e avancar cave por cave -- o que anula a mao que o modo

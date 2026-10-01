@@ -41,6 +41,9 @@ export default {
   'saves.deleteConfirm': '确定删除“{name}”？这个存档的金币、遗物和洞穴都会消失，无法撤销。',
   'saves.playedOn': '游玩于 {date}',
   'saves.current': '进行中',
+  'saves.testGame': '测试',
+  'saves.blockedNeedsDev': '打开测试存档需要开启开发者模式。',
+  'saves.blockedNeedsStandard': '打开正式存档需要关闭开发者模式。',
   'saves.nameTaken': '已经有同名的存档了。仍然可以用这个名字。',
   'saves.ariaList': '已保存的存档',
 

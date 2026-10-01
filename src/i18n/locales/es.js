@@ -34,6 +34,9 @@ export default {
   'saves.deleteConfirm': '¿Borrar \"{name}\"? Perderás sus monedas, reliquias y cueva. No se puede deshacer.',
   'saves.playedOn': 'Jugado el {date}',
   'saves.current': 'En curso',
+  'saves.testGame': 'Prueba',
+  'saves.blockedNeedsDev': 'Activa el modo desarrollador para abrir una partida de prueba.',
+  'saves.blockedNeedsStandard': 'Desactiva el modo desarrollador para abrir una partida real.',
   'saves.nameTaken': 'Ya existe una partida con ese nombre. Puedes usarlo igual.',
   'saves.ariaList': 'Partidas guardadas',
 

@@ -34,6 +34,9 @@ export default {
   'saves.deleteConfirm': 'Eliminare \"{name}\"? Le monete, le reliquie e la caverna di questa partita andranno perse. Non si può annullare.',
   'saves.playedOn': 'Giocata il {date}',
   'saves.current': 'In corso',
+  'saves.testGame': 'Prova',
+  'saves.blockedNeedsDev': 'Attiva la modalità sviluppatore per aprire una partita di prova.',
+  'saves.blockedNeedsStandard': 'Disattiva la modalità sviluppatore per aprire una partita vera.',
   'saves.nameTaken': 'Esiste già una partita con questo nome. Puoi usarlo comunque.',
   'saves.ariaList': 'Partite salvate',
 
