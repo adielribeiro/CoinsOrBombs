@@ -312,6 +312,7 @@ export default {
     one: 'Você encontrou {count} moeda.',
     other: 'Você encontrou {count} moedas.'
   },
+  'msg.defeatDev': 'Você foi derrotado. As melhorias voltaram ao início do bioma atual, menos a picareta, que faz parte do kit de teste. Suas moedas, objetivos e relíquias foram mantidos.',
   'msg.bombHit': 'Bomba! Vida restante: {n}.',
   'msg.relicFound': 'Você encontrou a relíquia {relic}.',
   'msg.emptyBonus': 'Quebra bônus! A rocha extra estava vazia.',

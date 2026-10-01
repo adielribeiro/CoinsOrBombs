@@ -635,9 +635,36 @@ export function fixarMelhoriaEscolhida(estado, campos) {
  * Copia `melhoriasFixas` por cima dos doze campos e recalcula o que elas produzem
  * — vida máxima e força de picareta. Sem o recálculo o jogador voltaria com
  * "Vitalidade 01" escrita no card e duas de vida na HUD, que foi um bug real.
+ *
+ * ## A picareta é a exceção no modo desenvolvedor
+ *
+ * Num save de teste o piso é tudo zero — o modo dev dá a picareta máxima no
+ * **início**, e não a cada virada de bioma. Sem a exceção, a primeira morte
+ * devolveria a pessoa à picareta 1, e o kit de teste estaria se desmanchando a cada
+ * queda.
+ *
+ * A exceção é só a picareta, e não todas as melhorias, por dois motivos. O
+ * primeiro é coerência com o resto do kit: as 5 poções de Caminho Seguro já
+ * sobrevivem à morte, porque `buildResetState` carrega `utilities` adiante do
+ * inicial. A picareta está no mesmo kit e passava pelo caminho oposto — duas metades
+ * do mesmo presente, uma durável e outra não. O segundo é que as outras melhorias
+ * continuarem zerando deixa o modo desenvolvedor útil para **testar** a mecânica de
+ * improvement temporária, que é justamente o que se quer exercitar quando se morre
+ * de propósito.
+ *
+ * Trocar de caverna nunca precisou disto: `buildBiomeStartState` usa
+ * `aplicarEfeitosDasMelhorias`, que recalcula a partir do nível que já está no
+ * estado. O nível da picareta sobrevive à troca sem exceção nenhuma.
  */
 export function resetarMelhoriasTemporarias(estado) {
-  const efeitos = aplicarEfeitosDasMelhorias({ ...estado, ...melhoriasFixasDe(estado) });
+  const fixas = melhoriasFixasDe(estado);
+
+  if (!contaProgresso(estado)) {
+    // No modo dev, o piso da picareta é o nível que ela já tem.
+    fixas.pickaxeUpgradeLevel = estado?.pickaxeUpgradeLevel ?? 0;
+  }
+
+  const efeitos = aplicarEfeitosDasMelhorias({ ...estado, ...fixas });
 
   return { ...estado, ...efeitos };
 }

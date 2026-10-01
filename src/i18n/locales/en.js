@@ -279,6 +279,7 @@ export default {
     one: 'You found {count} coin.',
     other: 'You found {count} coins.'
   },
+  'msg.defeatDev': 'You were defeated. The upgrades went back to the start of the current biome, except the pickaxe, which is part of the test kit. Your coins, goals and relics were kept.',
   'msg.bombHit': 'Bomb! Health left: {n}.',
   'msg.relicFound': 'You found the relic {relic}.',
   'msg.emptyBonus': 'Bonus break! The extra rock was empty.',

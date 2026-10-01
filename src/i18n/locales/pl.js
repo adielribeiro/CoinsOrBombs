@@ -301,6 +301,7 @@ export default {
     few: 'Znaleziono {count} monety.',
     many: 'Znaleziono {count} monet.'
   },
+  'msg.defeatDev': 'Przegrałeś. Ulepszenia wróciły na początek bieżącego biomu, z wyjątkiem kilofa, który należy do zestawu testowego. Twoje monety, cele i relikwie zostały zachowane.',
   'msg.bombHit': 'Bomba! Pozostałe życie: {n}.',
   'msg.relicFound': 'Znaleziono relikt: {relic}.',
   'msg.emptyBonus': 'Rozbicie bonusowe! Dodatkowa skała była pusta.',

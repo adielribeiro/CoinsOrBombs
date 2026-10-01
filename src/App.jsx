@@ -1696,7 +1696,9 @@ export default function App() {
     const baseState = stateRef.current;
     const biomeStartCave = targetCave ?? getBiomeStartCave(baseState.cave ?? 1);
     const biome = getBiomeForCave(biomeStartCave);
-    const message = customMessage ?? t('msg.defeat');
+    const message = customMessage ?? (baseState.dev
+      ? t('msg.defeatDev')
+      : t('msg.defeat'));
 
     return normalizeProgressState({
       ...initialState,

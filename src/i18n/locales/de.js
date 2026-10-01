@@ -283,6 +283,7 @@ export default {
     one: 'Du hast {count} Münze gefunden.',
     other: 'Du hast {count} Münzen gefunden.'
   },
+  'msg.defeatDev': 'Du hast verloren. Die Verbesserungen sind zum Anfang des aktuellen Bioms zurückgekehrt, außer der Spitzhacke, die zum Testausrüstung gehört. Deine Münzen, Ziele und Relikte bleiben erhalten.',
   'msg.bombHit': 'Bombe! Verbleibendes Leben: {n}.',
   'msg.relicFound': 'Du hast das Relikt {relic} gefunden.',
   'msg.emptyBonus': 'Bonusbruch! Der zusätzliche Fels war leer.',

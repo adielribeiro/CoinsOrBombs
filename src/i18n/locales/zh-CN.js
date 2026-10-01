@@ -281,6 +281,7 @@ export default {
   'msg.coinFound': {
     other: '你找到了 {count} 枚金币。'
   },
+  'msg.defeatDev': '你失败了。升级回到了当前生物群系的起点，但属于测试套装的镐除外。你的金币、目标和遗物都保留了。',
   'msg.bombHit': '炸弹！剩余生命：{n}。',
   'msg.relicFound': '你找到了遗物 {relic}。',
   'msg.emptyBonus': '额外敲碎！多出来的那块岩石是空的。',

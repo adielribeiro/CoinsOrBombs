@@ -282,6 +282,7 @@ export default {
   'msg.coinFound': {
     other: 'コインを {count} 枚見つけた。'
   },
+  'msg.defeatDev': '敗北しました。アップグレードは現在のバイオムの先頭に戻りましたが、テストキットの一部であるツルハタは残ります。コイン・目標・遺物はそのままです。',
   'msg.bombHit': '爆弾！残りの体力：{n}。',
   'msg.relicFound': 'レリック {relic} を発見した。',
   'msg.emptyBonus': 'ボーナス打ち！余分な岩は空だった。',

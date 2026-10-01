@@ -329,6 +329,29 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **A picareta do modo desenvolvedor não volta atrás na morte.** O save de teste
+  começa com a picareta máxima **no início**, e não a cada virada de bioma — o que
+  significa que o `melhoriasFixas` dele é tudo zero. A morte copia o piso por cima
+  dos doze campos, e a primeira queda devolvia a pessoa à picareta 1. O kit de
+  teste estava se desmanchando a cada morte, que é justamente o que ele existe
+  para não acontecer.
+
+  A incoerência era visível: as 5 poções de Caminho Seguro **sobrevivem** à
+  morte, porque `buildResetState` carrega `utilities` adiante do inicial. Duas
+  metades do mesmo presente, uma durável e a outra não.
+
+  - **Só a picareta é a exceção.** As outras melhorias continuam voltando ao piso
+    no modo dev, e isso é deliberado: é o que deixa o modo servir para **testar** a
+    mecânica de melhoria temporária, que é o que se quer exercitar morrendo de
+    propósito.
+  - **Trocar de caverna nunca precisou disto.** `buildBiomeStartState` usa
+    `aplicarEfeitosDasMelhorias`, que recalcula a partir do nível que já está no
+    estado, e a picareta sobrevive à troca sem nenhuma exceção.
+  - **A tela de derrota não mente mais.** A frase do jogo normal diz "as melhorias
+    voltaram ao início do bioma", o que deixou de ser verdade aqui. Existe uma
+    variante para o modo dev, nos dez idiomas, dizendo que a picareta fica por
+    fazer parte do kit.
+
 - **A picareta vai até o nível 10, e cada nível tira um clique da pedra.** São 9
   melhorias em vez de 4, na mesma lógica de sempre: cada uma soma 1 no nível e 1
   na força. Na caverna 60, onde a picareta é testada de verdade, cada degrau tira

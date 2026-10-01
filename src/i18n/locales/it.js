@@ -283,6 +283,7 @@ export default {
     one: 'Hai trovato {count} moneta.',
     other: 'Hai trovato {count} monete.'
   },
+  'msg.defeatDev': `Sei stato sconfitto. I miglioramenti sono tornati all'inizio del bioma corrente, tranne la picca, che fa parte del kit di prova. Le tue monete, obiettivi e reliquie sono conservati.`,
   'msg.bombHit': 'Bomba! Vita restante: {n}.',
   'msg.relicFound': 'Hai trovato la reliquia {relic}.',
   'msg.emptyBonus': 'Rottura bonus! La roccia in più era vuota.',

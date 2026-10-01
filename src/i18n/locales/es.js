@@ -283,6 +283,7 @@ export default {
     one: 'Has encontrado {count} moneda.',
     other: 'Has encontrado {count} monedas.'
   },
+  'msg.defeatDev': 'Has sido derrotado. Las mejoras volvieron al inicio del bioma actual, salvo el pico, que forma parte del equipo de prueba. Tus monedas, objetivos y reliquias se conservaron.',
   'msg.bombHit': '¡Bomba! Vida restante: {n}.',
   'msg.relicFound': 'Has encontrado la reliquia {relic}.',
   'msg.emptyBonus': '¡Rotura extra! La roca adicional estaba vacía.',

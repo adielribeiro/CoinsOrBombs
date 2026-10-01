@@ -284,6 +284,7 @@ export default {
     one: 'Vous avez trouvé {count} pièce.',
     other: 'Vous avez trouvé {count} pièces.'
   },
+  'msg.defeatDev': 'Vous avez été vaincu. Les améliorations sont revenues au début du biome actuel, sauf la pioche, qui fait partie du kit de test. Vos pièces, objectifs et reliques sont conservés.',
   'msg.bombHit': 'Bombe ! Vie restante : {n}.',
   'msg.relicFound': 'Vous avez trouvé la relique {relic}.',
   'msg.emptyBonus': 'Casse bonus ! Le rocher supplémentaire était vide.',
