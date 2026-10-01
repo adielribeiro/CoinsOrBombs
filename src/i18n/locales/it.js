@@ -342,4 +342,15 @@ export default {
   'lore.crystal.p2.a': "Credo che l'uscita sia vicina",
   'lore.crystal.p3.a': 'Che posto sinistro!!!',
   'lore.crystal.p4.a': 'Quei cristalli sembrano affilati... meglio andare piano....',
+
+  // --- cena final antes do fim do jogo ---------------
+  'cenaFinal.rotulo': 'La bocca della caverna. Entra il sole.',
+  'cenaFinal.dica': 'Clicca per continuare',
+
+  // --- cena final ------------------------------------------
+  'cenaFinal.falante': 'Minatore',
+  'cenaFinal.p1.a': 'AAAHH RAGAZZO.....',
+  'cenaFinal.p2.a': "Finalmente l'uscita",
+  'cenaFinal.p3.a': 'Devo smettere di sistemare questi pasticci...hihihi',
+  'cenaFinal.p4.a': "Bene... mi resta solo l'Uscita!!!!!",
 };

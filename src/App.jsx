@@ -14,6 +14,14 @@ import {
 import { introJaVista, marcarIntroVista } from './game/intro.js';
 import { BLACK_SCREEN_MS, LOGO_FADE_MS } from './game/temposDeEntrada.js';
 import {
+  CHAVE_FALANTE_FINAL,
+  caminhoDaArteFinal,
+  caminhoDoMineiroFinal,
+  paineisDaCenaFinal,
+  proximoIndiceFinal,
+  temCenaFinal
+} from './game/cenaFinal.js';
+import {
   LOCALES,
   createTranslator,
   getLocale,
@@ -506,6 +514,21 @@ export default function App() {
    */
   const [showFinale, setShowFinale] = useState(false);
   const finaleTimerRef = useRef(null);
+
+  /**
+   * A cena final tem duas fases: os painéis falados e a vista muda da boca da
+   * caverna. `null` é a cena fechada.
+   *
+   * `null` em vez de dois booleanos porque são fases de uma mesma sequência, e
+   * dois booleanos admitem o estado impossível "painéis fora e vista fora", que
+   * deixaria a tela em branco esperando alguém apertar alguma coisa.
+   */
+  const [cenaFinalFase, setCenaFinalFase] = useState(null);
+  const [cenaFinalBioma, setCenaFinalBioma] = useState(null);
+  const [cenaFinalIndice, setCenaFinalIndice] = useState(0);
+
+  /** O índice por ref, para o laço de controle não depender do React. */
+  const cenaFinalRef = useRef({ indice: 0 });
   const [rewardRefreshCost, setRewardRefreshCost] = useState(10);
   const [entryPhase, setEntryPhase] = useState(ENTRY_PHASE.MENU);
   const [loreBioma, setLoreBioma] = useState(null);
@@ -754,7 +777,7 @@ export default function App() {
   }, [telasAbertas, pauseAvailable]);
 
   /**
-   * As teclas da lore.
+   * As teclas da lore e da cena final.
    *
    * ## `Enter` pula, `Espaço` avança, e são botões diferentes de propósito
    *
@@ -762,13 +785,20 @@ export default function App() {
    * jogar". Juntar as duas num botão só faria quem quer ler perder o roteiro
    * inteiro, e faria quem quer pular ter que apertar seis vezes.
    *
+   * ## A vista final não pula
+   *
+   * É a última coisa do jogo antes da carta, e ela aceita uma tecla só: avançar.
+   * Deixar o `Enter` pular daqui para a carta tiraria do jogador a única imagem
+   * que mostra o mundo do jogo pela última vez — que é justamente o que a cena
+   * existe para mostrar.
+   *
    * ## O efeito depende do índice, e não da função
    *
    * `avancarLore` é recriada a cada render. Depender dela rebindaria o listener
    * do `window` em cada quadro do React, e o par `telasAbertas`/`fecharTelaPeloNome`
    * do efeito do `Esc` acima mostra o que isso custa. Dependendo dos primitivos
-   * que a função lê (`loreBioma`, `loreIndice`), o listener só é reamarrado quando
-   * o painel muda — que é a única vez que ele precisa.
+   * que a função lê, o listener só é reamarrado quando o painel muda — que é a
+   * única vez que ele precisa.
    *
    * ## `event.repeat` é ignorado
    *
@@ -777,26 +807,52 @@ export default function App() {
    * vez sem a pessoa ver nenhum — que é o oposto de "avançar".
    */
   useEffect(() => {
-    if (entryPhase !== ENTRY_PHASE.LORE) return undefined;
+    const naLore = entryPhase === ENTRY_PHASE.LORE;
+    const nosPaineisFinais = cenaFinalFase === 'paineis';
+    const naVistaFinal = cenaFinalFase === 'vista';
+
+    if (!naLore && !nosPaineisFinais && !naVistaFinal) return undefined;
 
     const handleLoreKey = (event) => {
       if (event.repeat) return;
 
       if (event.key === 'Enter') {
         event.preventDefault();
+
+        if (naVistaFinal) {
+          sairDaVistaFinal();
+          return;
+        }
+
+        if (nosPaineisFinais) {
+          pularParaVista();
+          return;
+        }
+
         pularLore();
         return;
       }
 
       if (event.key === ' ') {
         event.preventDefault();
+
+        if (naVistaFinal) {
+          sairDaVistaFinal();
+          return;
+        }
+
+        if (nosPaineisFinais) {
+          avancarCenaFinal();
+          return;
+        }
+
         avancarLore();
       }
     };
 
     window.addEventListener('keydown', handleLoreKey);
     return () => window.removeEventListener('keydown', handleLoreKey);
-  }, [entryPhase, loreBioma, loreIndice]);
+  }, [entryPhase, loreBioma, loreIndice, cenaFinalFase, cenaFinalIndice]);
 
   /** Um timer que sobrevive ao unmount derrubaria a tela depois dela ter saído. */
   useEffect(
@@ -1664,6 +1720,22 @@ export default function App() {
 
     setShowExitDecision(false);
     setShowPause(false);
+
+    // A cena final vem ANTES da carta, e só na cave 60. Sem este desvio, o botão
+    // de saída da última caverna pulava da caverna direto para o fim do jogo, e o
+    // jogador nunca via o mineiro na boca da caverna.
+    //
+    // Ela começa no painel 0, e o índice vive fora do React porque o laço de
+    // controle lê por ref — um `useState` aqui rebindaria o listener do `window`
+    // a cada painel, que é o custo que o laço foi escrito para evitar.
+    if (temCenaFinal(gameState.cave)) {
+      cenaFinalRef.current.indice = 0;
+      setCenaFinalIndice(0);
+      setCenaFinalBioma(gameState.biomeId);
+      setCenaFinalFase('paineis');
+      return;
+    }
+
     setShowFinale(true);
 
     if (finaleTimerRef.current !== null) window.clearTimeout(finaleTimerRef.current);
@@ -1678,6 +1750,52 @@ export default function App() {
     if (evento?.animationName !== 'finale-subir') return;
 
     fecharFinale();
+  };
+
+  /**
+   * Um painel adiante, ou a vista da boca da caverna se era o último.
+   *
+   * `proximoIndiceFinal` decide que acabou, pelo mesmo motivo de
+   * `avancarLore`: reescrever a conta na tela reintroduz o painel `undefined` do
+   * último índice.
+   */
+  const avancarCenaFinal = () => {
+    const paineis = paineisDaCenaFinal(cenaFinalBioma);
+    const proximo = proximoIndiceFinal(paineis, cenaFinalIndice);
+
+    if (proximo === -1) {
+      setCenaFinalFase('vista');
+      return;
+    }
+
+    cenaFinalRef.current.indice = proximo;
+    setCenaFinalIndice(proximo);
+  };
+
+  /**
+   * Pula os painéis e vai direto para a vista da boca da caverna.
+   *
+   * O `Enter` do teclado e o `B`/`Quadrado` do controle entram aqui. A vista não é
+   * pulável: ela é a última coisa do jogo antes da carta, e deixá-la explícita é o
+   * que impede de um toque a mais levar direto para o fim sem ela ser vista.
+   */
+  const pularParaVista = () => {
+    setCenaFinalFase('vista');
+  };
+
+  /**
+   * A vista fechou, e a carta do fim abre.
+   *
+   * Ela é aberta com `showFinale` direto e **não** pelo relógio de `abrirFinale`:
+   * aquele relógio foi criado para fechar a carta depois da animação, e aqui quem
+   * fecha é o próprio jogador.
+   *
+   * Sem o `setCenaFinalFase(null)` no mesmo caminho, a vista ficaria por baixo da
+   * carta e reapareceria quando a carta fechasse.
+   */
+  const sairDaVistaFinal = () => {
+    setCenaFinalFase(null);
+    setShowFinale(true);
   };
 
   const [controleConectado, setControleConectado] = useState(false);
@@ -1718,7 +1836,8 @@ export default function App() {
     telas: null,
     fechar: null,
     podePausar: false,
-    lore: null
+    lore: null,
+    cenaFinal: null
   });
 
   /**
@@ -1737,7 +1856,22 @@ export default function App() {
     telas: telasAbertas,
     fechar: fecharTelaPeloNome,
     podePausar: pauseAvailable,
-    lore: entryPhase === ENTRY_PHASE.LORE ? { avancar: avancarLore, pular: pularLore } : null
+    lore: entryPhase === ENTRY_PHASE.LORE ? { avancar: avancarLore, pular: pularLore } : null,
+    cenaFinal: cenaFinalFase
+      ? {
+          indice: cenaFinalRef.current.indice,
+          paineis: paineisDaCenaFinal(cenaFinalBioma),
+          fase: cenaFinalFase,
+          avancar: () => {
+            if (cenaFinalFase === 'vista') {
+              sairDaVistaFinal();
+              return;
+            }
+            avancarCenaFinal();
+          },
+          pular: pularParaVista
+        }
+      : null
   };
 
   useEffect(() => {
@@ -1768,7 +1902,23 @@ export default function App() {
       // não há tela nenhuma aberta, e sem esta guarda o `B` cairia no ramo de
       // pausa ou passaria direto para a cena do Phaser — que moveria o cursor e
       // quebraria uma pedra por baixo da tarja, sem a pessoa ver nada.
-      if (atual.lore) {
+      if (atual.cenaFinal) {
+        // A cena final vem **antes** da lore: ela é a última sequência do jogo e
+        // não pode ficar atrás de uma entrada de bioma. `B`/`Square` pulam os
+        // painéis para a vista, e na vista não ha para onde pular.
+        if (atual.cenaFinal.fase === 'vista') {
+          if (estado.bordas.confirmar || estado.bordas.voltar || estado.bordas.pular) {
+            foiParaOMenu = true;
+            atual.cenaFinal.avancar();
+          }
+        } else if (estado.bordas.voltar || estado.bordas.pular) {
+          foiParaOMenu = true;
+          atual.cenaFinal.pular();
+        } else if (estado.bordas.confirmar) {
+          foiParaOMenu = true;
+          atual.cenaFinal.avancar();
+        }
+      } else if (atual.lore) {
         // `B`/`Circle` e `Square` pulam a lore inteira. São **dois** botões
         // diferentes: `B` é o índice 1 do Xbox, `Square` é o índice 2 do
         // PlayStation, e o desenho pediu os dois. Aceitar os dois índices é o que
@@ -1808,13 +1958,16 @@ export default function App() {
         else shell.removeAttribute('data-controle');
       }
 
-      // A lore viaja como `telaAberta` mesmo não sendo uma tela. A cena usa esse campo
-      // para decidir se pode mexer no mapa — `telaAberta !== null` quer dizer "tem
-      // algo na frente", e devolve o cursor para casa. Sem esta linha, o direcional
-      // andaria o losango por baixo da tarja.
+      // A lore e a cena final viajam como `telaAberta` mesmo não sendo telas. A cena
+      // usa esse campo para decidir se pode mexer no mapa — `telaAberta !== null`
+      // quer dizer "tem algo na frente", e devolve o cursor para casa. Sem esta
+      // linha, o direcional andaria o losango por baixo da tarja.
       window.dispatchEvent(
         new CustomEvent('cob-controle', {
-          detail: { estado, telaAberta: nomeDaTela ?? (atual.lore ? 'lore' : null) }
+          detail: {
+            estado,
+            telaAberta: nomeDaTela ?? (atual.cenaFinal ? 'cenaFinal' : atual.lore ? 'lore' : null)
+          }
         })
       );
 
@@ -1969,6 +2122,18 @@ export default function App() {
   const paineisLore = loreBioma ? paineisDoBioma(loreBioma) : [];
   const painelLore = paineisLore[loreIndice] ?? null;
   const showLore = entryPhase === ENTRY_PHASE.LORE && painelLore !== null;
+
+  /**
+   * O painel da cena final agora, e se a tela está na fase dos painéis.
+   *
+   * O `?? null` é o que impede o painel `undefined` de chegar no JSX, pelo mesmo
+   * motivo do `painelLore`: um índice que não existe desenharia a imagem
+   * quebrada em vez de não desenhar nada.
+   */
+  const paineisFim = cenaFinalBioma ? paineisDaCenaFinal(cenaFinalBioma) : [];
+  const painelFim = paineisFim[cenaFinalIndice] ?? null;
+  const mostrarPaineisFinais = cenaFinalFase === 'paineis' && painelFim !== null;
+  const mostrarVistaFinal = cenaFinalFase === 'vista';
   const isDeathLobby = gameState.lobbyReason === 'death';
   const resolvedOutcomeCave = gameState.outcomeCave ?? gameState.cave;
   const nextCaveNumber = gameState.nextCaveAvailable ?? gameState.cave + 1;
@@ -2883,6 +3048,123 @@ export default function App() {
                 </button>
               </form>
             </div>
+          </div>
+        )}
+
+{mostrarPaineisFinais && (
+          <div
+            className="entry-overlay lore-overlay cena-final-paineis"
+            role="button"
+            tabIndex={-1}
+            aria-label={t('cenaFinal.dica')}
+            onClick={avancarCenaFinal}
+          >
+            {/*
+              O fundo é a vista da boca da caverna, e não a arte do bioma. A cena
+              final é uma coisa só: o mineiro fala **na** saída da caverna, e não
+              numa sala separada que vem depois. Ver a fala contra o fundo escuro da
+              Câmara de Cristal e ver a fala contra o vale com o sol entrando são
+              duas cenas diferentes, e só a segunda é a última cena do jogo.
+
+              Depois do último painel a faixa sai e sobra a paisagem — é a mesma
+              imagem, sem a tarja por cima.
+            */}
+            <img
+              className="cena-final-arte"
+              src={`./${caminhoDaArteFinal()}`}
+              alt=""
+              aria-hidden="true"
+              draggable="false"
+            />
+
+            {/* O mesmo chão e o mesmo véu da vista, para a cena não mudar de luz
+                quando a tarja some. */}
+            <div className="cena-final-chao" aria-hidden="true" />
+            <div className="cena-final-veu" aria-hidden="true" />
+
+            {/*
+              A faixa é a arte 3:1 com a tarja de creme, e o texto cai nela pela
+              mesma caixa de `.lore-texto` medida na mesma imagem.
+            */}
+            <div className="lore-stage">
+              <div className="lore-frame">
+                <img
+                  className="lore-frame-img"
+                  src={`./assets/${painelFim.imagem}.png`}
+                  alt=""
+                />
+
+                <div className="lore-texto">
+                  <p className="lore-falante">{t(CHAVE_FALANTE_FINAL)}</p>
+
+                  {painelFim.falas.map((chave) => (
+                    <p key={chave} className="lore-fala">
+                      {t(chave)}
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              <div className="lore-rodape">
+                <span className="lore-dica">{t('cenaFinal.dica')}</span>
+                <span className="lore-dica">{t('lore.dicaPular')}</span>
+                <span className="lore-contador">
+                  {t('lore.painel', { n: cenaFinalIndice + 1, total: paineisFim.length })}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+{mostrarVistaFinal && (
+          <div
+            className="cena-final-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('cenaFinal.rotulo')}
+            onClick={sairDaVistaFinal}
+          >
+            {/*
+              A imagem ocupa a tela inteira. Nao e a faixa 3:1 com a tarja: e uma
+              paisagem de 1672x941, e corta-la numa tarja perderia a boca da
+              caverna e o vale -- que sao o ponto da cena.
+            */}
+            <img
+              className="cena-final-arte"
+              src={`./${caminhoDaArteFinal()}`}
+              alt=""
+              aria-hidden="true"
+              draggable="false"
+            />
+
+            {/* O chao escurecido. O mineiro e assente nele, e nao sobre o chao de
+                terra da arte -- que e claro e faria a figura parecer colada. */}
+            <div className="cena-final-chao" aria-hidden="true" />
+
+            {/*
+              O mineiro por cima, a esquerda. A expressao e uma faixa 3:1 **com a
+              tarja**, e aqui a tarja esta vazia: e o `clip-path` no CSS que corta
+              a moldura e deixa so o personagem.
+            */}
+            {/*
+              O mineiro por cima, à esquerda. A expressão original é a faixa 3:1
+              **com a tarja**, e aqui a tarja é o que denunciaria a arte colada: vem
+              o arquivo já recortado nos 584px da esquerda, que é onde a moldura
+              da tarja começa.
+            */}
+            <img
+              className="cena-final-mineiro"
+              src={`./${caminhoDoMineiroFinal()}`}
+              alt=""
+              aria-hidden="true"
+              draggable="false"
+            />
+
+            {/* Veu fraco. A arte e clara no meio -- e um sol nascendo -- e escurecer
+                o sol apagaria o motivo da cena. */}
+            <div className="cena-final-veu" aria-hidden="true" />
+
+            <p className="cena-final-dica">{t('cenaFinal.dica')}</p>
           </div>
         )}
 

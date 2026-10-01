@@ -373,4 +373,15 @@ export default {
   'lore.crystal.p2.a': 'Acredito que a saída esteja próxima',
   'lore.crystal.p3.a': 'Que lugar Sinistro!!!',
   'lore.crystal.p4.a': 'Esses cristais parecem afiados...é melhor ir com calma....',
+
+  // --- cena final antes do fim do jogo ---------------
+  'cenaFinal.rotulo': 'A boca da caverna. O sol está entrando.',
+  'cenaFinal.dica': 'Clique para seguir',
+
+  // --- cena final ------------------------------------------
+  'cenaFinal.falante': 'Mineiro',
+  'cenaFinal.p1.a': 'AAAAHH MULEQUE.....',
+  'cenaFinal.p2.a': 'Finalmente a saída',
+  'cenaFinal.p3.a': 'Preciso parar de arrumar essas confusões...hehehehe',
+  'cenaFinal.p4.a': 'Bom...agora só me resta a Saída!!!!!',
 };

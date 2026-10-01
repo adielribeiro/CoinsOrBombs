@@ -340,4 +340,15 @@ export default {
   'lore.crystal.p2.a': '我想出口应该不远了',
   'lore.crystal.p3.a': '这地方真阴森!!!',
   'lore.crystal.p4.a': '这些晶体看起来很锋利...还是慢一点好....',
+
+  // --- cena final antes do fim do jogo ---------------
+  'cenaFinal.rotulo': '洞口。阳光照进来了。',
+  'cenaFinal.dica': '点击继续',
+
+  // --- cena final ------------------------------------------
+  'cenaFinal.falante': '矿工',
+  'cenaFinal.p1.a': 'AAAAHH 老兄.....',
+  'cenaFinal.p2.a': '终于到出口了',
+  'cenaFinal.p3.a': '我得停止收拾这些烂摊子了...嘿嘿嘿',
+  'cenaFinal.p4.a': '好吧...现在只剩下出口了!!!!!',
 };

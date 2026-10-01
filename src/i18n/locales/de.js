@@ -342,4 +342,15 @@ export default {
   'lore.crystal.p2.a': 'Ich glaube, der Ausgang ist nahe',
   'lore.crystal.p3.a': 'Was für ein unheimlicher Ort!!!',
   'lore.crystal.p4.a': 'Diese Kristalle wirken scharf... lieber langsam....',
+
+  // --- cena final antes do fim do jogo ---------------
+  'cenaFinal.rotulo': 'Der Höhlenmund. Die Sonne kommt herein.',
+  'cenaFinal.dica': 'Zum Fortfahren klicken',
+
+  // --- cena final ------------------------------------------
+  'cenaFinal.falante': 'Bergmann',
+  'cenaFinal.p1.a': 'AAAHH JUNGE.....',
+  'cenaFinal.p2.a': 'Endlich der Ausgang',
+  'cenaFinal.p3.a': 'Ich muss aufhören, diese Wirbel zu richten...hihihi',
+  'cenaFinal.p4.a': 'Nun... bleibt mir nur noch der Ausgang!!!!!',
 };

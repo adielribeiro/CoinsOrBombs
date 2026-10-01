@@ -343,4 +343,15 @@ export default {
   'lore.crystal.p2.a': 'Creo que la salida está cerca',
   'lore.crystal.p3.a': '¡Qué lugar tan siniestro!!!',
   'lore.crystal.p4.a': 'Esos cristales parecen afilados...mejor ir con calma....',
+
+  // --- cena final antes do fim do jogo ---------------
+  'cenaFinal.rotulo': 'La boca de la cueva. Entra el sol.',
+  'cenaFinal.dica': 'Haz clic para seguir',
+
+  // --- cena final ------------------------------------------
+  'cenaFinal.falante': 'Minero',
+  'cenaFinal.p1.a': 'AAAHH TÍO.....',
+  'cenaFinal.p2.a': 'Por fin la salida',
+  'cenaFinal.p3.a': 'Tengo que dejar de arreglar estos líos...jejejeje',
+  'cenaFinal.p4.a': 'Bueno...¡solo me queda la Salida!!!!!',
 };

@@ -360,4 +360,15 @@ export default {
   'lore.crystal.p2.a': 'Sądzę, że wyjście jest już blisko',
   'lore.crystal.p3.a': 'Co za ponure miejsce!!!',
   'lore.crystal.p4.a': 'Te kryształy wyglądają na ostre... lepiej iść powoli....',
+
+  // --- cena final antes do fim do jogo ---------------
+  'cenaFinal.rotulo': 'Wejście do jaskinii. Wchodzi słońce.',
+  'cenaFinal.dica': 'Kliknij, aby kontynuować',
+
+  // --- cena final ------------------------------------------
+  'cenaFinal.falante': 'Górnik',
+  'cenaFinal.p1.a': 'AAAHH CHŁOPAKU.....',
+  'cenaFinal.p2.a': 'Wreszcie wyjście',
+  'cenaFinal.p3.a': 'Muszę przestać naprawiać te bałagany...hihihi',
+  'cenaFinal.p4.a': 'No...zostało mi już tylko Wyjście!!!!!',
 };

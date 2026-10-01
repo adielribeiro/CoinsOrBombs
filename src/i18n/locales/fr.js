@@ -343,4 +343,15 @@ export default {
   'lore.crystal.p2.a': 'Je crois que la sortie est proche',
   'lore.crystal.p3.a': 'Quel endroit sinistre !!!',
   'lore.crystal.p4.a': 'Ces cristaux semblent coupants... mieux y aller doucement....',
+
+  // --- cena final antes do fim do jogo ---------------
+  'cenaFinal.rotulo': "L'entrée de la caverne. Le soleil entre.",
+  'cenaFinal.dica': 'Cliquez pour continuer',
+
+  // --- cena final ------------------------------------------
+  'cenaFinal.falante': 'Mineur',
+  'cenaFinal.p1.a': 'AAAHH FILS.....',
+  'cenaFinal.p2.a': 'Enfin la sortie',
+  'cenaFinal.p3.a': 'Je dois arrêter de réparer ces galères...hihihi',
+  'cenaFinal.p4.a': 'Bon... il ne me reste plus que la Sortie!!!!!',
 };

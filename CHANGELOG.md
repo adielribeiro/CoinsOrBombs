@@ -7,6 +7,79 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Cena final: o mineiro sai da cave 60 e a carta vem depois.** Quatro painéis
+  falados **sobre a paisagem da saída da caverna**, e no fim a mesma paisagem sem
+  nada por cima. É a única tela muda do jogo, de propósito — é a última coisa que
+  o jogador vê do mundo antes da carta.
+
+  Roteiro: **AAAAHH MULEQUE.....** / **Finalmente a saída** / **Preciso parar de
+  arrumar essas confusões...hehehehe** / **Bom...agora só me resta a Saída!!!!!**
+
+  ## As falas caem sobre a paisagem, não numa sala antes dela
+
+  A primeira montagem fazia duas cenas: os painéis sobre a arte da Câmara de
+  Cristal, e a vista da boca da caverna depois. Isso estava errado — o mineiro está
+  falando **na** saída, e ver a fala contra o fundo escuro da caverna e só depois
+  ver o vale com o sol entrando são duas cenas diferentes. A última cena do jogo é
+  uma só.
+
+  Agora os painéis e a vista são a mesma tela: `saida_cave.png` de fundo nas duas,
+  o chão e o véu iguais, e a faixa do mineiro desce para o rodapé para não cobrir o
+  sol. No fim do roteiro a tarja sai e sobra a paisagem — a mesma imagem, sem nada
+  por cima, que é o que faz a vista ser o último quadro e não um quadro a mais.
+
+  ## Não é uma lore de bioma, e o gatilho é o oposto
+
+  Uma lore de bioma abre ao **entrar** na primeira caverna; esta abre ao **sair**
+  da última. São dois momentos diferentes, e por isso ela mora em `cenaFinal.js` e
+  não em `lore.js`. O `cenaFinal.p4.a` e `cenaFinal.p3.a` não podem virar
+  `lore.crystal.*`, e há teste para as duas metades: uma chave de cena final num
+  painel de lore faria uma sequência roubar a fala da outra.
+
+  ## O recorte do mineiro levou três tentativas, e o motivo importa
+
+  A expressão é uma faixa 3:1 com a tarja à direita, e a vista final só mostra o
+  personagem. Três tentativas:
+
+  1. **`clip-path: inset(0 38%)` na tela.** Deixava uma fatia da moldura da tarja
+     do lado do mineiro, e o `38%` era chute — a coluna real onde a tarja começa
+     varia entre as expressões.
+  2. **Corte pela alfa.** Não serve nesta arte: o fundo escuro foi recortado para
+     transparente, mas o creme da tarja tem alfa 255 na mesma linha. Na linha do
+     meio a imagem é opaca de 2,3% a 98,6% — o recorte não abriu vão nenhum ali.
+  3. **Corte pela cor, e no arquivo.** O creme é `#F2CF99` com o azul uns 60
+     abaixo do vermelho; o dourado da moldura é mais alaranjado. Funcionou.
+
+  O recorte é no **arquivo**, não no CSS, e na **menor** coluna medida entre as
+  expressões (550px na `feliz`, 583px na `sorridente`). O que sobra a mais é um fio
+  de pergaminho; o que se perderia de mais é a moldura do personagem — que é a
+  coisa errada de perder. E a moldura dourada em volta do mineiro fica: é dele,
+  é o mesmo quadro de todas as lores, e sem ele a figura fica solta no chão.
+
+  ## A vista não é pulável
+
+  O `Enter` e o `B`/`Quadrado` pulam os **painéis** direto para a vista. Na vista,
+  a mesma tecla leva para a carta. Deixar o `Enter` pular da vista tiraria do
+  jogador a única imagem que mostra o mundo do jogo pela última vez.
+
+  ## Um teste de riso que reprovava o texto certo
+
+  A verificação garantia que o `hehehehe` do terceiro painel sobrevivesse à
+  tradução. A primeira versão do padrão pedia letra repetida três vezes, e ela
+  reprovava o português correto: `hehe` é letra-vogal, não letra-letra, e `hhhh` —
+  que ela aceitava — é gemido, não riso. O padrão é de duas letras repetidas
+  (`hehe`, `jeje`, `hihihi`), aplicado só no **fim** da fala, porque em "parar de
+  arrumar" ele acha `ar` repetida na posição 9 e a frase passaria sem riso
+  nenhum. E nos três idiomas sem escrita latina, a sílaba própria do alfabeto.
+
+  ## A primeira versão da cena estava errada de dois jeitos
+
+  O `CENAL FINAL.txt` que eu li na primeira vez tinha 51 bytes: título,
+  `[imagem minerador_frio]` e a palavra `Minerador:` — e nada depois. Eu montei uma
+  cena muda com a expressão errada. O arquivo no disco já tinha sido reescrito com
+  quatro painéis e a expressão `minerador_feliz`, que eu não tinha visto porque
+  a leitura acusava 0 KB.
+
 - **Câmara de Cristal tem lore — e fecha os seis biomas.** Quatro painéis, e
   nenhum mineiro novo: os quatro já vinham de outros biomas. A ordem conta o
   contrário dos outros roteiros — ele chega cansado, lê a saída como próxima,

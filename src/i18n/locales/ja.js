@@ -341,4 +341,15 @@ export default {
   'lore.crystal.p2.a': '出口はもう近いはずだ',
   'lore.crystal.p3.a': 'とんでもなく怪しい場所だ!!!',
   'lore.crystal.p4.a': 'この結晶は鋭そうだ...急がないほうがいい....',
+
+  // --- cena final antes do fim do jogo ---------------
+  'cenaFinal.rotulo': '洞窟の出口。太陽が入ってくる。',
+  'cenaFinal.dica': 'クリックで次へ',
+
+  // --- cena final ------------------------------------------
+  'cenaFinal.falante': '鉱夫',
+  'cenaFinal.p1.a': 'AAAAHH Dude.....',
+  'cenaFinal.p2.a': 'やっと出口だ',
+  'cenaFinal.p3.a': 'このカオスを片付けるのはやめようか...へへへ',
+  'cenaFinal.p4.a': 'よし...もう残るのは出口だけだ!!!!!',
 };

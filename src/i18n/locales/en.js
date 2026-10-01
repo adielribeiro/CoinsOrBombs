@@ -338,4 +338,15 @@ export default {
   'lore.crystal.p2.a': 'I believe the exit is close by',
   'lore.crystal.p3.a': 'What a sinister place!!!',
   'lore.crystal.p4.a': 'Those crystals look sharp...better go slow....',
+
+  // --- cena final antes do fim do jogo ---------------
+  'cenaFinal.rotulo': 'The cave mouth. The sun is coming in.',
+  'cenaFinal.dica': 'Click to continue',
+
+  // --- cena final ------------------------------------------
+  'cenaFinal.falante': 'Miner',
+  'cenaFinal.p1.a': 'AAAHH DUDE.....',
+  'cenaFinal.p2.a': 'Finally, the exit',
+  'cenaFinal.p3.a': 'I need to stop sorting out these messes...hehehehe',
+  'cenaFinal.p4.a': "Well...now the Exit is all that's left!!!!!",
 };
