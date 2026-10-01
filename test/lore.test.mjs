@@ -51,9 +51,9 @@ const todosOsPaineis = Object.entries(LORE_POR_BIOMA).flatMap(([bioma, paineis])
 
 // --- a Mina Solar tem, os outros não -------------------------------------
 
-const COM_ROTEIRO = ['sunstone', 'frost', 'ember', 'ruins', 'wind'];
+const COM_ROTEIRO = ['sunstone', 'frost', 'ember', 'ruins', 'wind', 'crystal'];
 
-test('são os cinco primeiros biomas a ter roteiro, e só eles', () => {
+test('todos os seis biomas têm roteiro, e são estes', () => {
   // A lista de controle existe para que "um bioma novo entra sem roteiro" não passe em silêncio".
   // Entrar sem roteiro é o certo; o que não pode é ninguém notar que a lista
   // de controle ficou velha.
@@ -240,19 +240,40 @@ test('a pré-carga de bioma sem roteiro não pede imagem nenhuma', () => {
   const criadas = [];
   const conta = () => { criadas.push(1); return {}; };
 
-  // O exemplo sai da lista real, e não de um nome escrito aqui. Da última vez
-  // este teste usava `ember`, que acabou de ganhar roteiro — e continuou
-  // passando, porque `precarLore` de um bioma COM roteiro devolve uma lista
-  // cheia, não vazia, e o `deepEqual` acusaria. O problema é o momento: quem
-  // lê `assert.deepEqual(precarLore('ember', conta), [])` não vê que o nome
-  // deixou de descrever o caso.
-  const semRoteiro = BIOMES.find((biome) => !temLore(biome.id));
-  assert.ok(semRoteiro, 'todos os biomas têm roteiro; a lista de controle precisa de revisão');
-  assert.equal(temLore(semRoteiro.id), false);
-
-  assert.deepEqual(precarLore(semRoteiro.id, conta), []);
-  assert.deepEqual(precarLore('nao-existe', conta), []);
+  // O exemplo é um id inventado, e passou a ser quando o sexto roteiro entrou.
+  // Antes ele vinha da lista real de biomas sem lore, o que tinha uma
+  // vantagem: o teste cobria o caso de verdade. Depois, nenhum bioma ficou sem
+  // lore, e a lista real não tinha mais nada para oferecer — o teste passaria
+  // parado ou reprovaria por um motivo que não é o dele.
+  //
+  // Um id inventado testa a mesma coisa, que é o que importa: o caminho de
+  // 'bioma que não tem painel' tem de devolver lista vazia e não pedir imagem.
+  assert.deepEqual(precarLore('bioma-que-nao-existe', conta), []);
+  assert.deepEqual(precarLore('', conta), []);
   assert.equal(criadas.length, 0);
+});
+
+test('toda bioma real tem roteiro, e nenhum caminho ficou sem testar', () => {
+  // As duas metades do mesmo contrato. O teste de cima usa id inventado para
+  // não ter um bioma de verdade sobrando; este garante que a lista real está
+  // toda coberta — senão um bioma novo entra sem lore e ninguém nota, porque
+  // o caminho de 'sem roteiro' não tem nenhum bioma real para exercitar.
+  assert.deepEqual(BIOMES.map((biome) => biome.id), COM_ROTEIRO);
+
+  for (const { id } of LOCALES) {
+    const dicionario = getDictionary(id);
+
+    for (const bioma of COM_ROTEIRO) {
+      const paineis = paineisDoBioma(bioma);
+      assert.ok(paineis.length > 0, `${bioma} entrou sem painel em ${id}`);
+
+      for (const painel of paineis) {
+        for (const chave of painel.falas) {
+          assert.ok(dicionario[chave], `${id} · ${chave} falta para ${bioma}`);
+        }
+      }
+    }
+  }
 });
 
 test('sem `Image` no ambiente, a pré-carga devolve lista vazia em vez de quebrar', () => {
@@ -490,6 +511,38 @@ test('o texto da Galeria de Vento está intacto, palavra por palavra', () => {
     'lore.wind.p2.a': 'Provavelmente essa ventania indica que a saída está próxima.',
     'lore.wind.p3.a': 'Não vejo a hora de tomar um banho!',
     'lore.wind.p4.a': 'VAMOS EM FRENTE!'
+  });
+});
+
+test('os quatro painéis da Câmara de Cristal são os do roteiro, na ordem', () => {
+  // Último roteiro. Nenhuma expressão nova: os quatro mineiros já eram de
+  // outros biomas, e a ordem conta a história ao contrário dos outros — ele
+  // chega cansado, lê a saída como próxima, estranha o lugar, e só então decide
+  // que os cristais são afiados.
+  assert.deepEqual(
+    paineisDoBioma('crystal').map((painel) => painel.imagem),
+    ['minerador_melancolico', 'minerador_exausto', 'minerador_surpreso', 'minerador_assustado']
+  );
+});
+
+test('o texto da Câmara de Cristal está intacto, palavra por palavra', () => {
+  // Dois acertos em relação ao material de origem, e dois só: `candado`, que
+  // devia ser `cansado`, e `sáida`, com o acento no A em vez do I.
+  //
+  // A falta de ponto final nas duas primeiras falas fica como veio. O roteiro
+  // do mineiro é telegráfico — "Acredito que a saída esteja próxima" sem ponto
+  // é alguém falando de cansaço, e acrescentar pontuação seria trocar o tom.
+  const falas = {};
+
+  for (const painel of paineisDoBioma('crystal')) {
+    for (const chave of painel.falas) falas[chave] = dicionario[chave];
+  }
+
+  assert.deepEqual(falas, {
+    'lore.crystal.p1.a': 'Estou cansado chefe!',
+    'lore.crystal.p2.a': 'Acredito que a saída esteja próxima',
+    'lore.crystal.p3.a': 'Que lugar Sinistro!!!',
+    'lore.crystal.p4.a': 'Esses cristais parecem afiados...é melhor ir com calma....'
   });
 });
 

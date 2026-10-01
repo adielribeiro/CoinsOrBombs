@@ -369,4 +369,8 @@ export default {
   'lore.wind.p2.a': 'Provavelmente essa ventania indica que a saída está próxima.',
   'lore.wind.p3.a': 'Não vejo a hora de tomar um banho!',
   'lore.wind.p4.a': 'VAMOS EM FRENTE!',
+  'lore.crystal.p1.a': 'Estou cansado chefe!',
+  'lore.crystal.p2.a': 'Acredito que a saída esteja próxima',
+  'lore.crystal.p3.a': 'Que lugar Sinistro!!!',
+  'lore.crystal.p4.a': 'Esses cristais parecem afiados...é melhor ir com calma....',
 };

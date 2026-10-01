@@ -337,4 +337,8 @@ export default {
   'lore.wind.p2.a': 'この暴風は、出口が近いということだ。',
   'lore.wind.p3.a': '早くお風呂に入りたい!',
   'lore.wind.p4.a': '行くぞ!',
+  'lore.crystal.p1.a': '疲れたぞ、親方!',
+  'lore.crystal.p2.a': '出口はもう近いはずだ',
+  'lore.crystal.p3.a': 'とんでもなく怪しい場所だ!!!',
+  'lore.crystal.p4.a': 'この結晶は鋭そうだ...急がないほうがいい....',
 };

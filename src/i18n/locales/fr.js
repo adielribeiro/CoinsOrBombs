@@ -339,4 +339,8 @@ export default {
   'lore.wind.p2.a': 'Cette bourrasque veut sans doute dire que la sortie est proche.',
   'lore.wind.p3.a': "J'ai hâte de prendre un bain !",
   'lore.wind.p4.a': 'EN AVANC !',
+  'lore.crystal.p1.a': 'Je suis fatigué, chef !',
+  'lore.crystal.p2.a': 'Je crois que la sortie est proche',
+  'lore.crystal.p3.a': 'Quel endroit sinistre !!!',
+  'lore.crystal.p4.a': 'Ces cristaux semblent coupants... mieux y aller doucement....',
 };

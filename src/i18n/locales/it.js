@@ -338,4 +338,8 @@ export default {
   'lore.wind.p2.a': "Probabilmente questa bufera vuol dire che l'uscita è vicina.",
   'lore.wind.p3.a': "Non vedo l'ora di farmi un bagno!",
   'lore.wind.p4.a': 'ANDIAMO AVANTI!',
+  'lore.crystal.p1.a': 'Sono stanco, capo!',
+  'lore.crystal.p2.a': "Credo che l'uscita sia vicina",
+  'lore.crystal.p3.a': 'Che posto sinistro!!!',
+  'lore.crystal.p4.a': 'Quei cristalli sembrano affilati... meglio andare piano....',
 };

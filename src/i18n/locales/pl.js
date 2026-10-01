@@ -356,4 +356,8 @@ export default {
   'lore.wind.p2.a': 'Ta wichura chyba oznacza, że wyjście jest już blisko.',
   'lore.wind.p3.a': 'Nie mogę się doczekać kąpieli!',
   'lore.wind.p4.a': 'DO PRZODU!',
+  'lore.crystal.p1.a': 'Jestem zmęczony, szefie!',
+  'lore.crystal.p2.a': 'Sądzę, że wyjście jest już blisko',
+  'lore.crystal.p3.a': 'Co za ponure miejsce!!!',
+  'lore.crystal.p4.a': 'Te kryształy wyglądają na ostre... lepiej iść powoli....',
 };

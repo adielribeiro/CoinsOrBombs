@@ -336,4 +336,8 @@ export default {
   'lore.wind.p2.a': '这场狂风大概说明出口就在附近。',
   'lore.wind.p3.a': '真等不及想洗个澡了!',
   'lore.wind.p4.a': '出发!',
+  'lore.crystal.p1.a': '我累了，老板!',
+  'lore.crystal.p2.a': '我想出口应该不远了',
+  'lore.crystal.p3.a': '这地方真阴森!!!',
+  'lore.crystal.p4.a': '这些晶体看起来很锋利...还是慢一点好....',
 };

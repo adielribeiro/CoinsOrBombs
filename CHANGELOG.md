@@ -7,6 +7,39 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Câmara de Cristal tem lore — e fecha os seis biomas.** Quatro painéis, e
+  nenhum mineiro novo: os quatro já vinham de outros biomas. A ordem conta o
+  contrário dos outros roteiros — ele chega cansado, lê a saída como próxima,
+  estranha o lugar, e só então decide que os cristais são afiados.
+
+  Dois acertos no texto, e dois só: `candado` → **cansado**, e `sáida`, que
+  trazia o acento no A em vez do I. A falta de ponto final nas duas primeiras
+  falas fica como veio — o roteiro do mineiro é telegráfico, e
+  "Acredito que a saída esteja próxima" sem ponto é alguém falando de cansaço.
+
+  ## O caminho de bioma sem roteiro ficou sem bioma de verdade
+
+  O teste de pré-carga usava o primeiro bioma da lista real que não tivesse
+  roteiro. Agora **não existe nenhum**, e o teste parava de testar a coisa que
+  ele existe para testar: passaria parado, ou reprovaria por um motivo que não é
+  dele.
+
+  O exemplo passou a ser um id inventado, que testa o mesmo caminho. E entrou um
+  teste pelo outro lado do contrato: **todo bioma real tem painel, e toda fala
+  existe nos dez idiomas**. Sem ele, um bioma novo entra sem lore e ninguém
+  nota — porque o caminho de "sem roteiro" não tem bioma real para exercitar.
+
+  ## Os textos em japonês e chinês saíram do gerador
+
+  Eu errei o texto japonês e chinês umas cinco vezes nesta série de lores,
+  escrevendo direto no meio do gerador. Nenhum build reclama: o arquivo compila,
+  os testes passam, e a frase fica com lixo no meio para quem lê na tela.
+
+  Agora as duas escritas em que eu erro ficam num arquivo separado, com as outras
+  oito num JSON ao lado. E o texto é **lido de volta** antes de virar commit, com
+  os pontos de código na tela: é o que mostra o que foi realmente salvo, e não o
+  que eu achei que tinha escrito.
+
 - **Galeria de Vento também tem lore.** Quatro painéis: o vento arranca o capacete,
   o mineiro lê a ventania como sinal de que a saída está por perto, sonha com um
   banho, e vai. Uma expressão nova entrou (`minerador_segurando_capacete`) — a pose

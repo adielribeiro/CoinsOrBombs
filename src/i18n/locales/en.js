@@ -334,4 +334,8 @@ export default {
   'lore.wind.p2.a': 'This wind probably means the exit is close by.',
   'lore.wind.p3.a': "I can't wait to take a bath!",
   'lore.wind.p4.a': "LET'S MOVE!",
+  'lore.crystal.p1.a': "I'm tired, boss!",
+  'lore.crystal.p2.a': 'I believe the exit is close by',
+  'lore.crystal.p3.a': 'What a sinister place!!!',
+  'lore.crystal.p4.a': 'Those crystals look sharp...better go slow....',
 };

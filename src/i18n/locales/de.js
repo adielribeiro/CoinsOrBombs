@@ -338,4 +338,8 @@ export default {
   'lore.wind.p2.a': 'Dieser Sturm deutet wohl darauf hin, dass der Ausgang nahe ist.',
   'lore.wind.p3.a': 'Ich kann es kaum erwarten, ein Bad zu nehmen!',
   'lore.wind.p4.a': "LOS GEHT'S!",
+  'lore.crystal.p1.a': 'Ich bin müde, Chef!',
+  'lore.crystal.p2.a': 'Ich glaube, der Ausgang ist nahe',
+  'lore.crystal.p3.a': 'Was für ein unheimlicher Ort!!!',
+  'lore.crystal.p4.a': 'Diese Kristalle wirken scharf... lieber langsam....',
 };

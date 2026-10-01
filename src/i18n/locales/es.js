@@ -339,4 +339,8 @@ export default {
   'lore.wind.p2.a': 'Probablemente esta ventisca significa que la salida está cerca.',
   'lore.wind.p3.a': '¡Tengo muchas ganas de darme un baño!',
   'lore.wind.p4.a': '¡VAMOS ADELANTE!',
+  'lore.crystal.p1.a': '¡Estoy cansado, jefe!',
+  'lore.crystal.p2.a': 'Creo que la salida está cerca',
+  'lore.crystal.p3.a': '¡Qué lugar tan siniestro!!!',
+  'lore.crystal.p4.a': 'Esos cristales parecen afilados...mejor ir con calma....',
 };
