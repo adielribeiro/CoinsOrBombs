@@ -107,6 +107,7 @@ export default {
   'biomeSelect.unlockAt': 'Cave {n}',
   'biomeSelect.start': '在这个 Biome 开始',
   'biomeSelect.enter': '进入该 Biome',
+  'biomeSelect.enterCave': '进入 Cave {n}',
 
   // --- 设置 --------------------------------------------------------------------
   'settings.title': '设置',

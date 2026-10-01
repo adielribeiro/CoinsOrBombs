@@ -24,6 +24,7 @@ import {
   BIOMES,
   RELIC_CATALOG,
   aplicarEfeitosDasMelhorias,
+  cavesDoBioma,
   createCollectionState,
   createImprovementState,
   createStatsState,
@@ -473,6 +474,15 @@ export default function App() {
   const [showBiomeSelect, setShowBiomeSelect] = useState(false);
   const [biomeSelectContext, setBiomeSelectContext] = useState('menu');
   const [selectedBiomeId, setSelectedBiomeId] = useState(firstBiome.id);
+  /**
+   * A cave escolhida dentro do bioma, só no modo desenvolvedor.
+   *
+   * `null` significa "a primeira cave do bioma", que é o que o jogo faz sempre.
+   * Guardar `null` em vez de um número é o que mantém o comportamento normal
+   * intacto sem um `if` espalhado: quem escolhe bioma começa a ver a primeira cave
+   * de novo, e o botão de confirmar volta a dizer "Começar neste bioma".
+   */
+  const [selectedCave, setSelectedCave] = useState(null);
   const [pendingBiomeState, setPendingBiomeState] = useState(null);
 
   /**
@@ -1178,6 +1188,10 @@ export default function App() {
     const resolvedBiome = BIOMES.find((biome) => biome.id === biomeId) ?? getBiomeForCave(fallbackCave);
 
     setSelectedBiomeId(resolvedBiome.id);
+    // A cave escolhida pertence à última vez que o modal abriu. Sem este reset, a
+    // cave 9 escolhida agora continuaria valendo quando a pessoa voltasse a abrir
+    // o modal para outra coisa — e o jogo entraria numa cave que ela não pediu.
+    setSelectedCave(null);
     setPendingBiomeState(pendingState);
     setBiomeSelectContext(context);
     setShowBiomeSelect(true);
@@ -1207,15 +1221,47 @@ export default function App() {
     return true;
   };
 
+  /**
+   * Passa um estado pronto para outra cave, sem perder o que a run acumulou.
+   *
+   * É o caminho do modo desenvolvedor quando se escolhe a cave depois de passar a
+   * primeira do bioma. Não pode chamar `buildBiomeStartState`, porque essa função
+   * reconstrói tudo a partir de `stateRef.current` — e no momento da transição o
+   * estado que importa é o `pendingBiomeState`, que já carrega a melhoria que a
+   * pessoa acabou de escolher. Reconstruir aqui trocaria "testar a cave 27" por
+   * "perder a melhoria ao testar a cave 27".
+   *
+   * Só o que muda de verdade é o destino: cave, bioma e a mensagem de entrada. O
+   * resto — moedas, melhorias, coleção — vai junto, porque é o mesmo jogo.
+   */
+  const moverParaCave = (estado, cave) => {
+    const biome = getBiomeForCave(cave);
+
+    return normalizeProgressState({
+      ...estado,
+      cave,
+      biomeId: biome.id,
+      biomeName: biome.name,
+      lastMessage: t('msg.enterCave', {
+        cave: getBiomeProgress(cave).label,
+        biome: t(biome.nameKey)
+      })
+    });
+  };
+
   const confirmBiomeSelection = () => {
     const selectedBiome = BIOMES.find((biome) => biome.id === selectedBiomeId) ?? firstBiome;
+    // Fora do modo desenvolvedor não existe seletor de cave, e `selectedCave`
+    // poderia carregar um valor de quando o modo estava ligado. A guarda é aqui e
+    // não só no botão para que a regra valha para qualquer caminho de entrada.
+    const alvo = settings.developerMode && selectedCave ? selectedCave : selectedBiome.startCave;
 
     if (biomeSelectContext === 'menu') {
       const nextState = buildBiomeStartState(
-        selectedBiome.startCave,
+        alvo,
         t('msg.enterCave', {
-          cave: getBiomeProgress(selectedBiome.startCave).label,
-          biome: t(selectedBiome.nameKey)
+          cave: getBiomeProgress(alvo).label,
+          biome: t(getBiomeForCave(alvo).nameKey)
         })
       );
 
@@ -1224,7 +1270,9 @@ export default function App() {
       return;
     }
 
-    const nextState = pendingBiomeState ?? buildBiomeStartState(selectedBiome.startCave);
+    const nextState = pendingBiomeState
+      ? moverParaCave(pendingBiomeState, alvo)
+      : buildBiomeStartState(alvo);
 
     closeBiomeSelection();
     setSelectedRewardId(null);
@@ -2573,7 +2621,16 @@ export default function App() {
                       type="button"
                       className={`biome-card ${completed ? 'completed' : ''} ${!unlocked ? 'locked' : ''} ${unlockedByDev ? 'dev-unlocked' : ''} ${selected ? 'selected' : ''}`}
                       style={{ '--biome-accent': getBiomeAccentColor(biome.id) }}
-                      onClick={() => selectable && setSelectedBiomeId(biome.id)}
+                      onClick={() => {
+                        if (!selectable) return;
+
+                        setSelectedBiomeId(biome.id);
+                        // A cave escolhida era do bioma anterior. Trocar de bioma
+                        // sem limpar deixaria a cave 9 selecionada enquanto o
+                        // cartão marcado seria o da Gruta de Gelo — e o botão
+                        // entraria numa cave do bioma que ninguém escolheu.
+                        setSelectedCave(null);
+                      }}
                       disabled={!selectable}
                     >
                       <div className="biome-card-top">
@@ -2588,9 +2645,43 @@ export default function App() {
                 })}
               </div>
 
+              {settings.developerMode && (() => {
+                const biomaSelecionado = BIOMES.find((biome) => biome.id === selectedBiomeId) ?? firstBiome;
+
+                return (
+                  <div className="biome-dev-cave">
+                    <div className="biome-dev-cave-head">
+                      {/* Reaproveita `hud.cave`, que já está traduzido nos dez
+                          idiomas e é a mesma palavra que a HUD mostra. Uma chave
+                          nova aqui seria mais uma frase para manter em dez
+                          idiomas sem acrescentar nada. */}
+                      <span className="biome-dev-cave-label">{t('hud.cave')}</span>
+                      <span className="biome-dev-cave-hint">
+                        {t(biomaSelecionado.rangeKey)}
+                      </span>
+                    </div>
+
+                    <div className="biome-dev-cave-grid">
+                      {cavesDoBioma(biomaSelecionado).map((cave) => (
+                        <button
+                          key={cave}
+                          type="button"
+                          className={`biome-dev-cave-btn ${selectedCave === cave ? 'selected' : ''}`}
+                          onClick={() => setSelectedCave(selectedCave === cave ? null : cave)}
+                        >
+                          {cave}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="biome-select-actions">
                 <button className="menu-primary-btn compact" type="button" onClick={confirmBiomeSelection}>
-                  {t(biomeSelectContext === 'menu' ? 'biomeSelect.start' : 'biomeSelect.enter')}
+                  {settings.developerMode && selectedCave
+                    ? t('biomeSelect.enterCave', { n: selectedCave })
+                    : t(biomeSelectContext === 'menu' ? 'biomeSelect.start' : 'biomeSelect.enter')}
                 </button>
 
                 <button className="menu-secondary-btn compact" type="button" onClick={closeBiomeSelection}>

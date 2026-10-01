@@ -112,6 +112,7 @@ export default {
   'biomeSelect.unlockAt': 'Cave {n}',
   'biomeSelect.start': 'इस Biome में शुरू करें',
   'biomeSelect.enter': 'Biome में जाएँ',
+  'biomeSelect.enterCave': 'Cave {n} में प्रवेश करें',
 
   // --- सेटिंग्स ------------------------------------------------------------
   'settings.title': 'सेटिंग्स',

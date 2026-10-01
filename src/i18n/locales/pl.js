@@ -117,6 +117,7 @@ export default {
   'biomeSelect.unlockAt': 'Jaskinia {n}',
   'biomeSelect.start': 'Zacznij w tym biomie',
   'biomeSelect.enter': 'Wejdź do biomu',
+  'biomeSelect.enterCave': 'Wejdź do jaskini {n}',
 
   // --- ustawienia ----------------------------------------------------------
   'settings.title': 'Ustawienia',

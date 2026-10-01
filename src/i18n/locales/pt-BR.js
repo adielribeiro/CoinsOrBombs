@@ -127,6 +127,7 @@ export default {
   'biomeSelect.unlockAt': 'Cave {n}',
   'biomeSelect.start': 'Começar neste bioma',
   'biomeSelect.enter': 'Entrar no bioma',
+  'biomeSelect.enterCave': 'Entrar na cave {n}',
 
   // --- configurações ------------------------------------------------------
   'settings.title': 'Configurações',

@@ -102,6 +102,7 @@ export default {
   'biomeSelect.unlockAt': 'Höhle {n}',
   'biomeSelect.start': 'In diesem Biom starten',
   'biomeSelect.enter': 'Biom betreten',
+  'biomeSelect.enterCave': 'Höhle {n} betreten',
 
   // --- Einstellungen ------------------------------------------------------
   'settings.title': 'Einstellungen',

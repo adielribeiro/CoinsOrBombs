@@ -394,6 +394,21 @@ export function pickaxeLevelDe(pickaxeUpgradeLevel) {
  * `hp` é a **vida cheia**, e não a atual. Esta função só roda ao entrar numa
  * caverna, e lá a pessoa sempre começa com a vida cheia. Perder vida no meio da
  * caverna é outra coisa, e é o `maxHp` que limita o ganho de fora.
+ *
+ * ## Por que ela devolve só as melhorias, e não o estado inteiro
+ *
+ * A primeira versão fazia `...estado` junto. Em `buildBiomeStartState` e
+ * `buildResetState` o uso é um spread no meio de um objeto literal, logo depois
+ * de `cave: targetCave` — e o `cave` que vinha dentro de `...estado` sobrescrevia
+ * o alvo. Escolher "Mina Solar cave 9" no modo desenvolvedor entrava na cave 1.
+ *
+ * Ficou escondido por meses porque morrer e trocar de bioma quase sempre levam a
+ * `targetCave` igual ao `cave` atual: a diferença só aparece quando alguém escolhe
+ * um destino, que é justamente o que o modo desenvolvedor passou a permitir.
+ *
+ * Devolver só o que esta função sabe calcular tira a armadilha pela raiz: ela não
+ * transporta mais nada que não seja melhoria ou consequência de melhoria, então não
+ * há campo alheio para sobrescrever por acidente.
  */
 export function aplicarEfeitosDasMelhorias(estado) {
   const melhorias = improvementsDe(estado);
@@ -401,7 +416,6 @@ export function aplicarEfeitosDasMelhorias(estado) {
   const pickaxeLevel = pickaxeLevelDe(melhorias.pickaxeUpgradeLevel);
 
   return {
-    ...estado,
     ...melhorias,
     maxHp,
     hp: maxHp,
@@ -467,6 +481,35 @@ export function getBiomeForCave(cave = 1) {
 
 export function getBiomeStartCave(cave = 1) {
   return getBiomeForCave(cave).startCave;
+}
+
+/**
+ * As caves de um bioma, em ordem: a primeira é a última.
+ *
+ * Existe para o modo desenvolvedor, que precisa chegar em "Mina Solar cave 9" sem
+ * passar pelas oito anteriores. Antes, escolher um bioma só levava à primeira cave
+ * dele — e para testar a cave 60, ou a cave 27, era preciso reiniciar o progresso
+ * e avançar cave por cave.
+ *
+ * O número devolvido é o **absoluto**, o mesmo que a HUD mostra, e não a posição
+ * dentro do bioma. Um seletor com "3" para a terceira cave da Mina Solar e para a
+ * terceira da Gruta de Gelo obriga quem testa a contar de cabeça; e o contador é
+ * justamente a coisa que se está tentando poupar.
+ *
+ * A lista vem de `startCave` e `endCave`, e não de um campo novo no bioma: são os
+ * dois números que o resto do jogo já usa para decidir a que bioma uma cave
+ * pertence. Uma terceira lista aqui seria uma quarta verdade sobre as mesmas
+ * faixas, e foi exatamente uma verdade duplicada que deixou a vida máxima do
+ * jogador contradizendo o próprio nível da melhoria.
+ */
+export function cavesDoBioma(biome) {
+  const caves = [];
+
+  for (let cave = biome.startCave; cave <= biome.endCave; cave += 1) {
+    caves.push(cave);
+  }
+
+  return caves;
 }
 
 export function getBiomeProgress(cave = 1) {

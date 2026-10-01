@@ -103,6 +103,7 @@ export default {
   'biomeSelect.unlockAt': 'Grotte {n}',
   'biomeSelect.start': 'Commencer dans ce biome',
   'biomeSelect.enter': 'Entrer dans le biome',
+  'biomeSelect.enterCave': 'Entrer dans la grotte {n}',
 
   // --- réglages -----------------------------------------------------------
   'settings.title': 'Réglages',

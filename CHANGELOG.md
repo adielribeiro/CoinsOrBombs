@@ -7,6 +7,33 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **O modo desenvolvedor deixa escolher a cave, e nao so o bioma.** Antes ele
+  levava sempre a primeira caverna do bioma, entao chegar na cave 27 exigia
+  reiniciar o progresso e avancar cave por cave -- o que anula a mao que o modo
+  desenvolvedor existe para oferecer.
+
+  - **Os numeros sao absolutos, como na HUD.** A Gruta de Gelo comeca na 11 e o
+    seletor oferece 11, e nao 1. Quem esta testando a cave 27 quer o 27 na tela,
+    e nao "a setima daqui".
+  - **O botao de confirmar passa a dizer "Entrar na cave 9"**, e nao mais
+    "Comecar neste bioma", que passaria a ser falso.
+  - **Trocar de bioma troca a lista**, e limpar a cave escolhida. Sem limpar, a
+    cave 9 continuaria marcada com o cartao da Gruta de Gelo selecionado.
+  - **A lista de caves sai de `startCave` e `endCave`**, os mesmos numeros que
+    ja decidem a que bioma uma cave pertence. Uma lista nova aqui seria uma
+    quarta verdade sobre as mesmas faixas.
+
+- **Corrigido: escolher a cave entrava na primeira do bioma.**
+  `aplicarEfeitosDasMelhorias` devolvia `...estado` junto, e ela entra como
+  spread no meio de um objeto literal, logo depois de `cave: targetCave` -- o
+  `cave` de dentro sobrescrevia o alvo. "Mina Solar cave 9" entrava na cave 1.
+
+  O bug era do commit anterior, o das melhorias, e ficou escondido porque morrer
+  e trocar de bioma quase sempre levam a um `targetCave` igual ao `cave` atual.
+  A diferenca so aparece quando alguem escolhe um destino, que e exatamente o
+  que o modo desenvolvedor passou a permitir. Agora a funcao devolve so melhoria e
+  o que ela produz, entao nao ha campo alheio para sobrescrever por acidente.
+
 - **A melhoria escolhida e permanente.** Ela sobrevive a morte e ao F5. Antes as
   doze melhorias viviam so na memoria do `App.jsx`: o jogador escolhia
   "Vitalidade 1", fechava a aba, e a melhoria nao estava em lugar nenhum.

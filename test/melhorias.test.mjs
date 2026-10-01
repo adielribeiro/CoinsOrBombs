@@ -120,6 +120,56 @@ test('quatro opções saem de um catálogo com mais de quatro itens', () => {
   assert.ok(catalogo.length >= 6, `o catálogo tem ${catalogo.length} itens, e a história diz que são mais`);
 });
 
+test('aplicarEfeitosDasMelhorias devolve SÓ melhoria e o que ela produz', () => {
+  // Esta função entra como spread no meio de um objeto literal, logo depois de
+  // `cave: targetCave`. Com `...estado` dentro, o `cave` que vinha atrás
+  // sobrescrevia o alvo — e escolher "Mina Solar cave 9" no modo desenvolvedor
+  // entrava na cave 1.
+  //
+  // Ficou escondido porque morrer e trocar de bioma quase sempre levam a um
+  // `targetCave` igual ao `cave` atual. A diferença só aparece quando alguém
+  // escolhe um destino.
+  const estado = {
+    ...createImprovementState(),
+    vitalityLevel: 2,
+    cave: 1,
+    coins: 999,
+    biomeId: 'sunstone',
+    hp: 4
+  };
+
+  const carry = aplicarEfeitosDasMelhorias(estado);
+
+  for (const alheio of ['cave', 'coins', 'biomeId']) {
+    assert.ok(
+      !(alheio in carry),
+      `carry trouxe "${alheio}" = ${carry[alheio]}, e o spread sobrescreve o campo do destino`
+    );
+  }
+
+  // E o que ela DEVE trazer continua vindo.
+  assert.equal(carry.vitalityLevel, 2);
+  assert.equal(carry.maxHp, 4);
+  assert.equal(carry.hp, 4);
+});
+
+test('o carry das melhorias não transporta a cave, e o destino sobrevive ao spread', () => {
+  // A regra pelo jeito que ela é usada: montar o estado de entrada de uma cave com
+  // o spread no meio, e conferir que a cave escolhida é a que fica.
+  const carry = aplicarEfeitosDasMelhorias({ ...createImprovementState(), vitalityLevel: 1, cave: 1 });
+
+  const estadoDaCave = {
+    cave: 9,
+    biomeId: 'sunstone',
+    hp: 2,
+    maxHp: 2,
+    ...carry
+  };
+
+  assert.equal(estadoDaCave.cave, 9, `a cave ficou ${estadoDaCave.cave}, e o destino era 9`);
+  assert.equal(estadoDaCave.maxHp, 3, 'a vida máxima não veio junto');
+});
+
 test('o nível da melhoria volta E o que ele produz', () => {
   // O bug real, encontrado no navegador: escolher Vitalidade 1, morrer, e voltar
   // com `vitalityLevel: 1` no save e 2 de vida na HUD. O nível voltava porque é
