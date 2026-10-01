@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { parse } from '@babel/parser';
 
@@ -25,7 +26,19 @@ import { parse } from '@babel/parser';
  * confere que todo nome usado em cada arquivo tem de onde vir.
  */
 
-const RAIZ = new URL('../src/', import.meta.url).pathname.replace(/^\//, '');
+/**
+ * A pasta `src`, como caminho do sistema.
+ *
+ * Não usar `new URL(...).pathname` e tirar a barra: no Windows o `pathname` é
+ * `/C:/Users/...` e a barra é o que separa a letra do resto, mas no Linux é
+ * `/home/runner/...` e a barra é a **raiz** do caminho. Tirá-la transforma um
+ * caminho absoluto em um relativo que não existe, e o `readdir` estoura.
+ *
+ * Foi exatamente o que aconteceu: os 281 testes passavam na minha máquina e a CI
+ * reprovava, e a diferença era esta linha. `fileURLToPath` faz a conversão
+ * corretamente nos dois sistemas, e é para isso que ela existe.
+ */
+const RAIZ = fileURLToPath(new URL('../src/', import.meta.url));
 const ARQUIVOS_JS = /\.(jsx?|mjs)$/;
 
 /** O que o JavaScript dá a um arquivo sem perguntar. */
