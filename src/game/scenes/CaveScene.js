@@ -52,6 +52,7 @@ function descreveTextura(scene, chave) {
   return `${textura.key}${textura.key === chave ? ' (bate)' : ' (DIVERGE)'}`;
 }
 import {
+  caveAoMorrer,
   createCollectionState,
   createStatsState,
   getBiomeForCave,
@@ -717,8 +718,13 @@ export class CaveScene extends Phaser.Scene {
     this.objectLayer.removeAll(true);
     this.flushPendingEffects();
 
+    // A run morta volta para a primeira cave do bioma dela. A linha escrevia
+    // `cave = 1` à mão, o que jogava quem morresse a partir da cave 11 no começo
+    // do jogo — e perder o bioma inteiro é mais duro do que a morte que a
+    // provocou. A regra mora em `caveAoMorrer` porque a tela de derrota, no
+    // React, precisa dar a mesma resposta.
     if (!keepCave && this.metaState.hp <= 0) {
-      this.metaState.cave = 1;
+      this.metaState.cave = caveAoMorrer(this.metaState.cave);
       this.metaState.hp = this.metaState.maxHp;
       this.metaState.bombs = 0;
     }

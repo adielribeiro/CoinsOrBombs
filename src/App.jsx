@@ -54,6 +54,7 @@ import {
   resetarMelhoriasTemporarias,
   OPCOES_FIXAS,
   OPCOES_TEMPORARIAS,
+  caveAoMorrer,
   createCollectionState,
   createImprovementState,
   createStatsState,
@@ -61,7 +62,6 @@ import {
   ehCaveFinal,
   getBiomeForCave,
   getBiomeProgress,
-  getBiomeStartCave,
   getObjectiveProgressList,
   TOTAL_CAVES as TOTAL_CAVES_DO_JOGO,
   getTotalRelics,
@@ -2464,7 +2464,11 @@ export default function App() {
 
   const buildResetState = (targetCave = null, customMessage = null) => {
     const baseState = stateRef.current;
-    const biomeStartCave = targetCave ?? getBiomeStartCave(baseState.cave ?? 1);
+    // A mesma regra que a cena aplica: a primeira cave do bioma da morte. Os dois
+      // caminhos precisam concordar — quando a cena responder uma coisa e a tela de
+      // derrota outra, o reinício cai na cave errada sem nenhum aviso, e a correção
+      // fica do lado errado do problema.
+      const biomeStartCave = targetCave ?? caveAoMorrer(baseState.cave ?? 1);
     const biome = getBiomeForCave(biomeStartCave);
     const message = customMessage ?? (baseState.dev
       ? t('msg.defeatDev')
@@ -2569,7 +2573,6 @@ export default function App() {
 
   const showMenu = entryPhase === ENTRY_PHASE.MENU && !showRotateLock;
   const showRotateGate = showRotateLock;
-  const isCoarsePointer = isCoarsePointerDevice();
 
   const currentObjectives = getObjectiveProgressList(gameState);
   const unlockedBiomes = getUnlockedBiomes(gameState.bestCave ?? 1, settings.developerMode);
@@ -4075,10 +4078,17 @@ export default function App() {
           </div>
         )}
 
-        {entryPhase === ENTRY_PHASE.PLAYING && isCoarsePointer && !showRotateLock && (
-          <div className="rotate-device-hint">{t('rotate.hint')}</div>
-        )}
+        {/* Saiu a tarja "gire o celular", que ficava no rodapé durante a partida.
 
+            Ela aparecia justamente no aparelho que já estava deitado — porque a trava
+            de paisagem só some com `innerWidth > innerHeight` — e mandava girar um
+            celular que já estava girado. É a mesma coisa que a linha "Orientação
+            recomendada" das configurações, que também saiu: repetir dentro do jogo uma
+            instrução que o aparelho já cumpriu só ocupa o rodapé e treme a cada
+            entrada de texto.
+
+            A trava de paisagem continua, e é outra coisa: é a que impede jogar em
+            retrato, onde o mapa isométrico não cabe. Esta aqui era só um aviso. */}
         {showRotateGate && (
           <div className="rotate-lock-overlay">
             <div className="rotate-lock-card">

@@ -175,7 +175,6 @@ export default {
   'exit.finale': 'Vedi il finale',
 
   // --- rotazione ---------------------------------------------------------------------
-  'rotate.hint': 'Ruota il telefono per giocare meglio in orizzontale.',
   'rotate.title': 'Ruota il telefono',
   'rotate.playing': 'Per continuare a giocare, tieni il dispositivo in orizzontale.',
   'rotate.menu': 'Tieni il dispositivo in orizzontale per sbloccare il menu.',

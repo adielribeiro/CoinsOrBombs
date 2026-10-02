@@ -1138,22 +1138,6 @@ button {
   line-height: 1;
 }
 
-.rotate-device-hint {
-  position: absolute;
-  left: 50%;
-  bottom: 10px;
-  transform: translateX(-50%);
-  z-index: 20;
-  padding: 6px 14px;
-  border: 1px solid var(--line-soft);
-  background: rgba(8, 11, 16, 0.8);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
 .rotate-lock-overlay {
   position: absolute;
   inset: 0;
@@ -3157,10 +3141,6 @@ button {
 
   .info-modal .relic-grid.compact {
     grid-template-columns: 1fr;
-  }
-
-  .rotate-device-hint {
-    display: none;
   }
 }
 

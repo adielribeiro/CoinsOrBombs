@@ -526,6 +526,44 @@ export function getBiomeStartCave(cave = 1) {
 }
 
 /**
+ * Para onde uma run morta volta.
+ *
+ * ## A regra
+ *
+ * A primeira cave do bioma em que a pessoa morreu. Nem a cave em que ela morreu, nem a
+ * cave 1 do jogo.
+ *
+ * ## Por que não pode ser a cave da morte
+ *
+ * Porque a cave é o progresso dentro do bioma. Voltar para a cave da morte é não ter
+ * perdido nada: a mesma pedra difícil, a mesma bomba emboscada, e a tentação de repetir
+ * é repetir a mesma decisão que matou. A primeira cave do bioma é o recomeço do
+ * bioma, e é onde a run pode ser planejada de novo.
+ *
+ * ## Por que também não pode ser a cave 1
+ *
+ * E essa é a parte que estava errada. A cena tinha `cave = 1` escrito à mão, o que
+ * funciona para o primeiro bioma e joga a pessoa no bioma errado em todos os outros:
+ * morrer na cave 34 levava à cave 1, no comecço do jogo. A pessoa perdia o bioma
+ * inteiro por causa de uma linha.
+ *
+ * Por isso a regra mora aqui e os dois caminhos que aplicam a morte — a tela de
+ * derrota, no React, e o reinício da cena, no Phaser — chamam esta função.
+ *
+ * ## O que ela NÃO decide
+ *
+ * A vida, as bombas e as melhorias. Isso é do reinício da run, e mora onde a run é
+ * montada. Aqui é só a pergunta "qual cave", que é a única que os dois caminhos
+ * precisam concordar.
+ *
+ * @param {number} cave a cave em que a pessoa morreu
+ * @returns {number} a primeira cave do bioma dela
+ */
+export function caveAoMorrer(cave = 1) {
+  return getBiomeStartCave(cave);
+}
+
+/**
  * As caves de um bioma, em ordem: a primeira é a última.
  *
  * Existe para o modo desenvolvedor, que precisa chegar em "Mina Solar cave 9" sem

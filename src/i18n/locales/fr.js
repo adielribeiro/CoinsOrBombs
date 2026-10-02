@@ -176,7 +176,6 @@ export default {
   'exit.finale': 'Voir la fin',
 
   // --- rotation ------------------------------------------------------------
-  'rotate.hint': 'Tournez le téléphone pour mieux jouer en paysage.',
   'rotate.title': 'Tournez le téléphone',
   'rotate.playing': 'Pour continuer à jouer, tenez l’appareil en paysage.',
   'rotate.menu': 'Tenez l’appareil en paysage pour débloquer le menu.',

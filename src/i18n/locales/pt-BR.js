@@ -202,7 +202,6 @@ export default {
   'exit.finale': 'Ver o final',
 
   // --- rotação ------------------------------------------------------------
-  'rotate.hint': 'Gire o celular para jogar melhor em modo paisagem.',
   'rotate.title': 'Gire o celular',
   'rotate.playing': 'Para continuar jogando, use o dispositivo no modo paisagem.',
   'rotate.menu': 'Use o dispositivo no modo paisagem para liberar o menu.',

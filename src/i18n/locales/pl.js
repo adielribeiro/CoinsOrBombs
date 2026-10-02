@@ -190,7 +190,6 @@ export default {
   'exit.finale': 'Zobacz zakończenie',
 
   // --- obrót ekranu --------------------------------------------------------
-  'rotate.hint': 'Obróć telefon, aby lepiej grać w orientacji poziomej.',
   'rotate.title': 'Obróć telefon',
   'rotate.playing': 'Aby grać dalej, trzymaj urządzenie poziomo.',
   'rotate.menu': 'Trzymaj urządzenie poziomo, aby odblokować menu.',

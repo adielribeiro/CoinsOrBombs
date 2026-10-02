@@ -175,7 +175,6 @@ export default {
   'exit.finale': 'Ver el final',
 
   // --- rotación -----------------------------------------------------------
-  'rotate.hint': 'Gira el móvil para jugar mejor en horizontal.',
   'rotate.title': 'Gira el móvil',
   'rotate.playing': 'Para seguir jugando, pon el dispositivo en horizontal.',
   'rotate.menu': 'Pon el dispositivo en horizontal para desbloquear el menú.',

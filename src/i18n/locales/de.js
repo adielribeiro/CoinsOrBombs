@@ -175,7 +175,6 @@ export default {
   'exit.finale': 'Ende ansehen',
 
   // --- Drehung ------------------------------------------------------------
-  'rotate.hint': 'Dreh das Handy, um im Querformat besser zu spielen.',
   'rotate.title': 'Dreh das Handy',
   'rotate.playing': 'Halte das Gerät im Querformat, um weiterzuspielen.',
   'rotate.menu': 'Halte das Gerät im Querformat, um das Menü freizuschalten.',

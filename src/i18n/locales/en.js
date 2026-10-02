@@ -173,7 +173,6 @@ export default {
   'exit.finale': 'See the ending',
 
   // --- rotation -----------------------------------------------------------
-  'rotate.hint': 'Turn your phone sideways to play better in landscape.',
   'rotate.title': 'Turn your phone',
   'rotate.playing': 'To keep playing, hold the device in landscape.',
   'rotate.menu': 'Hold the device in landscape to unlock the menu.',

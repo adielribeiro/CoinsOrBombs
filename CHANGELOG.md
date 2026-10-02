@@ -5,6 +5,39 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Corrigido
+
+- **Morrer no meio de um bioma jogava a pessoa no começo do jogo.** A cena do Phaser
+  tinha `cave = 1` escrito à mão no reinício da run. Para o primeiro bioma isso
+  coincidia com a regra, e por isso nada denunciava: morrer na cave 34 levava à cave 1,
+  e a pessoa perdia o bioma inteiro por causa de uma linha que "funcionava".
+
+  A regra agora mora em `caveAoMorrer`, em `progression.js`, e os dois caminhos que
+  aplicam a morte a chamam: a tela de derrota, no React, e o reinício da cena, no
+  Phaser. Quando os dois respondem coisas diferentes, o reinício cai na cave errada
+  sem nenhum aviso e a correção vai para o lado errado do problema.
+
+  A regra é a primeira cave **do bioma em que a pessoa morreu** — nem a cave da morte,
+  nem a cave 1. Voltar para a cave da morte é não ter perdido nada: a mesma pedra
+  difícil e a mesma bomba emboscada, e a tentação é repetir a decisão que matou.
+
+  São 5 testes novos, e eles rodam a regra em **todas** as 60 caves, não numa amostra:
+  amostra esconde bug de borda, e a borda aqui é justamente o bioma, porque o primeiro
+  bioma é a única faixa onde a resposta errada dá o número certo. Com o `cave = 1` de
+  volta, 3 dos 5 reprovam — foi assim que se confirmou que eles seguram a regra.
+
+- **Saiu a tarja "gire o celular"** que ficava no rodapé durante a partida.
+
+  Ela aparecia justamente no aparelho que já estava deitado — a trava de paisagem só
+  some com `innerWidth > innerHeight` — e mandava girar um celular que já estava
+  girado. É a mesma coisa que a linha "Orientação recomendada" das configurações, que
+  também saiu: repetir dentro do jogo uma instrução que o aparelho já cumpriu só ocupa
+  o rodapé.
+
+  **A trava de paisagem continua**, e é outra coisa: é a que impede jogar em retrato,
+  onde o mapa isométrico não cabe. A chave `rotate.hint` saiu dos dez idiomas; as três
+  da trava ficaram.
+
 ### Adicionado
 
 - **Uma engrenagem no canto inferior direito abre a pausa, e no celular não havia
