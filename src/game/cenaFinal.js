@@ -23,27 +23,20 @@
  * A vista da boca da caverna (`saida_cave.png`) fica **depois** dos painéis, na
  * cena muda que antecede a carta do fim. É a última coisa que o jogador vê do
  * mundo, e ela é muda de propósito.
+ *
+ * ## A vista não tem personagem
+ *
+ * Havia um `solo-mineiro.png` aqui: a faixa 3:1 com a tarja e o pergaminho
+ * removidos, para o mineiro ficar de pé na paisagem. Saiu. O mineiro é o que o
+ * jogador vê **falando**, e a vista é o que ele vê quando o mineiro já calou — a
+ * paisagem sozinha é o último quadro do jogo, e um personagem recortado colado no
+ * canto esquerdo só denunciava que ele foi tirado de outro arquivo. some.
  */
 
 import { ehCaveFinal } from './progression.js';
 
 /** A vista da boca da caverna, depois dos painéis. */
 export const CENA_FINAL_ARTE = 'saida_cave.png';
-
-/**
- * O mineiro sozinho, para a vista da boca da caverna.
- *
- * Não é a expressão do painel: é a mesma faixa 3:1 com a tarja e o pergaminho
- * removidos, e só o quadro dourado do personagem fica. A tarja é o que denunciaria
- * a figura colada numa paisagem — o contorno dourado dela viria junto.
- *
- * O recorte foi feito no arquivo porque a coluna onde a tarja começa **varia entre
- * as expressões** (550px na `feliz`, 583px na `sorridente`), e um `clip-path` com
- * porcentagem fixa acerta uma e erra a outra. O arquivo é único para a cena, e o
- * valor é a menor coluna medida — porque perder um fio de pergaminho é melhor que
- * perder a moldura do personagem.
- */
-export const CENA_FINAL_MINEIRO = 'solo-mineiro.png';
 
 export const CENA_FINAL_POR_BIOMA = {
   crystal: [
@@ -88,11 +81,6 @@ export function proximoIndiceFinal(paineis, indice) {
 /** O caminho do arquivo de um painel, do jeito que a tela e o teste esperam. */
 export function caminhoDaArteFinal() {
   return `assets/${CENA_FINAL_ARTE}`;
-}
-
-/** O caminho do mineiro, sem a tarja. */
-export function caminhoDoMineiroFinal() {
-  return `assets/${CENA_FINAL_MINEIRO}`;
 }
 
 /** Todas as imagens que a cena final usa, sem extensão e sem repetir. */

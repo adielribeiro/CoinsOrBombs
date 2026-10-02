@@ -59,7 +59,13 @@ const GLOBAIS = new Set([
   'confirm', 'prompt', 'clearTimeout', 'setTimeout', 'clearInterval', 'setInterval',
   'requestIdleCallback', 'Image', 'MouseEvent', 'TouchEvent', 'location', 'history',
   'visualViewport', 'CSS', 'HTMLElement', 'DOMParser', 'FileReader', 'Blob',
-  'Intl', 'process', 'global', 'require', 'module', '__dirname', '__filename'
+  'Intl', 'process', 'global', 'require', 'module', '__dirname', '__filename',
+  // As subclasses de `Error`. Só `Error` estava na lista, e `cartaFinal.js` usa
+  // `RangeError` — que é o que o erro merece: o ritmo de leitura recebido não está
+  // no intervalo aceitável, e é isso que `RangeError` diz. Trocar por `Error` só
+  // faria o teste passar e o código dizer menos.
+  'EvalError', 'RangeError', 'ReferenceError', 'SyntaxError', 'TypeError',
+  'URIError'
 ]);
 
 /** Arquivos gerados, que ninguém edita e o teste não precisa vigiar. */

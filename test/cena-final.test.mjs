@@ -1,18 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { access, readFile } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 import { BIOMES, TOTAL_CAVES, getBiomeForCave } from '../src/game/progression.js';
 import { LOCALES, getDictionary } from '../src/i18n/index.js';
+
+// O módulo vem inteiro, e não por nome: o teste precisa perguntar se uma exportação
+// **não** existe, e perguntar isso por nome nem compila.
+import * as cenaFinal from '../src/game/cenaFinal.js';
 import {
   CHAVE_FALANTE_FINAL,
   CENA_FINAL_ARTE,
-  CENA_FINAL_MINEIRO,
   CENA_FINAL_POR_BIOMA,
   caminhoDaArteFinal,
-  caminhoDoMineiroFinal,
   imagensDaCenaFinal,
   paineisDaCenaFinal,
   proximoIndiceFinal,
@@ -84,30 +86,37 @@ test('o caminho da arte não tem espaço nem extensão dupla', () => {
   assert.match(caminho, /^assets\/[a-z0-9_]+\.png$/, `caminho fora do padrão: "${caminho}"`);
 });
 
-test('o mineiro da vista final é a faixa sem a tarja', async () => {
-  // A largura do arquivo é a prova de que o recorte aconteceu — e ler só o
-  // cabeçalho do PNG basta, sem decodificar a imagem inteira.
+test('a vista final é só a paisagem, sem personagem colado', async () => {
+  // Havia um `solo-mineiro.png` aqui: a faixa 3:1 sem a tarja, com o mineiro de pé
+  // no canto esquerdo da paisagem. Saiu porque ele denunciava a emenda — uma figura
+  // recortada de outro arquivo, no meio de uma paisagem que não a tem.
   //
-  // Se a figura vier com a largura da faixa original, a tarja voltou, e o que
-  // denunciaria a figura colada na paisagem é justamente o contorno dourado dela.
-  const bruto = await readFile(join(raiz, 'public', caminhoDoMineiroFinal()));
-
-  assert.equal(bruto.subarray(1, 4).toString('ascii'), 'PNG', 'não é um PNG');
-
-  const largura = bruto.readUInt32BE(16);
-  const altura = bruto.readUInt32BE(20);
-
-  // A faixa original é 2172x724, proporção 3:1. A figura é quase quadrada em pé:
-  // sem a tarja, sobra o quadro dourado do personagem.
-  assert.ok(largura < 2172, `a figura tem ${largura}px — a mesma largura da faixa, sem corte`);
-  assert.ok(largura > 400, `a figura tem ${largura}px — pequena demais para ser o quadro`);
-  assert.ok(altura > 600, `a figura tem ${altura}px de altura — a faixa foi cortada na vertical`);
-
-  // E a proporção tem que ser a de um retrato, não a de uma faixa.
-  assert.ok(
-    largura / altura < 1.2,
-    `a figura tem proporção ${(largura / altura).toFixed(2)} — parece faixa, não personagem`
+  // Este teste segura três coisas: o arquivo não voltou, o módulo não exporta o
+  // caminho dele, e a cena não pede nenhum arquivo fora da paisagem e das expressões
+  // dos painéis.
+  await assert.rejects(
+    access(join(raiz, 'public', 'assets', 'solo-mineiro.png')),
+    'o recorte do mineiro voltou para public/assets.'
   );
+
+  assert.equal(
+    'caminhoDoMineiroFinal' in cenaFinal,
+    false,
+    'cenaFinal.js ainda exporta caminhoDoMineiroFinal.'
+  );
+  assert.equal(
+    'CENA_FINAL_MINEIRO' in cenaFinal,
+    false,
+    'cenaFinal.js ainda exporta CENA_FINAL_MINEIRO.'
+  );
+
+  // E a lista de imagens que a cena usa tem que ser exatamente as expressões do
+  // roteiro: a paisagem entra por `caminhoDaArteFinal`, e o mineiro saía por um
+  // caminho à parte que a lista não enxergava.
+  assert.deepEqual(imagensDaCenaFinal('crystal'), [
+    'minerador_feliz',
+    'minerador_sorridente'
+  ]);
 });
 
 test('toda expressão dos painéis existe em public/assets', async () => {

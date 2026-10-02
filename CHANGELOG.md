@@ -36,25 +36,66 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   `lore.crystal.*`, e há teste para as duas metades: uma chave de cena final num
   painel de lore faria uma sequência roubar a fala da outra.
 
-  ## O recorte do mineiro levou três tentativas, e o motivo importa
+  ## A vista final não tem personagem
 
-  A expressão é uma faixa 3:1 com a tarja à direita, e a vista final só mostra o
-  personagem. Três tentativas:
+  Havia um `solo-mineiro.png` — a faixa 3:1 com a tarja e o pergaminho removidos,
+  recortado na menor coluna medida entre as expressões (550px na `feliz`, 583px na
+  `sorridente`), para o mineiro ficar de pé no canto esquerdo da paisagem. Saiu. O
+  mineiro é o que o jogador vê **falando**; a vista é o que ele vê quando o mineiro
+  já calou, e uma figura recortada de outro arquivo colada no canto só denunciava a
+  emenda. A paisagem sozinha é o último quadro do jogo.
 
-  1. **`clip-path: inset(0 38%)` na tela.** Deixava uma fatia da moldura da tarja
-     do lado do mineiro, e o `38%` era chute — a coluna real onde a tarja começa
-     varia entre as expressões.
-  2. **Corte pela alfa.** Não serve nesta arte: o fundo escuro foi recortado para
-     transparente, mas o creme da tarja tem alfa 255 na mesma linha. Na linha do
-     meio a imagem é opaca de 2,3% a 98,6% — o recorte não abriu vão nenhum ali.
-  3. **Corte pela cor, e no arquivo.** O creme é `#F2CF99` com o azul uns 60
-     abaixo do vermelho; o dourado da moldura é mais alaranjado. Funcionou.
+  ## A carta do fim passou de 100 s para 53,5 s
 
-  O recorte é no **arquivo**, não no CSS, e na **menor** coluna medida entre as
-  expressões (550px na `feliz`, 583px na `sorridente`). O que sobra a mais é um fio
-  de pergaminho; o que se perderia de mais é a moldura do personagem — que é a
-  coisa errada de perder. E a moldura dourada em volta do mineiro fica: é dele,
-  é o mesmo quadro de todas as lores, e sem ele a figura fica solta no chão.
+  O valor era `100000`, com um comentário dizendo "cerca de 180 palavras". Medido na
+  página, a carta em português tem **107** palavras e 653 caracteres — o número
+  estava quase no dobro, e o texto passava a **66 palavras por minuto**, bem abaixo
+  do que o olho acompanha sem voltar a linha.
+
+  Agora a duração é calculada a partir do texto, no `cartaFinal.js`, e vale 53,5 s
+  em português: 120 palavras por minuto em tela. A troca de idioma acerta junto —
+  sem número fixo, um tradutor teria que escrever curto para caber no tempo do
+  português.
+
+  | | palavras | duração |
+  |---|---|---|
+  | polonês | 97 | 48 s |
+  | português | 107 | 53 s |
+  | francês | 116 | 58 s |
+  | chinês | 118 | 59 s |
+  | inglês | 120 | 60 s |
+  | japonês | 173 | 86 s |
+  | hindi | 181 | 90 s |
+
+  ### Contar sílaba, e não caractere
+
+  Cinco idiomas não separam palavras com espaço, e neles cada caractere é uma
+  sílaba. A primeira conta deu **431 palavras** para a carta em hindi e 265 para a
+  japonesa, com o mesmo texto nas outras — e a carta em hindi duraria três minutos
+  e meio. Duas correções, ambas com teste:
+
+  - **Os sinais combinantes saem antes de contar.** O hindi apoia vogentais na letra
+    anterior, e alguns vêm duas vezes na mesma sílaba.
+  - **O virama sai da contagem.** Em `क्ष` são três caracteres e **uma** sílaba: as
+    duas consoantes e o virama que as junta.
+
+  Um bug nessa conta era fácil de passar: o virama é um sinal combinante, então a
+  versão que removia os sinais **antes** de contar os viramas já o tinha apagado, e a
+  subtração dava zero. O devanagari saía com o dobro do tempo sem nada na tela
+  mudar. Hoje o teste compara as duas grafias e a ordem está presa no comentário.
+
+  ### A vista tem o relógio, e o relógio estava morto
+
+  Descobrir isso só foi possível porque a carta passou a ser conferida no
+  navegador depois de aberta. `abrirFinale` armava um `setTimeout` para fechar a
+  carta sozinha — mas a cave 60 passou pela cena final, e o próprio `temCenaFinal`
+  dentro de `abrirFinale` desviava para os painéis antes de chegar no relógio. O
+  código ficava ali, verde, fora de qualquer execução, e nada falhava: a carta
+  continuava fechando pelo `onAnimationEnd`.
+
+  Quem abre a carta agora é `abrirCartaFinal`, e é ela que arma o relógio. Fechar no
+  caminho feliz e quebrar só no caminho que ninguém testa é o modo de falha mais
+  caro que existe — porque parece que está funcionando.
 
   ## A vista não é pulável
 

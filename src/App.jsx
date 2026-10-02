@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createGame } from './game/createGame.js';
+import { duracaoDaCarta } from './game/cartaFinal.js';
 import {
   describeFullscreenError,
   enterFullscreen,
@@ -16,7 +17,6 @@ import { BLACK_SCREEN_MS, LOGO_FADE_MS } from './game/temposDeEntrada.js';
 import {
   CHAVE_FALANTE_FINAL,
   caminhoDaArteFinal,
-  caminhoDoMineiroFinal,
   paineisDaCenaFinal,
   proximoIndiceFinal,
   temCenaFinal
@@ -191,20 +191,6 @@ const ENTRY_PHASE = {
 const GAME_VERSION = '0.3.0';
 
 /**
- * Quanto tempo a carta do final leva para subir.
- *
- * A carta tem cerca de 180 palavras, e isso é a métrica que importa: 100 segundos
- * dá uns 110 palavras por minuto, que é abaixo do ritmo de leitura confortável.
- * Mais rápido que isso e a pessoa precisa voltar a linha; muito mais lento e vira
- * uma espera sem informação.
- *
- * O valor está em JavaScript, e não só no CSS, porque é dele que sai o "acabou"
- * que devolve a pessoa ao menu. Se a duração vivesse só na folha de estilo, o
- * React nunca ficaria sabendo que a animação acabou.
- */
-const FINAL_DURACAO_MS = 100000;
-
-/**
  * Os parágrafos da carta, na ordem em que sobem.
  *
  * Uma lista aqui, e não a carta inteira como uma string: o parágrafo é o que dá o
@@ -214,6 +200,21 @@ const FINAL_DURACAO_MS = 100000;
  * navegador, não o texto.
  */
 const FINALE_PARAGRAFOS = ['finale.p1', 'finale.p2', 'finale.p3', 'finale.p4', 'finale.p5'];
+
+/**
+ * Tudo o que a carta mostra, na ordem em que sobe.
+ *
+ * A duração é calculada a partir desta lista inteira, e não só dos parágrafos: um
+ * título e uma assinatura que não entrassem na conta seriam 30 segundos de carta
+ * sem tempo, e o fim voltaria ao menu no meio da frase.
+ */
+const FINALE_TRECHOS = [
+  'finale.title',
+  ...FINALE_PARAGRAFOS,
+  'finale.signature',
+  'finale.team',
+  'finale.closing'
+];
 
 const SETTINGS_STORAGE_KEY = 'coinsorbombs:settings:v1';
 const PROFILE_STORAGE_KEY = 'coinsorbombs:profile:v1';
@@ -602,6 +603,20 @@ export default function App() {
    */
   const t = useMemo(() => createTranslator(settings.language), [settings.language]);
   const utilityCatalog = useMemo(() => buildUtilityCatalog(t), [t]);
+
+  /**
+   * Quanto tempo a carta do fim leva para subir, no idioma em tela.
+   *
+   * Três coisas precisam deste mesmo número, e por isso ele mora num `useMemo` e
+   * não numa constante de módulo: a animação CSS, o relógio que devolve a pessoa ao
+   * menu, e o `animationend` que fecha a carta. Divergir entre elas faz o fim
+   * voltar ao menu antes ou depois de a carta terminar.
+   *
+   * Depende de `t` e não de `settings.language`: `t` é o tradutor, e é dele que sai
+   * o texto que será medido. Uma tradução mais longa dá uma carta mais longa — que
+   * é o motivo de o cálculo existir, e não uma letra miúda.
+   */
+  const duracaoFinale = useMemo(() => duracaoDaCarta(FINALE_TRECHOS.map(t)), [t]);
 
   useEffect(() => {
     setLocale(settings.language);
@@ -1713,11 +1728,38 @@ export default function App() {
    * O relógio só roda sozinho quando a animação existe; com movimento reduzido, o
    * `onAnimationEnd` de quem existe chama o fechamento.
    */
-  const abrirFinale = () => {
+  /**
+   * Abre a carta do fim e arma o relógio que a fecha sozinha.
+   *
+   * Quem fecha a carta é o `onAnimationEnd`, e o relógio é a rede abaixo dele: se a
+   * animação não rodar — aba em segundo plano no navegador que pausa animação, ou
+   * alguém que desligou animação no sistema — a carta ainda volta sozinha. O botão
+   * de pular e o `Esc` são a terceira rede, e existem há mais tempo que estas duas.
+   *
+   * ## Por que isto é uma função, e não duas linhas soltas
+   *
+   * O relógio morreu uma vez. A carta abriu por `sairDaVistaFinal` depois que a
+   * cave 60 passou pela cena final, e `abrirFinale` deixou de ser chamado no caminho
+   * que importa — o próprio `temCenaFinal` dentro dele desviava para os painéis. O
+   * código do relógio continuou ali, verde, fora de qualquer execução, e nenhuma
+   * falha apareceu: a carta continuava fechando pelo `onAnimationEnd`. Fechava no
+   * caminho feliz e só quebrava no caminho que ninguém testava.
+   */
+  const abrirCartaFinal = () => {
     const prefereMenosMovimento =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    setShowFinale(true);
+
+    if (finaleTimerRef.current !== null) window.clearTimeout(finaleTimerRef.current);
+
+    finaleTimerRef.current = prefereMenosMovimento
+      ? null
+      : window.setTimeout(fecharFinale, duracaoFinale + 1200);
+  };
+
+  const abrirFinale = () => {
     setShowExitDecision(false);
     setShowPause(false);
 
@@ -1736,13 +1778,7 @@ export default function App() {
       return;
     }
 
-    setShowFinale(true);
-
-    if (finaleTimerRef.current !== null) window.clearTimeout(finaleTimerRef.current);
-
-    finaleTimerRef.current = prefereMenosMovimento
-      ? null
-      : window.setTimeout(fecharFinale, FINAL_DURACAO_MS + 1200);
+    abrirCartaFinal();
   };
 
   /** A animação acabou de subir. O `+1200` do relógio cobre esse mesmo atraso. */
@@ -1786,16 +1822,17 @@ export default function App() {
   /**
    * A vista fechou, e a carta do fim abre.
    *
-   * Ela é aberta com `showFinale` direto e **não** pelo relógio de `abrirFinale`:
-   * aquele relógio foi criado para fechar a carta depois da animação, e aqui quem
-   * fecha é o próprio jogador.
+   * Por `abrirCartaFinal`, e não por um `setShowFinale(true)` solto: é aqui que a
+   * carta abre na prática, e o relógio que a fecha sozinha mora junto da abertura.
+   * A versão anterior abria a carta direto e não armava relógio nenhum — e o
+   * relógio que existia em `abrirFinale` já não rodava em lugar nenhum.
    *
    * Sem o `setCenaFinalFase(null)` no mesmo caminho, a vista ficaria por baixo da
    * carta e reapareceria quando a carta fechasse.
    */
   const sairDaVistaFinal = () => {
     setCenaFinalFase(null);
-    setShowFinale(true);
+    abrirCartaFinal();
   };
 
   const [controleConectado, setControleConectado] = useState(false);
@@ -3137,30 +3174,10 @@ export default function App() {
               draggable="false"
             />
 
-            {/* O chao escurecido. O mineiro e assente nele, e nao sobre o chao de
-                terra da arte -- que e claro e faria a figura parecer colada. */}
+            {/* O chão escurecido. */}
             <div className="cena-final-chao" aria-hidden="true" />
 
-            {/*
-              O mineiro por cima, a esquerda. A expressao e uma faixa 3:1 **com a
-              tarja**, e aqui a tarja esta vazia: e o `clip-path` no CSS que corta
-              a moldura e deixa so o personagem.
-            */}
-            {/*
-              O mineiro por cima, à esquerda. A expressão original é a faixa 3:1
-              **com a tarja**, e aqui a tarja é o que denunciaria a arte colada: vem
-              o arquivo já recortado nos 584px da esquerda, que é onde a moldura
-              da tarja começa.
-            */}
-            <img
-              className="cena-final-mineiro"
-              src={`./${caminhoDoMineiroFinal()}`}
-              alt=""
-              aria-hidden="true"
-              draggable="false"
-            />
-
-            {/* Veu fraco. A arte e clara no meio -- e um sol nascendo -- e escurecer
+            {/* Véu fraco. A arte é clara no meio — é um sol nascendo — e escurecer
                 o sol apagaria o motivo da cena. */}
             <div className="cena-final-veu" aria-hidden="true" />
 
@@ -3193,7 +3210,7 @@ export default function App() {
             <div className="finale-roller">
               <div
                 className="finale-text"
-                style={{ '--finale-duracao': `${FINAL_DURACAO_MS}ms` }}
+                style={{ '--finale-duracao': `${duracaoFinale}ms` }}
                 onAnimationEnd={concluirFinale}
               >
                 {/* O `id` existe para o `aria-labelledby` do dialog: um `aria-label`

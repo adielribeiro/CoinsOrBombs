@@ -590,57 +590,11 @@ button {
   -webkit-user-drag: none;
 }
 
-/* O mineiro entra pela esquerda, no rodapé, em frente à boca da caverna da arte.
+/* A vista não tem personagem. Havia um `solo-mineiro.png` aqui — a faixa 3:1 sem
+   a tarja — e ele saiu: a paisagem sozinha é o último quadro do jogo, e uma figura
+   recortada no canto esquerdo só denunciava que veio de outro arquivo.
 
-   A expressao `frio` e uma faixa 3:1 **com a tarja** do lado direito, e aqui a
-   tarja esta vazia — e nao pode ser recortada, porque o contorno dourado dela
-   entraria na paisagem como um objeto estranho no chao da caverna.
-
-   O que resolve e `clip-path`: corta a tarja, e o que sobra e o mineiro. O corte
-   vai ate 62% da largura da faixa, que e onde o corpo dele termina e a moldura
-   da tarja comeca.
-
-   O `width` e 78% porque a faixa e 3:1 e o mineiro ocupa os 62% da esquerda dela:
-   numa tela de 1200px, 78% da largura sao 936px de faixa, e os 62% disso dao os
-   ~580px em que o mineiro aparece. Com `width` menor ele viraria uma figura
-   pequena no canto. */
-/* O mineiro, já sem a tarja.
-
-   ## Por que a figura tem a moldura dourada
-
-   Porque é assim que ele é desenhado. A moldura em volta do mineiro é dele — é o
-   mesmo quadro que aparece em todas as lores de bioma, e sem ele o personagem
-   fica solto no chão da caverna. O que é da tarja é a barra vertical e o
-   pergaminho, e `solo-mineiro.png` é a faixa sem eles.
-
-   ## Por que o recorte foi feito no arquivo e não no CSS
-
-   Uma versão anterior usava `clip-path: inset(0 38%)` e o resultado era uma fatia
-   da moldura da tarja aparecendo do lado do personagem. A coluna real onde a tarja
-   começa varia entre as expressões — 550px na `feliz`, 583px na `sorridente` — e
-   `38%` é adiante das duas. Cortar o arquivo uma vez, na menor coluna medida,
-   resolve o problema de vez: o que sobra a mais é um fio de pergaminho, e o que se
-   perderia de mais é a moldura do personagem, que é a coisa errada de perder.
-
-   ## Por que `width` é 30%
-
-   A proporção é 552x724. Numa tela 16:9, 30% da largura dá ~290px de figura num
-   rodapé de ~160px — o mineiro ocupa o canto inferior esquerdo sem invadir a luz
-   do sol, que é o motivo da cena. */
-.cena-final-mineiro {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 30%;
-  max-width: none;
-  height: auto;
-  user-select: none;
-  -webkit-user-drag: none;
-  filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.6));
-}
-
-/* Véu fraco, só para assentar o mineiro no escuro da caverna. Ele não escurece o
-   meio da tela: ali está o sol, e escurecer o sol apagaria o motivo da cena. */
+   Sem o mineiro, o chão escurecido é o que assenta a paisagem e nada mais. */
 /* O véu é mais forte quando a tarja está por cima. Na vista sozinha a arte pode
    ficar clara — é um sol nascendo, e escurecer o sol apagaria o motivo da cena. */
 .cena-final-veu {
