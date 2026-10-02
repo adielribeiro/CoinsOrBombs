@@ -63,6 +63,8 @@ import {
   getBiomeForCave,
   getBiomeProgress,
   getObjectiveProgressList,
+  melhoriasReiniciadas,
+  recomecoAposMorte,
   TOTAL_CAVES as TOTAL_CAVES_DO_JOGO,
   getTotalRelics,
   getUnlockedBiomes
@@ -91,7 +93,7 @@ import {
   paineisDoBioma,
   precarLore,
   proximoIndice,
-  temLore
+  deveAbrirLore
 } from './game/lore.js';
 import { getBackdropKey } from './game/backdrops.js';
 import './styles/app.css';
@@ -1255,12 +1257,15 @@ export default function App() {
    *
    * ## Bioma sem roteiro vai direto
    *
-   * Cinco dos seis biomas não têm painel escrito. `temLore` é o portão: sem ele,
+   * Cinco dos seis biomas não têm painel escrito. `deveAbrirLore` é o portão: sem ele,
    * a tela abriria uma sequência vazia com a imagem do mineiro e nenhuma fala, e
    * a pessoa ficaria apertando tecla para sair de um painel que não termina.
    */
-  const irParaOJogo = (biomeId = stateRef.current?.biomeId) => {
-    if (temLore(biomeId) && isBiomeStartCave(stateRef.current?.cave ?? 1)) {
+  const irParaOJogo = (biomeId = stateRef.current?.biomeId, { pularLore = false } = {}) => {
+    // `deveAbrirLore` decide, e não este `if`: a pergunta "isto abre a intro?" é regra
+    // de jogo, e a resposta muda com o motivo da entrada — morrer no bioma não é
+    // conhecê-lo de novo.
+    if (deveAbrirLore(biomeId, stateRef.current?.cave ?? 1, pularLore)) {
       // Antes de mostrar o primeiro painel. As expressões pesam 12 MB e cada painel
       // é um arquivo: sem isto, o segundo painel travaria no meio da frase.
       precarLore(biomeId);
@@ -1370,7 +1375,7 @@ export default function App() {
     });
   };
 
-  const finalizeCaveEntry = (nextState, { playIntro = false } = {}) => {
+  const finalizeCaveEntry = (nextState, { playIntro = false, pularLore = false } = {}) => {
     syncLocalState(nextState);
     window.dispatchEvent(
       new CustomEvent('cob-enter-cave', {
@@ -1383,7 +1388,7 @@ export default function App() {
       return;
     }
 
-    irParaOJogo(nextState.biomeId);
+    irParaOJogo(nextState.biomeId, { pularLore });
   };
 
   /**
@@ -2490,7 +2495,13 @@ export default function App() {
       // `melhoriasFixas`, e só as fixas sobrevivem. O recálculo devolve a vida
       // máxima e a picareta que combinam com o piso — sem ele a pessoa voltaria
       // com "Vitalidade 01" no cartão e duas de vida na HUD.
-      ...resetarMelhoriasTemporarias(baseState),
+      //
+      // Aqui entra `melhoriasReiniciadas`, e não `resetarMelhoriasTemporarias`. A
+      // segunda devolve `...estado` inteiro, e espalhada por cima de `cave`,
+      // `biomeId`, `coins`, `collection` e `stats` trazia a cave da morte de volta.
+      // Foi esse o bug que fez a regra do recomeço parecer implementada e não valendo:
+      // a aritmética estava certa e o resultado não.
+      ...melhoriasReiniciadas(baseState),
       // bestCave só avança quando a cave é concluída. A versão anterior
       // fazia Math.max(bestCave, cave) também ao morrer, o que destravava
       // o próximo bioma sem nunca ter concluído nenhuma cave dele.
@@ -2501,7 +2512,17 @@ export default function App() {
   };
 
   const retryRun = () => {
-    const nextState = buildResetState();
+    // O destino vem da regra, e a regra vem antes de qualquer decisão da interface.
+    // Este botão usava `maybeOpenBiomeSelection`, que abre o seletor de bioma quando o
+    // destino é a primeira cave de um bioma — e depois de uma morte o destino é
+    // **sempre** isso. O seletor abria em toda morte, e a cave final passava a ser a
+    // que a pessoa escolhesse nele, com uma cave já escolhida continuando valendo:
+    // morrer na 2 voltava para a 2.
+    //
+    // Morrer não é mudar de bioma. O seletor existe para quem **concluiu** um bioma e
+    // ganhou o direito de escolher o próximo, e a morte não destrava nada.
+    const recomeco = recomecoAposMorte(stateRef.current.cave ?? 1);
+    const nextState = buildResetState(recomeco.cave);
 
     setSelectedUtility(null);
     setSelectedRewardId(null);
@@ -2510,11 +2531,14 @@ export default function App() {
     setRewardRefreshCost(10);
     setRewardOptions([]);
 
-    if (maybeOpenBiomeSelection(nextState, 'transition')) {
+    if (recomeco.pedirBioma && maybeOpenBiomeSelection(nextState, 'transition')) {
       return;
     }
 
-    finalizeCaveEntry(nextState);
+    // `pularLore`: a pessoa está voltando para o começo de um bioma que ela já
+    // conhece, porque morreu nele. Abrir a intro de novo seriam seis painéis a cada
+    // morte, no gesto mais comum que existe depois de perder.
+    finalizeCaveEntry(nextState, { pularLore: true });
   };
 
   const backToMainMenu = () => {

@@ -1,3 +1,5 @@
+import { getBiomeForCave } from './progression.js';
+
 /**
  * A lore de entrada dos biomas: os painéis que o mineiro fala ao chegar numa.
  *
@@ -110,6 +112,45 @@ export const LORE_POR_BIOMA = {
  */
 export function temLore(biomeId) {
   return (LORE_POR_BIOMA[biomeId]?.length ?? 0) > 0;
+}
+
+/**
+ * Esta entrada abre a intro do bioma?
+ *
+ * ## A regra
+ *
+ * Abre quando a pessoa está entrando no bioma pela primeira vez: o bioma tem roteiro,
+ * e ela está na primeira cave dele.
+ *
+ * ## Por que `pularLore` existe
+ *
+ * Porque voltar para a primeira cave do bioma **depois de morrer** não é entrar no
+ * bioma de novo. A regra do recomeço devolve a pessoa ao começo do bioma em que ela
+ * morreu, e essa cave é a primeira do bioma — então o teste da primeira cave a tomava
+ * como entrada e abria a intro de novo, seis painéis, a cada morte.
+ *
+ * A pessoa que acabou de ler a apresentação do bioma vai ler de novo por ter morrido.
+ * E a intro é a parte mais lenta do jogo: pular para a próxima cave é o gesto mais
+ * comum depois de morrer, e ele não pode custar seis cliques.
+ *
+ * @param {string} biomeId o bioma de destino
+ * @param {number} cave a cave de destino
+ * @param {boolean} [pularLore] o chamador sabe que não é entrada nova
+ */
+export function deveAbrirLore(biomeId, cave = 1, pularLore = false) {
+  if (pularLore) return false;
+  if (!temLore(biomeId)) return false;
+
+  const bioma = getBiomeForCave(cave);
+
+  // A cave diz onde a pessoa está, e o bioma pedido diz o que ela iria ver. Quando os
+  // dois discordam, o par não descreve nenhuma entrada: a resposta honesta é não abrir,
+  // porque abrir a intro do bioma errado é pior do que não abrir nenhuma. A versão
+  // anterior só olhava a cave, e abria a intro do bioma pedido em qualquer primeira
+  // cave do jogo.
+  if (!bioma || bioma.id !== biomeId) return false;
+
+  return cave === bioma.startCave;
 }
 
 /**

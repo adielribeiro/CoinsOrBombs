@@ -9,6 +9,7 @@ import {
   CHAVE_FALANTE,
   LORE_POR_BIOMA,
   caminhoDaImagem,
+  deveAbrirLore,
   imagensDaLore,
   paineisDoBioma,
   precarLore,
@@ -48,6 +49,63 @@ const dicionario = getDictionary(DEFAULT_LOCALE);
 const todosOsPaineis = Object.entries(LORE_POR_BIOMA).flatMap(([bioma, paineis]) =>
   paineis.map((painel, indice) => ({ bioma, painel, indice }))
 );
+
+// --- a intro abre quando, e não quando -----------------------------------
+
+test('a intro abre na entrada do bioma e no meio dele não', () => {
+  for (const bioma of BIOMES) {
+    if (!temLore(bioma.id)) continue;
+
+    assert.equal(
+      deveAbrirLore(bioma.id, bioma.startCave),
+      true,
+      `${bioma.name}: chegar na primeira cave não abre a intro`
+    );
+
+    // Qualquer outra cave do mesmo bioma é jogo acontecendo, não chegada.
+    for (const cave of [bioma.startCave + 1, Math.floor((bioma.startCave + bioma.endCave) / 2), bioma.endCave]) {
+      if (cave > bioma.endCave) continue;
+
+      assert.equal(
+        deveAbrirLore(bioma.id, cave),
+        false,
+        `${bioma.name}: a cave ${cave} abriu a intro, e não é chegada`
+      );
+    }
+  }
+});
+
+test('voltar ao começo do bioma depois de morrer não abre a intro', () => {
+  // O recomeço da run devolve a pessoa à primeira cave do bioma em que ela morreu, e
+  // essa cave é a primeira do bioma. Sem `pularLore`, o teste da primeira cave a tomava
+  // como chegada e a intro abria de novo — seis painéis a cada morte, no gesto mais
+  // comum que existe depois de perder.
+  for (const bioma of BIOMES) {
+    if (!temLore(bioma.id)) continue;
+
+    assert.equal(
+      deveAbrirLore(bioma.id, bioma.startCave, true),
+      false,
+      `${bioma.name}: o recomeço depois da morte abriu a intro de novo`
+    );
+  }
+});
+
+test('a intro de um bioma não abre ao chegar em outro', () => {
+  // A cave manda, e não o bioma pedido. Se `pularLore` fosse a única guarda, um
+  // destino com bioma errado passaria.
+  assert.equal(deveAbrirLore('sunstone', 51), false, 'a intro do Mina Solar abriu na cave 51');
+  assert.equal(deveAbrirLore('frost', 1), false, 'a intro da Gruta de Gelo abriu na cave 1');
+});
+
+test('bioma sem roteiro nunca abre intro, com ou sem pular', () => {
+  for (const bioma of BIOMES) {
+    if (temLore(bioma.id)) continue;
+
+    assert.equal(deveAbrirLore(bioma.id, bioma.startCave), false, bioma.name);
+    assert.equal(deveAbrirLore(bioma.id, bioma.startCave, true), false, bioma.name);
+  }
+});
 
 // --- a Mina Solar tem, os outros não -------------------------------------
 

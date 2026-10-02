@@ -564,6 +564,34 @@ export function caveAoMorrer(cave = 1) {
 }
 
 /**
+ * O recomeço de uma run morta: para onde vai, e o que a pessoa precisa decidir.
+ *
+ * ## Por que isto devolve duas coisas, e não só a cave
+ *
+ * Porque a cave certa não basta. A pessoa também precisa **não** ser levada a escolher
+ * um bioma ao recomeçar, e essa segunda resposta é a que estava errada.
+ *
+ * O botão de tentar de novo chamava `maybeOpenBiomeSelection`, que abre o seletor de
+ * bioma quando o destino é a primeira cave de um bioma. Depois de uma morte o destino
+ * é **sempre** a primeira cave de um bioma — é a regra — então o seletor abria em
+ * **toda** morte, e a cave final passava a ser a que a pessoa escolhesse no seletor, e
+ * não a da regra. Com o seletor aberto, uma cave já escolhida continuava valendo, e
+ * morrer na 2 voltava para a 2.
+ *
+ * ## Por que morrer não é mudar de bioma
+ *
+ * Porque o seletor de bioma existe para uma coisa: a pessoa **concluiu** um bioma e
+ * ganhou o direito de escolher o próximo. Morrer não destrava nada. Pedir uma escolha
+ * que não existe ali é pior do que a tela a mais: parece que a morte decided algo.
+ *
+ * @param {number} cave a cave em que a pessoa morreu
+ * @returns {{cave: number, pedirBioma: boolean}}
+ */
+export function recomecoAposMorte(cave = 1) {
+  return { cave: getBiomeStartCave(cave), pedirBioma: false };
+}
+
+/**
  * As caves de um bioma, em ordem: a primeira é a última.
  *
  * Existe para o modo desenvolvedor, que precisa chegar em "Mina Solar cave 9" sem
@@ -694,7 +722,7 @@ export function fixarMelhoriaEscolhida(estado, campos) {
  * `aplicarEfeitosDasMelhorias`, que recalcula a partir do nível que já está no
  * estado. O nível da picareta sobrevive à troca sem exceção nenhuma.
  */
-export function resetarMelhoriasTemporarias(estado) {
+export function melhoriasReiniciadas(estado) {
   const fixas = melhoriasFixasDe(estado);
 
   if (!contaProgresso(estado)) {
@@ -702,9 +730,30 @@ export function resetarMelhoriasTemporarias(estado) {
     fixas.pickaxeUpgradeLevel = estado?.pickaxeUpgradeLevel ?? 0;
   }
 
-  const efeitos = aplicarEfeitosDasMelhorias({ ...estado, ...fixas });
+  return aplicarEfeitosDasMelhorias({ ...estado, ...fixas });
+}
 
-  return { ...estado, ...efeitos };
+/**
+ * O mesmo reinício, mas devolvendo o estado inteiro.
+ *
+ * ## Por que existem as duas
+ *
+ * Por causa de um bug que só a ordem dos spreads revelava. `buildResetState` monta o
+ * estado da run recomeçada — cave do bioma, bioma, moedas, coleção, estatísticas — e
+ * depois espalhava esta função por cima. Como ela devolvia `...estado` inteiro, o
+ * espelho trazia de volta a cave da morte, o bioma antigo, as moedas, a coleção e as
+ * estatísticas, **por cima** de tudo que a função acabara de montar.
+ *
+ * O sintoma era a regra do recomeço nunca valendo: a pessoa morria na cave 2 e voltava
+ * para a 2, com a aritmética certa e o resultado errado. E o pior é que nada reclamava
+ * — as moedas e a coleção estavam "certas" justamente por causa do bug.
+ *
+ * `melhoriasReiniciadas` devolve **só** as melhorias, então a ordem do spread deixa de
+ * importar. Esta aqui continua existindo para quem quer o estado inteiro — e o contrato
+ * dela está no nome.
+ */
+export function resetarMelhoriasTemporarias(estado) {
+  return { ...estado, ...melhoriasReiniciadas(estado) };
 }
 
 /**

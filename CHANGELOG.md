@@ -7,6 +7,41 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **A regra do recomeço nunca chegou a valer, por dois motivos ao mesmo tempo.** Morre-se
+  na cave 2 e volta-se na 2, com a aritmética da regra toda certa. Os dois defeitos eram
+  invisíveis para os testes, porque nenhum dos dois mora onde eles olham.
+
+  **O primeiro:** o botão de tentar de novo chamava `maybeOpenBiomeSelection`, que abre o
+  seletor de bioma quando o destino é a primeira cave de um bioma. Depois de uma morte o
+  destino é **sempre** isso — é a regra — então o seletor abria em **toda** morte, e a
+  cave final passava a ser a escolhida no seletor. Com uma cave já escolhida ali, morrer
+  na 2 voltava na 2. A regra agora mora em `recomecoAposMorte`, que devolve a cave **e**
+  a segunda resposta: morrer não destrava bioma nenhum, então não há o que perguntar.
+
+  **O segundo, e mais silencioso:** `resetarMelhoriasTemporarias` devolvia `...estado`
+  inteiro, e `buildResetState` a espalhava **por cima** de `cave`, `biomeId`, `coins`,
+  `collection` e `stats` — tudo que a função acabara de montar. O espelho trazia a cave
+  da morte de volta, e a regra era sobrescrita no último passo, com a contagem
+  perfeitamente certa na linha de cima. As moedas e a coleção estavam "certas" por causa
+  do mesmo bug. Agora o reinício das melhorias vai em `melhoriasReiniciadas`, que devolve
+  **só** as melhorias — e aí a ordem do spread deixa de importar.
+
+  **Verificado no navegador**, morrendo de verdade e olhando a HUD: Mina Solar cave 2 → 1;
+  Gruta de Gelo cave 4 → 1; Ruínas Abissais cave 8 → 1; Galeria de Vento cave 5 → 1;
+  Câmara de Cristal cave 7 → 1. As moedas sobreviveram em todos os casos, e é isso que o
+  segundo defeito estava apagando.
+
+- **Morrer não abre mais a intro do bioma de novo.** Voltar para a primeira cave do
+  bioma depois de morrer é a regra, e essa cave é a primeira do bioma — então o teste da
+  "primeira cave" a tomava por entrada e abria os seis painéis a cada morte, no gesto
+  mais comum que existe depois de perder.
+
+  A decisão saiu do JSX e foi para `deveAbrirLore`, em `lore.js`, porque a resposta muda
+  com o **motivo** da entrada: entrar num bioma abre a intro, voltar para um bioma que
+  a pessoa já conhece não. A função também ficou mais estrita: quando o bioma pedido e a
+  cave discordam, ela não abre nada — abrir a intro do bioma errado é pior do que não
+  abrir.
+
 - **Morrer no meio de um bioma jogava a pessoa no começo do jogo.** A cena do Phaser
   tinha `cave = 1` escrito à mão no reinício da run. Para o primeiro bioma isso
   coincidia com a regra, e por isso nada denunciava: morrer na cave 34 levava à cave 1,

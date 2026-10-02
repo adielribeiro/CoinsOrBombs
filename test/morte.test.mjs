@@ -3,10 +3,15 @@ import assert from 'node:assert/strict';
 
 import {
   BIOMES,
+  IMPROVEMENT_FIELDS,
   TOTAL_CAVES,
+  aplicarEfeitosDasMelhorias,
   caveAoMorrer,
   getBiomeForCave,
-  getBiomeStartCave
+  getBiomeStartCave,
+  melhoriasReiniciadas,
+  recomecoAposMorte,
+  resetarMelhoriasTemporarias
 } from '../src/game/progression.js';
 
 /**
@@ -60,6 +65,157 @@ const TABELA = [
  * que esconde bug de borda, e a borda aqui é justamente o bioma: o primeiro bioma é a
  * única faixa em que a resposta errada dá o número certo.
  */
+
+// --- o reinício das melhorias não pode reescrever a run ----------------------
+
+test('o reinício das melhorias devolve só melhorias, e nada da run', () => {
+  // Este é o bug que fez a regra do recomeço parecer implementada e não valendo.
+  //
+  // `buildResetState` monta o estado recomeçado — cave do bioma, bioma, moedas,
+  // coleção, estatísticas — e depois espalhava por cima a função que zera as
+  // melhorias temporárias. Como ela devolvia `...estado` inteiro, o espelho trazia a
+  // cave da morte, o bioma antigo, as moedas, a coleção e as estatísticas de volta,
+  // por cima de tudo que a função acabara de montar. Morria na cave 2 e voltava na 2,
+  // com a aritmética da regra certa.
+  //
+  // O teste é sobre as **chaves**, e não sobre os valores: ele segura a classe do
+  // bug, que é um payload de melhorias carregando campos de run por acidente.
+  const estadoMorto = {
+    cave: 2,
+    biomeId: 'sunstone',
+    biomeName: 'Mina Solar',
+    coins: 137,
+    bestCave: 2,
+    hp: 0,
+    maxHp: 2,
+    outcomeCave: 2,
+    inLobby: true,
+    lobbyReason: 'death',
+    lastMessage: 'morreu'
+  };
+
+  const so = Object.keys(melhoriasReiniciadas(estadoMorto)).sort();
+
+  const proibidas = [
+    'cave',
+    'biomeId',
+    'biomeName',
+    'coins',
+    'bestCave',
+    'outcomeCave',
+    'inLobby',
+    'lobbyReason',
+    'lastMessage',
+    'nextCaveAvailable',
+    'utilities',
+    'collection',
+    'stats'
+  ];
+
+  for (const campo of proibidas) {
+    assert.ok(
+      !so.includes(campo),
+      `o reinício das melhorias trouxe "${campo}" da run, e o spread sobrescreve a cave do recomeço`
+    );
+  }
+
+  // E o que ele traz é o que promete: só os campos de melhoria e os efeitos deles.
+  for (const campo of [...IMPROVEMENT_FIELDS, 'maxHp', 'hp', 'pickaxeLevel', 'pickaxePower']) {
+    assert.ok(so.includes(campo), `o reinício das melhorias não trouxe "${campo}"`);
+  }
+
+  // E a lista é estável entre chamadas: um payload cujas chaves mudam a cada chamada
+  // faria o `deepEqual` do estado recomeçado oscilar, e ninguém acharia o motivo.
+  assert.deepEqual(
+    so,
+    Object.keys(melhoriasReiniciadas(estadoMorto)).sort(),
+    'o reinício das melhorias devolve chaves diferentes em duas chamadas'
+  );
+});
+
+test('as duas funções de reinício concordam nos valores das melhorias', () => {
+  // `melhoriasReiniciadas` e `resetarMelhoriasTemporarias` têm que dizer a mesma
+  // coisa sobre as melhorias. A primeira devolve só isso; a segunda devolve o estado
+  // inteiro. Se divergirem, quem escolhe uma recebe um resultado diferente da outra.
+  for (const estado of [
+    { cave: 1, vitalityLevel: 3, pickaxeUpgradeLevel: 5, maxHp: 5 },
+    { cave: 34, vitalityLevel: 0, pickaxeUpgradeLevel: 0, maxHp: 2, dev: true }
+  ]) {
+    const so = melhoriasReiniciadas(estado);
+    const inteiro = resetarMelhoriasTemporarias(estado);
+
+    for (const [campo, valor] of Object.entries(so)) {
+      assert.deepEqual(
+        inteiro[campo],
+        valor,
+        `${campo}: as duas funções discordam (${valor} contra ${inteiro[campo]})`
+      );
+    }
+  }
+});
+
+test('a versão que devolve o estado inteiro continua devolvendo a cave antiga', () => {
+  // Fixa o contrato de propósito, e é um aviso: quem espalhar esta função por cima de
+  // campos que acabou de montar vai perder o que montou. É por isso que o reinício da
+  // run usa a outra.
+  const estadoMorto = { cave: 34, biomeId: 'ruins', coins: 137, vitalityLevel: 3 };
+
+  const inteiro = resetarMelhoriasTemporarias(estadoMorto);
+
+  assert.equal(inteiro.cave, 34, 'o contrato mudou: esta função parou de devolver o estado');
+  assert.equal(inteiro.coins, 137);
+});
+
+// --- o recomeço não abre seletor de bioma -----------------------------------
+
+test('morrer nunca abre o seletor de bioma', () => {
+  // Este é o defeito que a regra certa não pegava.
+  //
+  // O botão de tentar de novo chamava `maybeOpenBiomeSelection`, que abre o seletor
+  // quando o destino é a primeira cave de um bioma. Depois de uma morte o destino é
+  // **sempre** isso — é a regra — então o seletor abria em toda morte, e a cave final
+  // passava a ser a escolhida no seletor. Com uma cave já escolhida no seletor, morrer
+  // na 2 voltava para a 2, e a aritmética estava certa o tempo inteiro.
+  //
+  // Por isso o teste é sobre a segunda resposta, e não sobre a cave.
+  for (let cave = 1; cave <= TOTAL_CAVES; cave += 1) {
+    const recomeco = recomecoAposMorte(cave);
+
+    assert.equal(
+      recomeco.pedirBioma,
+      false,
+      `morrer na ${cave} abre o seletor de bioma, e a pessoa decide o recomeço`
+    );
+  }
+});
+
+test('o recomeço devolve a cave da regra e não abre nada', () => {
+  // As duas respostas juntas, para o destino não depender de outro cálculo: quem
+  // chama usa só isto, e não recalcula a cave.
+  for (const { nome, inicio, fim } of TABELA) {
+    for (const cave of [inicio, Math.floor((inicio + fim) / 2), fim]) {
+      const recomeco = recomecoAposMorte(cave);
+
+      assert.deepEqual(
+        recomeco,
+        { cave: inicio, pedirBioma: false },
+        `${nome}: morrer na ${cave} deu ${JSON.stringify(recomeco)}`
+      );
+    }
+  }
+});
+
+test('o destino do recomeço é sempre a primeira cave do bioma', () => {
+  // A cave que sai do recomeço e a cave da regra não podem divergir: são a mesma
+  // decisão vista de dois lugares, e a cena do Phaser usa a regra diretamente.
+  for (let cave = 1; cave <= TOTAL_CAVES; cave += 1) {
+    assert.equal(
+      recomecoAposMorte(cave).cave,
+      caveAoMorrer(cave),
+      `a cave do recomeço divergiu da regra na ${cave}`
+    );
+  }
+});
 
 // --- a tabela que a pessoa pediu, bioma a bioma -----------------------------
 
