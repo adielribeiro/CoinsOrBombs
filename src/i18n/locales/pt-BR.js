@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Português (Brasil). A fonte da verdade do conjunto de chaves.
  *
  * Toda chave nova entra aqui primeiro, e `test/i18n.test.mjs` exige que os outros
@@ -378,7 +378,7 @@ export default {
   'cenaFinal.dica': 'Clique para seguir',
 
   // --- cena final ------------------------------------------
-  'cenaFinal.falante': 'Mineiro',
+  'cenaFinal.falante': 'Minerador',
   'cenaFinal.p1.a': 'AAAAHH MULEQUE.....',
   'cenaFinal.p2.a': 'Finalmente a saída',
   'cenaFinal.p3.a': 'Preciso parar de arrumar essas confusões...hehehehe',

@@ -60,6 +60,22 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   mineiro é o que o jogador vê **falando**, e uma figura recortada de outro arquivo
   colada no canto só denunciava a emenda.
 
+  ## O nome do falante na cena final era "Mineiro"
+
+  Só em português, e só na cena final: as seis lores de bioma dizem **Minerador** e o
+  `CENAL FINAL.txt` também. Eu escrevi `Mineiro` ao montar a cena, e o nome errado
+  aparecia no último quadro do jogo — justamente onde o jogador está lendo com mais
+  atenção.
+
+  Os outros nove idiomas já diziam certo, o que torna o defeito mais fácil de
+  deixar passar: nove linhas iguais escondem uma errada, e nenhum aviso aparece.
+
+  A correção é uma linha. O que fica é o teste: `cenaFinal.falante` e
+  `lore.falante` são duas chaves para a mesma pessoa, separadas porque as duas
+  sequências moram em módulos diferentes, e **nenhuma das duas pode ser a fonte da
+  verdade** — senão a outra envelhece em silêncio, que foi exatamente o que houve.
+  O teste compara as duas nos dez idiomas, e ele reprova se voltarem a divergir.
+
   ## A carta do fim passou de 100 s para 53,5 s
 
   O valor era `100000`, com um comentário dizendo "cerca de 180 palavras". Medido na

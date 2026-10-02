@@ -20,7 +20,7 @@ import {
   proximoIndiceFinal,
   temCenaFinal
 } from '../src/game/cenaFinal.js';
-import { LORE_POR_BIOMA } from '../src/game/lore.js';
+import { CHAVE_FALANTE as CHAVE_FALANTE_LORE, LORE_POR_BIOMA } from '../src/game/lore.js';
 
 /**
  * A cena final: o que sai da cave 60, antes da carta do fim.
@@ -216,6 +216,36 @@ test('toda chave de fala existe nos dez idiomas', () => {
       );
     }
   }
+});
+
+test('o nome do falante é o mesmo em toda a parte, nos dez idiomas', () => {
+  // São duas chaves para a mesma pessoa — `lore.falante` nas seis entradas de
+  // bioma e `cenaFinal.falante` aqui — e elas existem separadas porque as duas
+  // sequências ficam em módulos diferentes. Nenhuma delas pode ser a fonte da
+  // verdade, senão a outra envelhece em silêncio: foi o que aconteceu, com a
+  // cena final falando "Mineiro" enquanto as seis lores falavam "Minerador", e o
+  // nome errado só aparecia no último quadro do jogo.
+  //
+  // O `CENAL FINAL.txt` diz `Minerador:`, e `lore.falante` também. Um nome é o do
+  // roteiro.
+  for (const { id } of LOCALES) {
+    const dicionarioDoIdioma = getDictionary(id);
+    const lore = dicionarioDoIdioma[CHAVE_FALANTE_LORE];
+    const final = dicionarioDoIdioma[CHAVE_FALANTE_FINAL];
+
+    assert.equal(
+      final,
+      lore,
+      `${id}: a cena final chama o personagem de "${final}" e as lores de "${lore}". `
+        + 'É a mesma pessoa nos dois roteiros.'
+    );
+
+    // E não pode ser string vazia: a tarja mostraria um nome sem nome, e o
+    // jogador leria um silêncio que não existe.
+    assert.ok(typeof final === 'string' && final.trim().length > 0, `${id}: falante vazio`);
+  }
+
+  assert.equal(dicionario[CHAVE_FALANTE_FINAL], 'Minerador');
 });
 
 test('o texto do roteiro está intacto, palavra por palavra', () => {
