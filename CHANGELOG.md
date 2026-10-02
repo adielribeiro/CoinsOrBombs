@@ -5,7 +5,37 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Corrigido
+
+- **A navegação por controle andava sempre para o primeiro botão da tela.** O
+  analógico esquerdo e o d-pad já eram lidos, e a direção resolvida já chegava ao
+  navegador de foco — mas a escolha do alvo era feita pelo `id` do elemento, e no
+  jogo real quase nenhum botão tem `id`: `element.id` devolve `''` e
+  `dataset.focoId` é `undefined`. Com o `id` vazio em todos, a busca por "o alvo com
+  este id" devolvia o primeiro da lista. Quem jogava com controle empurrava o
+  analógico para qualquer lado e caía sempre no mesmo botão.
+
+  Agora a navegação escolhe pelo **elemento**, e o `id` fica só para relatar. O
+  teste que pega isto usa a geometria real do menu com os quatro botões **sem**
+  `id` — o DOM falso anterior dava `id` distinto para cada um, que é exatamente o
+  que o jogo não tem, e por isso o teste passava enquanto o jogo estava quebrado.
+
+  Verificado no navegador com um controle falso injetado em `navigator.getGamepads`:
+  o menu anda item por item nos dois sentidos e para na borda, e o `A` abre o item
+  em foco.
+
+- **O anel de foco piscava.** Ele aparecia no quadro em que o controle mandava
+  alguma coisa e sumia no seguinte, sem entrada — num ritmo de 60 vezes por segundo.
+  Quem segura a direção para repetir via o anel desaparecer justo quando ele
+  funciona. Agora ele fica enquanto houver controle conectado.
+
 ### Adicionado
+
+- **O menu principal é jogável com controle.** Ele não estava na pilha de telas, e
+  o laço do controle só navega quando há uma nela. O resultado era que a porta de
+  entrada do jogo era só teclado: sem tela aberta, o analógico não movia o foco e o
+  `A` não abria nada. Agora o menu principal responde ao analógico, ao d-pad e ao
+  `A`, pelo mesmo navegador de foco das demais telas.
 
 - **Cena final: o mineiro sai da cave 60 e a carta vem depois.** Quatro painéis
   falados **sobre a paisagem da saída da caverna**, e no fim a mesma paisagem sem

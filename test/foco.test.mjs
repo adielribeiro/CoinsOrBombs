@@ -13,6 +13,16 @@ import {
 } from '../src/game/foco.js';
 
 /**
+ * O `id` do alvo escolhido, para as asserções lerem como antes.
+ *
+ * `proximoAlvo` devolve o alvo, e não o `id` dele: no jogo real quase nenhum botão tem
+ * `id`, e escolher por ele fazia toda direção cair no primeiro botão da tela. Ver o `id`
+ * do alvo devolvido é o que mantém estas asserções legíveis sem descrever de novo o que
+ * mudou.
+ */
+const passoPara = (...argumentos) => proximoAlvo(...argumentos)?.id ?? null;
+
+/**
  * Um retângulo como alvo.
  *
  * A navegação só conhece `{ id, x, y, largura, altura }` — é por isso que ela é
@@ -30,7 +40,7 @@ function alvo(id, x, y, largura = 100, altura = 40, extra = {}) {
  * usar um de verdade exigiria um navegador, e aí o teste deixaria de ser um teste
  * de lógica para virar um teste de integração.
  */
-function domFalso(alvos, { ocultos = new Set() } = {}) {
+function domFalso(alvos, { ocultos = new Set(), semId = false } = {}) {
   // `ativo` é uma referência só. Se `focus()` escrevesse em um lugar e o
   // `elementoAtivo` do navegador lesse de outro, o teste passaria a medir a
   // variável errada — e passaria.
@@ -38,8 +48,10 @@ function domFalso(alvos, { ocultos = new Set() } = {}) {
 
   const elementos = alvos.map((item) => {
     const elemento = {
-      id: item.id,
-      dataset: { focoId: item.id },
+      // No jogo real quase nenhum botão tem `id`, e `element.id` devolve `''`
+      // nesse caso — não `null`, e não `undefined`. `semId` reproduz isso.
+      id: semId ? '' : item.id,
+      dataset: semId ? {} : { focoId: item.id },
       offsetParent: ocultos.has(item.id) ? null : {},
       disabled: false,
       tagName: 'BUTTON',
@@ -85,8 +97,8 @@ test('para cima, o alvo é o que está acima', () => {
   const a = alvo('a', 0, 0);
   const b = alvo('b', 0, 100);
 
-  assert.equal(proximoAlvo([a, b], b, 'cima'), 'a');
-  assert.equal(proximoAlvo([a, b], a, 'baixo'), 'b');
+  assert.equal(passoPara([a, b], b, 'cima'), 'a');
+  assert.equal(passoPara([a, b], a, 'baixo'), 'b');
 });
 
 test('o alvo tem de estar na direção, não só ser o mais perto', () => {
@@ -96,7 +108,7 @@ test('o alvo tem de estar na direção, não só ser o mais perto', () => {
   const direita = alvo('direita', 100, 45);
   const origem = alvo('origem', 0, 100);
 
-  assert.equal(proximoAlvo([cima, direita], origem, 'cima'), 'cima');
+  assert.equal(passoPara([cima, direita], origem, 'cima'), 'cima');
 });
 
 test('um alvo alinhado demais não conta como passo', () => {
@@ -105,7 +117,7 @@ test('um alvo alinhado demais não conta como passo', () => {
   const origem = alvo('origem', 0, 100, 100, 40);
   const colado = alvo('colado', 0, 98, 100, 40);
 
-  assert.equal(proximoAlvo([colado], origem, 'cima'), null, 'um alvo de 2px virou um passo');
+  assert.equal(passoPara([colado], origem, 'cima'), null, 'um alvo de 2px virou um passo');
 });
 
 test('o ângulo ganha da distância', () => {
@@ -116,7 +128,7 @@ test('o ângulo ganha da distância', () => {
   const mesmaColuna = alvo('mesma-coluna', 200, 200, 100, 40);
   const outraColuna = alvo('outra-coluna', 0, 260, 100, 40);
 
-  assert.equal(proximoAlvo([outraColuna, mesmaColuna], origem, 'cima'), 'mesma-coluna');
+  assert.equal(passoPara([outraColuna, mesmaColuna], origem, 'cima'), 'mesma-coluna');
 });
 
 test('atravessar uma coluna larga não é penalizado como quatro passos', () => {
@@ -127,7 +139,7 @@ test('atravessar uma coluna larga não é penalizado como quatro passos', () => 
   const colado = alvo('colado', 150, 200, 100, 40);
   const longe = alvo('longe', -400, 200, 100, 40);
 
-  assert.equal(proximoAlvo([longe, colado], origem, 'cima'), 'colado');
+  assert.equal(passoPara([longe, colado], origem, 'cima'), 'colado');
 });
 
 test('numa grade, cima acha o card de cima e não o da diagonal', () => {
@@ -137,8 +149,8 @@ test('numa grade, cima acha o card de cima e não o da diagonal', () => {
   const acimaNaColuna = alvo('acima', 400, 100, 300, 120);
   const diagonal = alvo('diagonal', 0, 100, 300, 120);
 
-  assert.equal(proximoAlvo([diagonal, acimaNaColuna], origem, 'cima'), 'acima');
-  assert.equal(proximoAlvo([diagonal, acimaNaColuna], origem, 'esquerda'), 'diagonal');
+  assert.equal(passoPara([diagonal, acimaNaColuna], origem, 'cima'), 'acima');
+  assert.equal(passoPara([diagonal, acimaNaColuna], origem, 'esquerda'), 'diagonal');
 });
 
 test('sem alvo na direção, devolve null em vez de um vizinho qualquer', () => {
@@ -146,8 +158,8 @@ test('sem alvo na direção, devolve null em vez de um vizinho qualquer', () => 
   // quicando ou dar a volta.
   const origem = alvo('origem', 0, 0);
 
-  assert.equal(proximoAlvo([alvo('lateral', 300, 0)], origem, 'cima'), null);
-  assert.equal(proximoAlvo([], origem, 'baixo'), null);
+  assert.equal(passoPara([alvo('lateral', 300, 0)], origem, 'cima'), null);
+  assert.equal(passoPara([], origem, 'baixo'), null);
 });
 
 test('ordenar devolve do melhor para o pior', () => {
@@ -165,8 +177,8 @@ test('o primeiro alvo é o de cima e da esquerda, não o último do DOM', () => 
   // Numa grade, o primeiro card não é o último que entrou no DOM.
   const emGrade = [alvo('baixo-direita', 200, 200), alvo('cima-esquerda', 0, 0), alvo('baixo-esquerda', 0, 200)];
 
-  assert.equal(primeiroAlvo(emGrade), 'cima-esquerda');
-  assert.equal(primeiroAlvo([]), null);
+  assert.equal(primeiroAlvo(emGrade)?.id, 'cima-esquerda');
+  assert.equal(primeiroAlvo([])?.id ?? null, null);
   assert.equal(primeiroAlvo(null), null);
 });
 
@@ -261,6 +273,46 @@ test('uma raiz que não é DOM devolve lista vazia', () => {
 });
 
 // --- o navegador completo --------------------------------------------------
+
+test('botões sem id andam um a um, e não caem todos no primeiro', () => {
+  // Este é o teste do bug que existia no jogo.
+  //
+  // A navegação escolhia o alvo pelo `id`, e no jogo real quase nenhum botão tem
+  // `id`: `element.id` devolve `''` e `dataset.focoId` é `undefined`. Com o `id`
+  // vazio em todos, a busca por "o alvo com este id" devolvia o primeiro da lista —
+  // e as quatro direções levavam ao mesmo botão. Quem jogava com controle via
+  // empurrar o analógico e caía sempre no "Entrar", qualquer que fosse a direção.
+  //
+  // O teste anterior não pegava isso porque o DOM falso dele dava `id` distinto
+  // para cada botão, que é exatamente o que o jogo não tem.
+  const { raiz, elementos, elementoAtivo } = domFalso(
+    [
+      alvo('entrar', 48, 184, 520, 58),
+      alvo('config', 48, 242, 520, 58),
+      alvo('idioma', 48, 300, 520, 58),
+      alvo('info', 48, 358, 520, 58)
+    ],
+    { semId: true }
+  );
+
+  const nav = criarNavegadorDeFoco({ raiz, elementoAtivo });
+
+  assert.equal(alvosAlcancaveis(raiz).length, 4, 'um botão sem id sumiu da lista');
+
+  elementos[0].focus();
+  assert.equal(nav.mover('baixo'), true);
+  assert.equal(elementoAtivo(), elementos[1], 'baixo pulou o Configurações');
+
+  assert.equal(nav.mover('baixo'), true);
+  assert.equal(elementoAtivo(), elementos[2]);
+
+  assert.equal(nav.mover('cima'), true);
+  assert.equal(elementoAtivo(), elementos[1], 'cima pulou o Configurações');
+
+  // E `atual()` não pode devolver `''` como se fosse um id: isso é o que o HUD
+  // leria, e `''` não identifica ninguém.
+  assert.equal(nav.atual(), null, 'devolveu um id vazio como se fosse identificação');
+});
 
 test('o navegador move o foco de verdade, elemento por elemento', () => {
   const { raiz, elementos, elementoAtivo } = domFalso([

@@ -110,10 +110,16 @@ export function ordenarPorDirecao(alvos, de, direcao, tolerancia = 12) {
 }
 
 /**
- * O `id` do próximo alvo numa direção, ou `null` se não há nenhum.
+ * O alvo na direção pedida, ou `null`.
+ *
+ * Devolve o **alvo**, e não o `id` dele. Escolher pelo `id` exigia que todo botão
+ * tivesse um `id` único, e quase nenhum tem: no jogo real o `id` é `''` em todos
+ * eles, e `alvos.find((alvo) => alvo.id === '')` devolvia o primeiro da lista — de
+ * modo que toda direção levava ao mesmo botão. O `id` continua no alvo, para
+ * relatar; escolher é pelo elemento.
  *
  * Devolve `null` em vez do alvo atual quando não há para onde ir, e quem chama
- * trata: manter o foco onde está é o certo, e trocá-lo por umvizinho aleatório é
+ * trata: manter o foco onde está é o certo, e trocá-lo por um vizinho aleatório é
  * pior.
  */
 export function proximoAlvo(alvos, de, direcao, tolerancia) {
@@ -121,7 +127,7 @@ export function proximoAlvo(alvos, de, direcao, tolerancia) {
 
   if (ordenados.length === 0) return null;
 
-  return ordenados[0].id ?? null;
+  return ordenados[0];
 }
 
 /**
@@ -134,7 +140,7 @@ export function proximoAlvo(alvos, de, direcao, tolerancia) {
 export function primeiroAlvo(alvos) {
   if (!alvos || alvos.length === 0) return null;
 
-  return [...alvos].sort((a, b) => a.y - b.y || a.x - b.x)[0].id ?? null;
+  return [...alvos].sort((a, b) => a.y - b.y || a.x - b.x)[0];
 }
 
 /**
@@ -165,15 +171,18 @@ export function alvosAlcancaveis(raiz) {
       const caixa = elemento.getBoundingClientRect();
 
       return {
-        id: elemento.dataset.focoId ?? elemento.id ?? null,
+        // O `id` é para **relatar** — o HUD e o teste — e não para escolher alvo.
+        // Ele é `''` na maioria dos botões do jogo, porque quase nenhum tem `id` no
+        // JSX, e usá-lo para escolher alvo fazia toda navegação cair no primeiro
+        // botão da tela, qualquer que fosse a direção.
+        id: elemento.dataset.focoId ?? elemento.id ?? '',
         elemento,
         x: caixa.left,
         y: caixa.top,
         largura: caixa.width,
         altura: caixa.height
       };
-    })
-    .filter((alvo) => alvo.id !== null);
+    });
 }
 
 /**
@@ -230,15 +239,11 @@ export function criarNavegadorDeFoco({ raiz, elementoAtivo, aplicarFoco, agora }
 
     /** Põe o foco no primeiro alvo, se ainda não houver nenhum. */
     focarPrimeiro() {
-      const alvos = alvosAlcancaveis(raiz);
-      const id = primeiroAlvo(alvos);
+      const alvo = primeiroAlvo(alvosAlcancaveis(raiz));
 
-      if (id === null) return null;
-
-      const alvo = alvos.find((item) => item.id === id);
       if (alvo?.elemento?.focus) alvo.elemento.focus();
 
-      return id;
+      return alvo?.id || null;
     },
 
     /**
@@ -251,12 +256,8 @@ export function criarNavegadorDeFoco({ raiz, elementoAtivo, aplicarFoco, agora }
       const alvos = alvosAlcancaveis(raiz);
       if (alvos.length === 0) return false;
 
-      const de = alvoAtual();
-      const id = proximoAlvo(alvos, de, direcao);
+      const alvo = proximoAlvo(alvos, alvoAtual(), direcao);
 
-      if (id === null) return false;
-
-      const alvo = alvos.find((item) => item.id === id);
       if (!alvo?.elemento?.focus) return false;
 
       alvo.elemento.focus();
@@ -309,9 +310,14 @@ export function criarNavegadorDeFoco({ raiz, elementoAtivo, aplicarFoco, agora }
       return true;
     },
 
-    /** O `id` do alvo com foco, para o teste e para o HUD. */
+    /**
+     * O `id` do alvo com foco, para o teste e para o HUD.
+     *
+     * `|| null` e não `?? null`: quase nenhum botão do jogo tem `id`, e devolver
+     * `''` seria devolver um id que não identifica nada.
+     */
     atual() {
-      return alvoAtual()?.id ?? null;
+      return alvoAtual()?.id || null;
     }
   };
 }

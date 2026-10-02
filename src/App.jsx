@@ -1881,6 +1881,11 @@ export default function App() {
     telas: telasAbertas,
     fechar: fecharTelaPeloNome,
     podePausar: pauseAvailable,
+    // O menu principal é navegável, e a condição é a mesma do `showMenu` declarado
+    // mais abaixo. Ela está reescrita aqui de propósito: o `showMenu` ainda não
+    // existe neste ponto do render, e usá-lo aqui pegaria a variável na zona morta
+    // temporal — que derruba o jogo inteiro na montagem.
+    menuVisivel: entryPhase === ENTRY_PHASE.MENU && !showRotateLock,
     lore: entryPhase === ENTRY_PHASE.LORE ? { avancar: avancarLore, pular: pularLore } : null,
     cenaFinal: cenaFinalAberta
       ? {
@@ -1948,6 +1953,18 @@ export default function App() {
           foiParaOMenu = true;
           atual.lore.avancar();
         }
+      } else if (atual.menuVisivel) {
+        // O menu principal é a única tela que faltava: sem este ramo, o controle
+        // não navegava nele e o `A` não abria nada — a porta de entrada do jogo
+        // era só teclado, e quem só tem controle não conseguia nem começar.
+        //
+        // A navegação é a mesma dos modais (`nav` é o mesmo navegador), e por isso
+        // o analógico esquerdo anda pelo menu do mesmo jeito que anda numa tela de
+        // configurações: um passo por direção dominante, com repetição ao segurar.
+        foiParaOMenu = true;
+
+        if (estado.direcoes.dominante) nav.moverComRepeticao(estado.direcoes.dominante);
+        else if (estado.bordas.confirmar) nav.ativar();
       } else if (nomeDaTela) {
         foiParaOMenu = true;
 
@@ -1970,9 +1987,16 @@ export default function App() {
       // O anel de foco. `:focus-visible` sozinho não serviria, porque o navegador
       // só o mostra em foco programático quando a última interação foi de
       // teclado — e aqui ela foi de controle, que ele não conhece.
+      //
+      // Ele **fica** enquanto houver controle conectado, e não só no quadro em que
+      // o controle mandou alguma coisa. A versão anterior removia o atributo em
+      // todo quadro sem entrada, e o anel piscava: aparecia no empurrão e sumia ao
+      // soltar, num ritmo de 60 vezes por segundo. Quem joga com analógico segura
+      // a direção para repetir, e o anel desaparecia justo quando ele estava
+      // funcionando.
       if (shell) {
-        if (foiParaOMenu && estado.conectado) shell.setAttribute('data-controle', '1');
-        else shell.removeAttribute('data-controle');
+        if (!estado.conectado) shell.removeAttribute('data-controle');
+        else if (foiParaOMenu) shell.setAttribute('data-controle', '1');
       }
 
       // A lore e a cena final viajam como `telaAberta` mesmo não sendo telas. A cena
