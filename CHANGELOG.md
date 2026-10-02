@@ -21,10 +21,31 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   nem a cave 1. Voltar para a cave da morte é não ter perdido nada: a mesma pedra
   difícil e a mesma bomba emboscada, e a tentação é repetir a decisão que matou.
 
-  São 5 testes novos, e eles rodam a regra em **todas** as 60 caves, não numa amostra:
-  amostra esconde bug de borda, e a borda aqui é justamente o bioma, porque o primeiro
-  bioma é a única faixa onde a resposta errada dá o número certo. Com o `cave = 1` de
-  volta, 3 dos 5 reprovam — foi assim que se confirmou que eles seguram a regra.
+  São 12 testes novos, e eles fixam a tabela **bioma a bioma**, com o nome de cada um:
+
+  | Bioma | Caves | Morrer volta para |
+  |---|---|---|
+  | Mina Solar | 1 a 10 | 1 |
+  | Gruta de Gelo | 11 a 20 | 11 |
+  | Profundezas Rubras | 21 a 30 | 21 |
+  | Ruínas Abissais | 31 a 40 | 31 |
+  | Galeria de Vento | 41 a 50 | 41 |
+  | Câmara de Cristal | 51 a 60 | 51 |
+
+  A tabela é escrita no teste, **fora** do código que a consome, de propósito. Os outros
+  testes percorrem `BIOMES`, e isso prova que a regra é coerente com a tabela — não que
+  a tabela é a que a pessoa pediu: se alguém mover `startCave` do bioma do vento de 41
+  para 45, eles continuam verdes, porque seguem o dado. A tabela escrita à mão é a
+  especificação, e quando os dois divergirem é ela que está certa — e o nome do bioma
+  aparece na falha.
+
+  Um teste também confirma que as faixas são contíguas e sem sobreposição. Um gap faria
+  uma cave sem bioma, e `getBiomeForCave` cairia no último bioma por omissão — a pessoa
+  morreria num bioma que não é o dela.
+
+  **Verificado que eles seguram a regra**: com o `cave = 1` de volta, 8 dos 12
+  reprovam. Os cinco biomas fora do primeiro caem pelo nome, e Mina Solar **passa** — a
+  resposta errada é a certa nela, que é exatamente por que o bug ficou escondido.
 
 - **Saiu a tarja "gire o celular"** que ficava no rodapé durante a partida.
 
