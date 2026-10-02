@@ -353,4 +353,11 @@ export default {
   'cenaFinal.p2.a': 'Por fin la salida',
   'cenaFinal.p3.a': 'Tengo que dejar de arreglar estos líos...jejejeje',
   'cenaFinal.p4.a': 'Bueno...¡solo me queda la Salida!!!!!',
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': 'Sensibilidad del puntero',
+  'settings.pointerLess': 'Menos',
+  'settings.pointerMore': 'Más',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': 'Cuánto se mueve el puntero al empujar el stick izquierdo. Vale para los menús, no para la cueva.',
 };

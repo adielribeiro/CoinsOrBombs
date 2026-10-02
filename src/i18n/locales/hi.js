@@ -361,4 +361,11 @@ export default {
   'cenaFinal.p2.a': 'आखिरकार निकास रास्ता',
   'cenaFinal.p3.a': 'मुझे इन उलझनों को सुलझाना बंद करना होगा...हेहेहे',
   'cenaFinal.p4.a': 'अच्छा...अब बस निकास रास्ता ही बचा है!!!!!',
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': 'पॉइंटर संवेदनशीलता',
+  'settings.pointerLess': 'कम',
+  'settings.pointerMore': 'ज़्यादा',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': 'बायाँ स्टिक दबाने पर पॉइंटर कितना चलता है। यह मेन्यू पर लागू होती है, गुफा पर नहीं।',
 };

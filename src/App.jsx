@@ -2,6 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createGame } from './game/createGame.js';
 import { duracaoDaCarta } from './game/cartaFinal.js';
 import {
+  MARGEM_DO_PONTEIRO_PX,
+  SENSIBILIDADE_PADRAO,
+  deslocamentoDoPonteiro,
+  limitarPonteiro,
+  porcentagemDaSensibilidade,
+  proximaSensibilidade
+} from './game/ponteiro.js';
+import {
   describeFullscreenError,
   enterFullscreen,
   exitFullscreen,
@@ -68,7 +76,7 @@ import {
   saveCompativelComOModo
 } from './game/saves.js';
 import { criarLeitorDeControle } from './game/gamepad.js';
-import { criarNavegadorDeFoco } from './game/foco.js';
+import { alvoSobElemento, criarNavegadorDeFoco } from './game/foco.js';
 import { fechaTelaDoTopo, telaDoTopo } from './game/telas.js';
 import { buildRewardCatalog, getRewardVisual, pickRewardOptions, shuffle } from './game/rewards.js';
 import {
@@ -249,7 +257,16 @@ const TOTAL_CAVES = TOTAL_CAVES_DO_JOGO;
 const DEFAULT_SETTINGS = {
   persistProgress: true,
   autoFullscreen: true,
-  developerMode: false
+  developerMode: false,
+  /**
+   * A escala entre o empurrão do analógico e o deslocamento do ponteiro.
+   *
+   * `1` é o padrão e não é um número arbitrário: é a velocidade que um mouse
+   * "de média" entrega. Os outros valores são de `SENSIBILIDADES`, e não uma
+   * aritmética — um `+0.25` deixaria o estado guardar valores que o menu não
+   * sabe mostrar.
+   */
+  ponteiroSensibilidade: SENSIBILIDADE_PADRAO
 };
 
 /**
@@ -479,6 +496,14 @@ export default function App() {
   const gameRef = useRef(null);
   const containerRef = useRef(null);
   const shellRef = useRef(null);
+  /**
+   * A seta do ponteiro dos menus.
+   *
+   * Vive fora do React de propósito: ele se move a cada quadro, e um `setState`
+   * por quadro redesenharia a árvore inteira para mover um `div`. O nó recebe o
+   * `transform` direto, e o React só sabe que ele existe.
+   */
+  const ponteiroRef = useRef(null);
   const stateRef = useRef(initialState);
   const entryTimeoutRef = useRef([]);
   const hudRef = useRef(null);
@@ -1886,6 +1911,10 @@ export default function App() {
     // existe neste ponto do render, e usá-lo aqui pegaria a variável na zona morta
     // temporal — que derruba o jogo inteiro na montagem.
     menuVisivel: entryPhase === ENTRY_PHASE.MENU && !showRotateLock,
+    // O laço do controle é criado uma vez e nunca recriado, então a sensibilidade
+    // vem pela ref: ler `settings` direto nele congelaria no valor da montagem, e
+    // mudar a sensibilidade nas configurações só valeria na próxima sessão.
+    sensibilidadePonteiro: settings.ponteiroSensibilidade ?? SENSIBILIDADE_PADRAO,
     lore: entryPhase === ENTRY_PHASE.LORE ? { avancar: avancarLore, pular: pularLore } : null,
     cenaFinal: cenaFinalAberta
       ? {
@@ -1907,7 +1936,108 @@ export default function App() {
     let animacao = null;
     let conectadoAntes = null;
 
+    /**
+     * O ponteiro dos menus: onde está, se já apareceu, e quando andou pela última
+     * vez.
+     *
+     * Vive no closure do laço e não no React pelos mesmos motivos do índice do
+     * cursor da cena final: é lido e escrito a cada quadro, e um estado do React
+     * custaria um redesenho por quadro.
+     */
+    const ponteiro = { x: 0, y: 0, visivel: false };
+
+    /** A tela que o ponteiro viu por último, para saber quando semear de novo. */
+    let telaDoPonteiroAnterior = null;
+
+    /**
+     * Um quadro do ponteiro: move, prende na borda e mostra.
+     *
+     * Devolve `true` quando o ponteiro andou, que é o que faz o `A` ativar o que
+     * está embaixo dele em vez de um item do d-pad.
+     */
+    const moverPonteiro = (estado, dt, sensibilidade) => {
+      const deslocamento = deslocamentoDoPonteiro(estado.eixo, dt, sensibilidade);
+      const andou = Math.hypot(deslocamento.x, deslocamento.y) > 0;
+
+      if (!andou) return false;
+
+      const area = shellRef.current?.getBoundingClientRect();
+      const limites = area
+        ? { largura: area.width, altura: area.height }
+        : { largura: 0, altura: 0 };
+
+      // `getBoundingClientRect` é do viewport e o ponteiro é `fixed`, então as
+      // coordenadas batem. A margem é o quanto da seta fica dentro da área: a
+      // ponta aponta para o alto e à esquerda, e sem isto ela encostaria na borda
+      // com o corpo para fora.
+      const proxima = limitarPonteiro(
+        { x: ponteiro.x - area.left, y: ponteiro.y - area.top },
+        deslocamento,
+        limites,
+        MARGEM_DO_PONTEIRO_PX
+      );
+
+      ponteiro.x = proxima.x + (area?.left ?? 0);
+      ponteiro.y = proxima.y + (area?.top ?? 0);
+      ponteiro.visivel = true;
+
+      const no = ponteiroRef.current;
+
+      if (no) {
+        no.style.transform = `translate3d(${Math.round(ponteiro.x)}px, ${Math.round(ponteiro.y)}px, 0)`;
+
+        if (no.dataset.visivel !== '1') no.dataset.visivel = '1';
+      }
+
+      return true;
+    };
+
+    /**
+     * Coloca o ponteiro em cima do alvo que está com o foco.
+     *
+     * Sem isto, abrir um modal mostra a seta no canto oposto ao item que a pessoa
+     * já escolheu — e o primeiro toque de analógico a leva embora, num pulo que
+     * atravessa a tela.
+     */
+    const ponteiroSobre = (elemento) => {
+      if (!elemento || typeof elemento.getBoundingClientRect !== 'function') return;
+
+      const caixa = elemento.getBoundingClientRect();
+
+      if (caixa.width <= 0 || caixa.height <= 0) return;
+
+      ponteiro.x = caixa.left + caixa.width / 2;
+      ponteiro.y = caixa.top + caixa.height / 2;
+
+      const no = ponteiroRef.current;
+
+      if (no) no.style.transform = `translate3d(${Math.round(ponteiro.x)}px, ${Math.round(ponteiro.y)}px, 0)`;
+    };
+
+    /**
+     * O que está embaixo do ponteiro, se for algo que dá para ativar.
+     *
+     * Devolve `null` quando não há nada — e o foco **fica** onde está, que é o que
+     * um mouse faz ao passar pelo fundo: ele não joga o foco no chão.
+     */
+    const alvoSobOPonteiro = () => {
+      if (!ponteiro.visivel || typeof document.elementFromPoint !== 'function') return null;
+
+      return alvoSobElemento(nav.alvos(), document.elementFromPoint(ponteiro.x, ponteiro.y));
+    };
+
+    let ultimoQuadro = 0;
+
     const quadro = () => {
+      const agora = Date.now();
+
+      // O `dt` é limitado a um quarto de segundo: depois de uma aba em segundo
+      // plano, o primeiro quadro pode valer segundos, e o ponteiro atravessaria a
+      // tela inteira de uma vez.
+      const dt = ultimoQuadro === 0 ? 0 : Math.min((agora - ultimoQuadro) / 1000, 0.25);
+
+      ultimoQuadro = agora;
+
       const estado = leitor.ler();
       const atual = controleRef.current;
       const nomeDaTela = telaDoTopo(atual.telas);
@@ -1917,6 +2047,15 @@ export default function App() {
         conectadoAntes = estado.conectado;
         setControleConectado(estado.conectado);
         setControleNome(estado.conectado ? leitor.nomeDoControle() : null);
+      }
+
+      // O ponteiro nasce em cima do item em foco, e não no canto. Abrir um modal
+      // mostrava a seta do lado oposto ao botão que a pessoa já tinha escolhido, e
+      // o primeiro toque de analógico a levava embora num pulo que atravessa a
+      // tela inteira.
+      if (nomeDaTela !== telaDoPonteiroAnterior) {
+        telaDoPonteiroAnterior = nomeDaTela;
+        ponteiroSobre(document.activeElement);
       }
 
       let foiParaOMenu = false;
@@ -1953,26 +2092,38 @@ export default function App() {
           foiParaOMenu = true;
           atual.lore.avancar();
         }
-      } else if (atual.menuVisivel) {
-        // O menu principal é a única tela que faltava: sem este ramo, o controle
-        // não navegava nele e o `A` não abria nada — a porta de entrada do jogo
-        // era só teclado, e quem só tem controle não conseguia nem começar.
+      } else if (atual.menuVisivel || nomeDaTela) {
+        // O menu principal é uma tela como as outras, e entrou aqui pelo mesmo
+        // caminho: sem ele, o laço do controle não tinha onde navegar e a porta de
+        // entrada do jogo era só teclado.
+        foiParaOMenu = true;
+
+        // O ponteiro tem precedência sobre o d-pad, e não o contrário.
         //
-        // A navegação é a mesma dos modais (`nav` é o mesmo navegador), e por isso
-        // o analógico esquerdo anda pelo menu do mesmo jeito que anda numa tela de
-        // configurações: um passo por direção dominante, com repetição ao segurar.
-        foiParaOMenu = true;
+        // A ordem é o que evita a briga: sem esta guarda, um empurrão de analógico
+        // andaria a seta E o foco do menu, e cada um puxaria para o seu lado. Com
+        // ela, o analógico é o ponteiro e o d-pad é o passo a passo — que é
+        // também o que o desenho das teclas sugere.
+        // Em qualquer tela do jogo o ponteiro anda: o menu principal, a pausa, as
+        // configurações, os saves, o idioma. Restringir a algumas delas faria a
+        // seta sumir e aparecer conforme a pessoa navega, que é o oposto de um
+        // ponteiro.
+        const analogoMoveu = estado.conectado && moverPonteiro(estado, dt, atual.sensibilidadePonteiro);
 
-        if (estado.direcoes.dominante) nav.moverComRepeticao(estado.direcoes.dominante);
-        else if (estado.bordas.confirmar) nav.ativar();
-      } else if (nomeDaTela) {
-        foiParaOMenu = true;
+        if (analogoMoveu) {
+          // O foco segue o ponteiro. Passar por cima de um botão e apertar `A` é o
+          // que um mouse faz, e fazer o foco acompanhar evita ter dois alvos
+          // disputando quem é o escolhido.
+          const sob = alvoSobOPonteiro();
 
-        if (estado.bordas.pausa && nomeDaTela === 'pausa') {
+          if (sob?.elemento && sob.elemento !== document.activeElement) sob.elemento.focus();
+        }
+
+        if (nomeDaTela === 'pausa' && estado.bordas.pausa) {
           atual.fechar('pausa');
-        } else if (estado.bordas.voltar) {
+        } else if (estado.bordas.voltar && nomeDaTela && !analogoMoveu) {
           atual.fechar(nomeDaTela);
-        } else if (estado.direcoes.dominante) {
+        } else if (estado.direcoes.dominante && !analogoMoveu) {
           nav.moverComRepeticao(estado.direcoes.dominante);
         } else if (estado.bordas.confirmar) {
           nav.ativar();
@@ -2230,6 +2381,18 @@ export default function App() {
     <div className="app-shell">
       <main className="game-area" ref={shellRef}>
         <div ref={containerRef} className="game-container" />
+
+        {/*
+          A seta do ponteiro. Fica aqui, e não dentro de nenhum dos menus, porque
+          ela precisa sobreviver à troca de tela: quem a move está no laço do
+          controle, que é um só para o jogo inteiro.
+        */}
+        <div
+          ref={ponteiroRef}
+          className="ponteiro-controle"
+          aria-hidden="true"
+          data-visivel="0"
+        />
 
         {showGameHud && (
           <>
@@ -3370,6 +3533,59 @@ export default function App() {
                   <strong>{t('settings.rememberRun')}</strong>
                 </span>
               </label>
+
+              {/*
+                A sensibilidade do ponteiro. São dois botões e um número, e não um
+                `input[type=range]`: o jogo não tem Mouse Orbit para o `range`
+               idersar ao arrastar, e sem arraste ele viraria um campo de texto
+                que ninguém sabe usar com controle. Com dois botões o valor anda
+                nos dois sentidos pelo mesmo caminho do resto do menu.
+              */}
+              <div className="settings-stepper">
+                <strong>{t('settings.pointerSensitivity')}</strong>
+
+                <div className="settings-stepper-row">
+                  <button
+                    type="button"
+                    className="settings-stepper-btn"
+                    onClick={() =>
+                      setSettings((current) => ({
+                        ...current,
+                        ponteiroSensibilidade: proximaSensibilidade(
+                          current.ponteiroSensibilidade,
+                          -1
+                        )
+                      }))
+                    }
+                  >
+                    {t('settings.pointerLess')}
+                  </button>
+
+                  <output className="settings-stepper-value">
+                    {t('settings.pointerPercent', {
+                      valor: porcentagemDaSensibilidade(settings.ponteiroSensibilidade)
+                    })}
+                  </output>
+
+                  <button
+                    type="button"
+                    className="settings-stepper-btn"
+                    onClick={() =>
+                      setSettings((current) => ({
+                        ...current,
+                        ponteiroSensibilidade: proximaSensibilidade(
+                          current.ponteiroSensibilidade,
+                          1
+                        )
+                      }))
+                    }
+                  >
+                    {t('settings.pointerMore')}
+                  </button>
+                </div>
+
+                <small>{t('settings.pointerHint')}</small>
+              </div>
 
               <label className="settings-toggle settings-toggle-dev">
                 <input

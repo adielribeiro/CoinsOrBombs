@@ -352,4 +352,11 @@ export default {
   'cenaFinal.p2.a': 'Endlich der Ausgang',
   'cenaFinal.p3.a': 'Ich muss aufhören, diese Wirbel zu richten...hihihi',
   'cenaFinal.p4.a': 'Nun... bleibt mir nur noch der Ausgang!!!!!',
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': 'Zeigerempfindlichkeit',
+  'settings.pointerLess': 'Weniger',
+  'settings.pointerMore': 'Mehr',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': 'Wie weit der Zeiger läuft, wenn du den linken Stick drückst. Gilt für die Menüs, nicht für die Höhle.',
 };

@@ -5,7 +5,53 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- **O analógico esquerdo move um ponteiro de verdade nos menus.** Uma seta que
+  anda continuamente sob o comando do analógico, e o botão que estiver embaixo
+  dela é o que o `A` aciona. É um mouse, e não o passo a passo em grade que o
+  d-pad continua sendo.
+
+  Na caverna **não** há ponteiro, e a decisão é a mesma que o `cursor.js` já
+  registrava: o jogo se joga clicando numa pedra, e um clique em coordenada de tela
+  erra por meio pixel — e meio pixel numa aresta isométrica é clicar na pedra errada
+  ou em nada. Aí o cursor continua andando de tile em tile, que é a unidade em que o
+  jogo pensa.
+
+  ## A sensibilidade é o DPI do mouse, e é configurável
+
+  Um mouse tem sensibilidade, e quem joga procura um valor que sirva para o monitor
+  e para o braço. Um analógico tem curso, e o curso é fixo: o que falta é a escala
+  entre o empurrão e o deslocamento. Por isso há **Sensibilidade do ponteiro** nas
+  configurações, de 25% a 300%, com 100% como padrão.
+
+  A velocidade é **linear** no empurrão, e isso é uma escolha: curva quadrada daria
+  controle fino muito lento, e o ponteiro ficaria colado na tela quando se quer
+  precisão. Linear é previsível — dobrar a sensibilidade dobra o deslocamento, e o
+  empurrão leve que dá a precisão sai de graça do dedo.
+
+  O valor anda em sete degraus, e não por aritmética: um `+0.25` a partir de 100%
+  produziria 125%, 150%, 175%… e o estado passaria a guardar números que o menu não
+  sabe mostrar de volta.
+
+  ## O ponteiro e o d-pad não se atropelam
+
+  O analógico é o ponteiro, e o d-pad é o passo a passo — com o ponteiro parado, o
+  d-pad anda a coluna como sempre. A ordem importa: sem a guarda, um empurrão
+  andaria a seta **e** o foco do menu, e cada um puxaria para o seu lado.
+
+  O foco segue o ponteiro, e uma tela nova semeia a seta em cima do item já
+  escolhido — senão abrir um modal mostrava a seta do lado oposto, e o primeiro
+  toque a levava embora num pulo que atravessa a tela.
+
 ### Corrigido
+
+- **O ponteiro passava por cima dos botões e o foco não ia com ele.**
+  `document.elementFromPoint` devolve o nó mais profundo naquele ponto, e num botão
+  com `<span>` de dentro o nó mais profundo é o span — não o botão. Só que um mouse
+  funciona, porque o navegador entrega o clique ao ancestral interativo mais
+  próximo. `alvoSobElemento` faz essa subida, e é o mesmo caminho que o navegador
+  usa.
 
 - **A navegação por controle andava sempre para o primeiro botão da tela.** O
   analógico esquerdo e o d-pad já eram lidos, e a direção resolvida já chegava ao

@@ -186,6 +186,46 @@ export function alvosAlcancaveis(raiz) {
 }
 
 /**
+ * O alvo alcançado a partir de um elemento qualquer, andando para cima.
+ *
+ * ## Por que precisa subir
+ *
+ * `document.elementFromPoint` devolve o elemento mais **profundo** naquele ponto,
+ * e o mais profundo quase nunca é o botão: é o `<span>` do rótulo dentro dele.
+ * Só que um mouse funciona — porque o navegador entrega o clique ao ancestral
+ * interativo mais próximo, e não ao nó que estava embaixo do cursor.
+ *
+ * Sem esta subida, o ponteiro passava por cima de todos os botões do menu e o foco
+ * não ia com ele. Era o mesmo defeito do `id`, por um caminho diferente: a
+ * navegação acertava o alvo e perdia na hora de usá-lo.
+ *
+ * ## Por que um limite de profundidade
+ *
+ * A caminhada para no corpo do documento, e para também depois de um número de
+ * passos. Sem o limite, um DOM com ciclo de pais — que não existe num navegador
+ * normal, mas existe num teste malfeito — deixaria isto rodando.
+ *
+ * @param {object[]} alvos a lista de `alvosAlcancaveis`
+ * @param {object} elemento o nó onde o ponteiro está, ou `null`
+ * @returns {object|null} o alvo, ou `null` quando não há nada embaixo
+ */
+export function alvoSobElemento(alvos, elemento, limite = 32) {
+  if (!elemento) return null;
+
+  let no = elemento;
+
+  for (let passo = 0; passo < limite && no; passo += 1) {
+    const achado = alvos.find((alvo) => alvo.elemento === no);
+
+    if (achado) return achado;
+
+    no = no.parentNode ?? no.parentElement ?? null;
+  }
+
+  return null;
+}
+
+/**
  * Decide se a direção deve repetir, e devolve o novo estado da repetição.
  *
  * Separado do objeto que a aplica de propósito: isto são três tempos — antes da

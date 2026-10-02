@@ -351,4 +351,11 @@ export default {
   'cenaFinal.p2.a': 'やっと出口だ',
   'cenaFinal.p3.a': 'このカオスを片付けるのはやめようか...へへへ',
   'cenaFinal.p4.a': 'よし...もう残るのは出口だけだ!!!!!',
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': 'ポインターの感度',
+  'settings.pointerLess': '遅く',
+  'settings.pointerMore': '速く',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': '左スティックを倒したときのポインターの移動量。洞窟ではなくメニューに効きます。',
 };

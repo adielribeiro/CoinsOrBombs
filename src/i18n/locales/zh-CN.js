@@ -350,4 +350,11 @@ export default {
   'cenaFinal.p2.a': '终于到出口了',
   'cenaFinal.p3.a': '我得停止收拾这些烂摊子了...嘿嘿嘿',
   'cenaFinal.p4.a': '好吧...现在只剩下出口了!!!!!',
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': '指针灵敏度',
+  'settings.pointerLess': '降低',
+  'settings.pointerMore': '提高',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': '推动左摇杆时光标移动的距离。只作用于菜单，不作用于洞窟。',
 };

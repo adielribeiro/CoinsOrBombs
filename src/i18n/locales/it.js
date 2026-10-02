@@ -352,4 +352,11 @@ export default {
   'cenaFinal.p2.a': "Finalmente l'uscita",
   'cenaFinal.p3.a': 'Devo smettere di sistemare questi pasticci...hihihi',
   'cenaFinal.p4.a': "Bene... mi resta solo l'Uscita!!!!!",
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': 'Sensibilità del puntatore',
+  'settings.pointerLess': 'Meno',
+  'settings.pointerMore': 'Più',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': 'Quanto si muove il puntatore quando spingi lo stick sinistro. Vale per i menu, non per la caverna.',
 };

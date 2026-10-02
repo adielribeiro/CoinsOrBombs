@@ -370,4 +370,11 @@ export default {
   'cenaFinal.p2.a': 'Wreszcie wyjście',
   'cenaFinal.p3.a': 'Muszę przestać naprawiać te bałagany...hihihi',
   'cenaFinal.p4.a': 'No...zostało mi już tylko Wyjście!!!!!',
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': 'Czułość wskaźnika',
+  'settings.pointerLess': 'Mniej',
+  'settings.pointerMore': 'Więcej',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': 'Jak daleko wędruje wskaźnik, gdy pchasz lewy drążek. Dotyczy menu, nie jaskini.',
 };

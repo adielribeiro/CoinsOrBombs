@@ -348,4 +348,11 @@ export default {
   'cenaFinal.p2.a': 'Finally, the exit',
   'cenaFinal.p3.a': 'I need to stop sorting out these messes...hehehehe',
   'cenaFinal.p4.a': "Well...now the Exit is all that's left!!!!!",
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': 'Pointer sensitivity',
+  'settings.pointerLess': 'Less',
+  'settings.pointerMore': 'More',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': 'How far the pointer travels when you push the left stick. It applies to the menus, not to the cave.',
 };

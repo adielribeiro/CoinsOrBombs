@@ -383,4 +383,11 @@ export default {
   'cenaFinal.p2.a': 'Finalmente a saída',
   'cenaFinal.p3.a': 'Preciso parar de arrumar essas confusões...hehehehe',
   'cenaFinal.p4.a': 'Bom...agora só me resta a Saída!!!!!',
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': 'Sensibilidade do ponteiro',
+  'settings.pointerLess': 'Menos',
+  'settings.pointerMore': 'Mais',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': 'Quão longe o ponteiro anda quando você empurra o analógico esquerdo. Vale para os menus, não para a caverna.',
 };

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   ESPERA_REPETICAO_MS,
   INTERVALO_REPETICAO_MS,
+  alvoSobElemento,
   alvosAlcancaveis,
   criarNavegadorDeFoco,
   ordenarPorDirecao,
@@ -270,6 +271,89 @@ test('um alvo de tamanho zero não entra na lista', () => {
 test('uma raiz que não é DOM devolve lista vazia', () => {
   assert.deepEqual(alvosAlcancaveis(null), []);
   assert.deepEqual(alvosAlcancaveis({}), []);
+});
+
+// --- o ponteiro ------------------------------------------------------------
+
+test('o ponteiro acha o botão mesmo parando no span de dentro dele', () => {
+  // `document.elementFromPoint` devolve o nó mais profundo. Num botão com um
+  // `<span>` de rótulo dentro — que é como todo botão deste jogo é feito — o nó
+  // mais profundo é o span, e comparar só com o botão não acha nada.
+  //
+  // Um mouse funciona porque o navegador entrega o clique ao ancestral
+  // interativo mais próximo. Sem essa subida, o ponteiro passava por cima de todos
+  // os botões do menu e o foco não ia com ele.
+  // `parentNode` e não um nome qualquer: é o campo que o DOM de verdade tem, e um
+  // falso com outro nome passaria sem exercitar o caminho que roda no navegador.
+  const no = (parentNode = null) => ({ element: null, parentNode });
+
+  const area = no();
+  const botao = no(area);
+  const rotulo = no(botao);
+  const folha = no(rotulo);
+
+  area.element = area;
+  botao.element = botao;
+  rotulo.element = rotulo;
+  folha.element = folha;
+
+  const lista = [{ ...alvo('botao', 0, 0), elemento: botao }];
+
+  assert.equal(alvoSobElemento(lista, folha), lista[0], 'não subiu até o botão');
+  assert.equal(alvoSobElemento(lista, rotulo), lista[0], 'não achou o botão a partir do rótulo');
+  assert.equal(alvoSobElemento(lista, botao), lista[0], 'não achou o próprio botão');
+});
+
+test('o ponteiro devolve null sobre o fundo, e não joga o foco no chão', () => {
+  const lista = [{ ...alvo('botao', 0, 0), elemento: { parentNode: null } }];
+
+  assert.equal(alvoSobElemento(lista, null), null);
+  assert.equal(alvoSobElemento(lista, { parentNode: null }), null);
+  assert.equal(alvoSobElemento([], { parentNode: null }), null);
+});
+
+test('a subida para, mesmo com um DOM que se manda para o avô', () => {
+  // Um `parentNode` que volta para o mesmo nó é um DOM quebrado. A caminhada não
+  // pode ficar presa nele: um ponteiro parado é pior do que um ponteiro errado.
+  const cego = { parentNode: null };
+
+  cego.parentNode = cego;
+
+  assert.equal(alvoSobElemento([{ elemento: {} }], cego, 5), null);
+});
+
+test('a coluna do menu anda sem buraco, e para cima é o caminho de volta', () => {
+  // A geometria é a do menu principal, medida na página: quatro itens de 520x58
+  // empilhados a 58px de distância, um a cada 58px. É o caso em que "o passo mais
+  // curto na direção" e "o próximo da lista" dão o mesmo item — e é por isso que
+  // este teste existe.
+  //
+  // Sem ele, uma mudança na ordem de escolha aparece como um item pulado em um
+  // menu, e nenhum teste de geometria com dois alvos pegaria: o pulo só aparece
+  // quando há três em linha.
+  const MENU = [
+    alvo('entrar', 48, 184, 520, 58),
+    alvo('config', 48, 242, 520, 58),
+    alvo('idioma', 48, 300, 520, 58),
+    alvo('info', 48, 358, 520, 58)
+  ];
+
+  const descendo = MENU.slice(0, -1).map((de) => passoPara(MENU, de, 'baixo'));
+
+  assert.deepEqual(descendo, ['config', 'idioma', 'info'], 'desceu pulando item');
+
+  const subindo = MENU.slice(1).reverse().map((de) => passoPara(MENU, de, 'cima'));
+
+  assert.deepEqual(subindo, ['idioma', 'config', 'entrar'], 'subiu pulando item');
+
+  // E o caminho de volta é o mesmo: quem desce três chega ao mesmo item de onde
+  // subiu três. Sem isto, um pulo podia existir em um sentido só.
+  for (const [i, de] of MENU.slice(0, -1).entries()) {
+    const chegou = passoPara(MENU, de, 'baixo');
+    const voltou = passoPara(MENU, MENU[MENU.findIndex((a) => a.id === chegou)], 'cima');
+
+    assert.equal(voltou, de.id, `de "${de.id}": desceu para "${chegou}" e não voltou`);
+  }
 });
 
 // --- o navegador completo --------------------------------------------------

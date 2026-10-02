@@ -353,4 +353,11 @@ export default {
   'cenaFinal.p2.a': 'Enfin la sortie',
   'cenaFinal.p3.a': 'Je dois arrêter de réparer ces galères...hihihi',
   'cenaFinal.p4.a': 'Bon... il ne me reste plus que la Sortie!!!!!',
+
+  // --- ponteiro do menu --------------------------------------
+  'settings.pointerSensitivity': 'Sensibilité du pointeur',
+  'settings.pointerLess': 'Moins',
+  'settings.pointerMore': 'Plus',
+  'settings.pointerPercent': '{valor}%',
+  'settings.pointerHint': 'Distance parcourue par le pointeur quand vous poussez le stick gauche. Pour les menus, pas pour la caverne.',
 };
