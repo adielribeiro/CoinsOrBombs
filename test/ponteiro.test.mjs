@@ -4,12 +4,18 @@ import assert from 'node:assert/strict';
 import {
   SENSIBILIDADES,
   SENSIBILIDADE_PADRAO,
+  VELOCIDADES,
   VELOCIDADE_MAXIMA_PX_S,
+  VELOCIDADE_PADRAO,
   deslocamentoDoPonteiro,
+  indiceDaLista,
   limitarPonteiro,
   moveu,
   porcentagemDaSensibilidade,
-  proximaSensibilidade
+  porcentagemDaVelocidade,
+  proximaSensibilidade,
+  proximaVelocidade,
+  valorDaLista
 } from '../src/game/ponteiro.js';
 
 /**
@@ -34,7 +40,10 @@ const JANELA = { largura: 1000, altura: 800 };
 // --- o deslocamento --------------------------------------------------------
 
 test('com o analógico no fim do curso, a velocidade é a máxima', () => {
-  const d = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, SENSIBILIDADE_PADRAO);
+  const d = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, {
+    sensibilidade: SENSIBILIDADE_PADRAO,
+    velocidade: VELOCIDADE_PADRAO
+  });
 
   assert.equal(d.x, VELOCIDADE_MAXIMA_PX_S);
   assert.equal(d.y, 0);
@@ -49,7 +58,10 @@ test('um segundo de deslocamento é o mesmo a 60 e a 6 quadros por segundo', () 
     let total = 0;
 
     for (let i = 0; i < quadrosPorSegundo; i += 1) {
-      total += deslocamentoDoPonteiro({ x: 1, y: 0 }, 1 / quadrosPorSegundo, 1).x;
+      total += deslocamentoDoPonteiro({ x: 1, y: 0 }, 1 / quadrosPorSegundo, {
+        sensibilidade: 1,
+        velocidade: 1
+      }).x;
     }
 
     return total;
@@ -90,37 +102,190 @@ test('o curso inteiro não atravessa a tela em menos de um segundo', () => {
   );
 });
 
-test('a sensibilidade multiplica a velocidade, e o padrão não multiplica nada', () => {
-  const base = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, 1);
-  const triplo = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, 3);
-  const suave = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, 0.25);
+test('a sensibilidade multiplica a resposta, e o padrão não multiplica nada', () => {
+  // O empurrão é pequeno de propósito. No fim do curso o teto de velocidade corta
+  // a diferença — que é o que a velocidade promete — e um teste no curso cheio
+  // diria que a sensibilidade não faz nada, o que é falso: ela muda a resposta
+  // embaixo.
+  const suave = deslocamentoDoPonteiro({ x: 0.4, y: 0 }, 1, { sensibilidade: 1, velocidade: 2 });
+  const triplo = deslocamentoDoPonteiro({ x: 0.4, y: 0 }, 1, { sensibilidade: 3, velocidade: 2 });
+  const fraco = deslocamentoDoPonteiro({ x: 0.4, y: 0 }, 1, { sensibilidade: 0.25, velocidade: 2 });
 
-  assert.equal(triplo.x, base.x * 3);
-  assert.equal(suave.x, base.x / 4);
+  assert.equal(triplo.x, suave.x * 3);
+  assert.equal(fraco.x, suave.x / 4);
 });
 
 test('sem tempo, sem deslocamento — e sem sentido nenhum virando pixel', () => {
   for (const dt of [0, -1, Number.NaN, undefined]) {
     assert.deepEqual(
-      deslocamentoDoPonteiro({ x: 1, y: 1 }, dt, 1),
+      deslocamentoDoPonteiro({ x: 1, y: 1 }, dt, { sensibilidade: 1, velocidade: 1 }),
       { x: 0, y: 0 },
       `dt=${String(dt)} andou`
     );
   }
 
   for (const eixo of [null, undefined, {}, { x: 0, y: 0 }]) {
-    assert.deepEqual(deslocamentoDoPonteiro(eixo, 1, 1), { x: 0, y: 0 });
+    assert.deepEqual(
+      deslocamentoDoPonteiro(eixo, 1, { sensibilidade: 1, velocidade: 1 }),
+      { x: 0, y: 0 }
+    );
   }
 });
 
 test('sensibilidade impossível não vira velocidade infinita', () => {
-  // O valor vem do `localStorage`, que é editável. Um `NaI` aqui viraria
+  // O valor vem do `localStorage`, que é editável. Um `NaN` aqui viraria
   // deslocamento `NaN` e o ponteiro sumiria sem erro no console.
   for (const sensibilidade of [Number.NaN, undefined, 'rápido']) {
-    const d = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, sensibilidade);
+    const d = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, {
+      sensibilidade,
+      velocidade: 1
+    });
 
     assert.equal(d.x, VELOCIDADE_MAXIMA_PX_S, `sensibilidade ${String(sensibilidade)}`);
   }
+});
+
+test('velocidade impossível não vira deslocamento infinito', () => {
+  for (const velocidade of [Number.NaN, undefined, 'devagar']) {
+    const d = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, {
+      sensibilidade: 1,
+      velocidade
+    });
+
+    assert.equal(d.x, VELOCIDADE_MAXIMA_PX_S, `velocidade ${String(velocidade)}`);
+  }
+});
+
+// --- a separação entre sensibilidade e velocidade ---------------------------
+
+test('a velocidade é o teto, e a sensibilidade não sobe acima dele', () => {
+  // A conta é `resposta = empurrao * base * sensibilidade`, cortada por
+  // `teto = base * velocidade`. Com a sensibilidade no máximo e a velocidade no
+  // mínimo, a resposta no fim do curso é o teto — e é isso que impede a
+  // sensibilidade de voltar a ser o botão de "atravessar a tela depressa".
+  const devagar = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, { sensibilidade: 3, velocidade: 0.5 });
+
+  assert.equal(devagar.x, VELOCIDADE_MAXIMA_PX_S * 0.5, 'a sensibilidade furou o teto');
+});
+
+test('a sensibilidade mexe embaixo e a velocidade mexe em cima, e uma não é a outra', () => {
+  // Esta é a propriedade que faz os dois controles valerem a pena: cada um tem seu
+  // próprio território. Se os dois mexessem na mesma faixa, seriam um controle só
+  // escrito de dois jeitos.
+  const empurraoPequeno = 0.2;
+
+  const soSensibilidade = deslocamentoDoPonteiro({ x: empurraoPequeno, y: 0 }, 1, {
+    sensibilidade: 0.25,
+    velocidade: 1
+  });
+  const soVelocidade = deslocamentoDoPonteiro({ x: empurraoPequeno, y: 0 }, 1, {
+    sensibilidade: 1,
+    velocidade: 0.5
+  });
+
+  // Empurrao pequeno, o teto não encosta: a sensibilidade é quem manda, e ela
+  // muda a resposta.
+  assert.notEqual(soSensibilidade.x, soVelocidade.x, 'no empurrão pequeno os dois deram o mesmo');
+
+  // E a resposta com sensibilidade no padrão tem de ser a mesma de antes, quando
+  // não existia teto: `0.2 * base`.
+  const noPadrao = deslocamentoDoPonteiro({ x: empurraoPequeno, y: 0 }, 1, {
+    sensibilidade: 1,
+    velocidade: 1
+  });
+
+  assert.ok(
+    Math.abs(noPadrao.x - empurraoPequeno * VELOCIDADE_MAXIMA_PX_S) < 1e-9,
+    `com o padrão a resposta mudou: ${noPadrao.x}`
+  );
+});
+
+test('o teto não corta a direção do empurrão', () => {
+  // Aplicar o teto escalando o vetor inteiro zeraria a seta no empurrão fraco — que
+  // é justamente onde a mira fina vive. A solução normaliza pela resposta e
+  // reaplica o total, e este teste é o que impede alguém de trocar por um
+  // `escalar` mais simples.
+  const suave = deslocamentoDoPonteiro({ x: 0.1, y: 0.1 }, 1, { sensibilidade: 1, velocidade: 2 });
+
+  assert.ok(suave.x > 0, 'a seta zerou no empurrão fraco');
+  assert.ok(suave.y > 0, 'a seta zerou no empurrão fraco');
+
+  // E a razão entre os eixos continua sendo a mesma do empurrão.
+  assert.ok(
+    Math.abs(suave.x / suave.y - 1) < 1e-9,
+    `o teto entortou a direção: ${suave.x} por ${suave.y}`
+  );
+});
+
+// --- a lista e a barra -----------------------------------------------------
+
+test('a barra mostra o índice, e o índice volta a ser o valor', () => {
+  // A barra é um `input[type=range]`, que trabalha com números, e a lista é a
+  // fonte da verdade. Sem esta ida e volta, a lâmina ficaria numa casa que não
+  // existe e o `onChange` gravaria `undefined` no estado.
+  for (const [indice, valor] of SENSIBILIDADES.entries()) {
+    assert.equal(indiceDaLista(valor, SENSIBILIDADES), indice, `valor ${valor}`);
+    assert.equal(SENSIBILIDADES[indiceDaLista(valor, SENSIBILIDADES)], valor);
+  }
+
+  for (const [indice, valor] of VELOCIDADES.entries()) {
+    assert.equal(indiceDaLista(valor, VELOCIDADES), indice, `valor ${valor}`);
+  }
+});
+
+test('valor fora da lista entra pelo mais próximo, e não pelo começo', () => {
+  // Cair no índice 0 é o pior desfecho: 0 é o valor mais lento das duas listas, e
+  // quem tinha escolhido "rápido" acordaria com a barra no mínimo sem ter tocado
+  // em nada.
+  const indiceDoMeio = indiceDaLista(1.4, SENSIBILIDADES);
+
+  assert.ok(indiceDoMeio > 0, `caiu no começo da lista (índice ${indiceDoMeio})`);
+  assert.equal(SENSIBILIDADES[indiceDoMeio], 1.5, 'não foi para o valor mais próximo');
+
+  const acima = indiceDaLista(99, VELOCIDADES);
+
+  assert.equal(acima, VELOCIDADES.length - 1, 'acima do fim não foi para o fim');
+
+  const abaixo = indiceDaLista(-99, SENSIBILIDADES);
+
+  assert.equal(abaixo, 0, 'abaixo do começo não foi para o começo');
+});
+
+test('a barra nunca fica sem posição', () => {
+  // Um `range` sem `value` é um campo morto na tela, e a pessoa não tem como
+  // saber que ele existe.
+  for (const valor of [undefined, null, Number.NaN, 'rápido', {}, -1]) {
+    for (const lista of [SENSIBILIDADES, VELOCIDADES]) {
+      const indice = indiceDaLista(valor, lista);
+
+      assert.ok(Number.isInteger(indice), `valor ${String(valor)} deu índice ${indice}`);
+      assert.ok(indice >= 0 && indice < lista.length, `valor ${String(valor)} deu índice ${indice}`);
+      assert.equal(lista[indice], valorDaLista(valor, lista, 1), 'a lista e a barra discordam');
+    }
+  }
+});
+
+test('a velocidade anda pelos mesmos degraus da sensibilidade', () => {
+  // Os dois controles compartilham a mesma forma de lista, e é o que garante que
+  // andar um passo na barra e apertar o d-pad deem o mesmo resultado.
+  // A velocidade tem os mesmos degraus, e a lista é outra: o passo acima de 100%
+  // é 150%, não 200%, porque `1.25` não existe nela.
+  assert.equal(proximaVelocidade(VELOCIDADE_PADRAO, 1), 1.5);
+  assert.equal(proximaVelocidade(VELOCIDADE_PADRAO, -1), 0.75);
+  assert.equal(proximaSensibilidade(SENSIBILIDADE_PADRAO, 1), 1.5);
+  assert.equal(proximaSensibilidade(SENSIBILIDADE_PADRAO, -1), 0.75);
+
+  // E o fim da lista é o fim, dos dois lados.
+  assert.equal(proximaVelocidade(VELOCIDADES[0], -1), VELOCIDADES[0]);
+  assert.equal(proximaSensibilidade(SENSIBILIDADES[0], -1), SENSIBILIDADES[0]);
+});
+
+test('a velocidade mostra porcentagem, e o padrão é 100%', () => {
+  assert.equal(porcentagemDaVelocidade(VELOCIDADE_PADRAO), 100);
+  assert.equal(porcentagemDaSensibilidade(SENSIBILIDADE_PADRAO), 100);
+  assert.equal(porcentagemDaVelocidade(VELOCIDADES[0]), 50);
+  assert.equal(porcentagemDaVelocidade(Number.NaN), 100);
+  assert.equal(porcentagemDaSensibilidade('rápido'), 100);
 });
 
 // --- a borda da tela -------------------------------------------------------

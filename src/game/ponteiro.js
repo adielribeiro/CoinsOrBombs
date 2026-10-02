@@ -1,30 +1,46 @@
+import { fromIso } from './config.js';
+
 /**
- * O ponteiro dos menus, movido pelo analógico esquerdo.
+ * O ponteiro do jogo, movido pelo analógico esquerdo.
  *
- * ## O que este módulo é, e o que ele não é
+ * ## Onde a seta anda, e o que ela aciona
  *
- * Ele **não** transforma o analógico em mouse dentro da caverna. Aí o jogo se joga
- * clicando numa pedra, e um clique em coordenada de tela erra por meio pixel — e
- * meio pixel numa aresta de pedra isométrica é clicar na pedra errada ou em nada.
- * Isso já está escrito no `cursor.js` e a decisão continua de pé: na caverna o
- * cursor anda de tile em tile, que é a unidade em que o jogo pensa.
+ * Em **toda** tela. Nos menus e nos avisos tudo é DOM, e a seta é um mouse de
+ * verdade: o alvo embaixo dela é o que o `A` aciona, como o mouse aciona.
  *
- * Nos menus, ao contrário, tudo é DOM: um ponteiro por cima das caixas é um mouse
- * de verdade, e é o que este módulo faz.
+ * Na caverna o mundo é o canvas do Phaser, e aí a seta **mira**: o cursor de tile
+ * segue o tile que está embaixo dela, e o `A` quebra a pedra mirada. A mira é por
+ * tile e não por pixel, e o motivo é o mesmo que está escrito no `cursor.js`: um
+ * clique em coordenada de tela erra por meio pixel, e meio pixel numa aresta de
+ * pedra isométrica é clicar na pedra errada ou em nada. A precisão do jogo continua
+ * sendo a do grid, que é a unidade em que o jogo pensa.
  *
  * ## Por que a sensibilidade é um número, e não um interruptor
  *
- * Um mouse tem DPI: Sensitivity, e quem joga procura um valor que sirva para o
- * monitor e para o braço. Um analógico tem curso, e o curso é fixo. A única coisa
- * que falta para o ponteiro "ser um mouse" é a escala entre o deflection e o
- * deslocamento — que é exatamente o que a sensibilidade mede.
+ * Um mouse tem DPI, e quem joga procura um valor que sirva para o monitor e para o
+ * braço. Um analógico tem curso, e o curso é fixo. A única coisa que falta para a
+ * seta "ser um mouse" é a escala entre o empurrão e o deslocamento — e essa escala
+ * não é um número só.
  *
- * ## A velocidade é linear no deflection
+ * ## Por que são dois controles
  *
- * Curva quadrada daria controle fino muito lento, e o ponteiro ficaria colado na
- * tela quando se quer precisão. Linear é previsível: dobrar a velocidade dobra o
- * deslocamento, e a sensibilidade faz exatamente isso. Quem quiser fineza usa
- * menos força, que é o que o dedo faz de graça.
+ * **Sensibilidade** é a resposta embaixo: quanto anda com um empurrão pequeno. É o
+ * controle da mira fina.
+ *
+ * **Velocidade** é o teto: quanto anda com o analógico no fim do curso. É o
+ * controle do deslocamento longo, e é o que faz atravessar a tela sem dar vinte
+ * empurrões.
+ *
+ * Se fossem um número só, quem quisesse atravessar a tela depressa acabaria com a
+ * mira fina também acelerada — e voltaria ao problema que a velocidade baixa
+ * resolveu.
+ *
+ * ## A resposta é linear no empurrão
+ *
+ * Curva quadrada daria controle fino muito lento, e a seta ficaria colada na tela
+ * quando se quer precisão. Linear é previsível: dobrar a escala dobra o
+ * deslocamento. Quem quiser fineza usa menos empurrão, que é o que o dedo faz de
+ * graça.
  */
 
 /**
@@ -85,13 +101,17 @@ export function tileSobOPonteiro(mundo, { origem, metricas, largura, altura, exi
   return { col: alvoCol, row: alvoRow };
 }
 
-import { fromIso } from './config.js';
-
-/** A sensibilidade que o jogo assume, e que o menu chama de "padrão". */
+/** A sensibilidade que o jogo assume: o quanto o ponteiro responde ao empurrão. */
 export const SENSIBILIDADE_PADRAO = 1;
+
+/** A velocidade que o jogo assume: o teto de quanto o ponteiro anda por segundo. */
+export const VELOCIDADE_PADRAO = 1;
 
 /** Os valores que o menu oferece. Um número solto deixaria o estado aceitar lixo. */
 export const SENSIBILIDADES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3];
+
+/** Os valores de velocidade. */
+export const VELOCIDADES = [0.5, 0.75, 1, 1.5, 2];
 
 /**
  * A velocidade do ponteiro com o analógico no fim do curso, em pixels por segundo.
@@ -100,33 +120,79 @@ export const SENSIBILIDADES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3];
  * 1000px de altura em menos de um segundo — rápido demais para mirar: entre dois
  * botões vizinhos já passava um quarto de tela, e parar em cima de um alvo exigia
  * acertar o empurrão no meio do curso.
- *
- * Com 620, o curso inteiro leva quase dois segundos de ponta a ponta, e meio
- * empurrão dá o passo curto que permite assentar em cima de algo. Quem quiser
- * atravessar a tela depressa sobe a sensibilidade nas configurações — que é para
- * isso que a sensibilidade existe.
  */
 export const VELOCIDADE_MAXIMA_PX_S = 620;
 
 /**
  * O deslocamento do ponteiro neste quadro.
  *
- * `dt` em segundos, e a saída em pixels. Separar os dois é o que mantém a
- * velocidade igual em monitor de 60Hz e de 144Hz: somar pixels por quadro faria o
- * ponteiro andar mais rápido na tela maior.
+ * `dt` em segundos, e a saída em pixels. Separar os dois é o que mantém a velocidade
+ * igual em monitor de 60Hz e de 144Hz: somar pixels por quadro faria o ponteiro
+ * andar mais rápido na tela maior.
  *
- * Devolve `{ x, y }` já com a escala da sensibilidade aplicada.
+ * ## Por que sensibilidade e velocidade são dois controles, e não um
+ *
+ * São duas coisas de natureza diferente, e uma pessoa regula as duas em momentos
+ * diferentes.
+ *
+ * A **sensibilidade** é a resposta embaixo: quanto anda com um empurrão pequeno. É
+ * o controle da mira fina, e é o que faz assentar em cima de um alvo.
+ *
+ * A **velocidade** é o teto: quanto anda com o analógico no fim do curso. É o
+ * controle do deslocamento longo, e é o que faz atravessar a tela sem dar vinte
+ * empurrões.
+ *
+ * Se fossem um número só, quem quisesse atravessar a tela depressa acabaria com a
+ * mira fina também acelerada — e voltaria ao problema que a velocidade baixa
+ * resolveu.
+ *
+ * ## A conta
+ *
+ * A resposta é linear no empurrão (`bruto * base * sensibilidade`) e o teto corta
+ * o resultado (`no máximo base * velocidade`). No padrão, com qualquer empurrão,
+ * a resposta fica abaixo do teto e o resultado é o de antes: a mudança não mexe em
+ * quem já estava com o padrão.
+ *
+ * @param {object} eixo o analógico, já fora da zona morta
+ * @param {number} dt segundos desde o quadro anterior
+ * @param {object} [opcoes]
+ * @param {number} [opcoes.sensibilidade] 1 é o padrão
+ * @param {number} [opcoes.velocidade] 1 é o padrão
+ * @returns {{x: number, y: number}} pixels deste quadro
  */
-export function deslocamentoDoPonteiro(eixo, dt, sensibilidade = SENSIBILIDADE_PADRAO) {
+export function deslocamentoDoPonteiro(eixo, dt, opcoes = {}) {
   const { x = 0, y = 0 } = eixo ?? {};
-  const escala = Number.isFinite(sensibilidade) ? sensibilidade : SENSIBILIDADE_PADRAO;
+
+  const sensibilidade = Number.isFinite(opcoes.sensibilidade)
+    ? opcoes.sensibilidade
+    : SENSIBILIDADE_PADRAO;
+  const velocidade = Number.isFinite(opcoes.velocidade) ? opcoes.velocidade : VELOCIDADE_PADRAO;
   const segundos = Number.isFinite(dt) && dt > 0 ? dt : 0;
 
   if (segundos === 0) return { x: 0, y: 0 };
 
-  const velocidade = VELOCIDADE_MAXIMA_PX_S * escala;
+  const bruto = Math.hypot(x, y);
 
-  return { x: x * velocidade * segundos, y: y * velocidade * segundos };
+  if (bruto === 0) return { x: 0, y: 0 };
+
+  const resposta = bruto * VELOCIDADE_MAXIMA_PX_S * sensibilidade;
+  const teto = VELOCIDADE_MAXIMA_PX_S * velocidade;
+  const total = Math.min(resposta, teto);
+
+  // Escalar o vetor pelo módulo do empurrão é o que aplica o teto: o resultado
+  // tem velocidade `total`, e o `hypot` dos dois eixos dá exatamente isso.
+  //
+  // Normalizar pela `resposta` em vez do `bruto` seria quase a mesma divisão e
+  // estaria errado: `resposta` já é uma velocidade, e usá-la como escala de um
+  // componente devolve a velocidade ao quadrado. No padrão os dois caminhos dão o
+  // mesmo número — é o que faz o erro passar por cima do teste mais óbvio — e é no
+  // teto que eles divergem.
+  //
+  // E o empurrão fraco não zera: `total` é proporcional a `bruto`, então a razão dá
+  // a mesma velocidade para qualquer força. A mira fina vive aí.
+  const fator = total / bruto;
+
+  return { x: x * fator * segundos, y: y * fator * segundos };
 }
 
 /**
@@ -171,27 +237,97 @@ export function moveu(deflexao) {
 }
 
 /**
- * A sensibilidade do passo seguinte, para os botões do menu.
+ * O próximo valor de uma lista, para o menu.
  *
- * Devolve um valor da lista, e não um número aritmético: um `1 + 0.25` permitiria
- * chegar em `1.25`, `1.5`, `1.75`… e o estado passaria a guardar valores que o
- * menu não consegue mostrar. Bater na ponta é o que mantém a lista honesta.
+ * ## Por que a lista e não a aritmética
+ *
+ * Um `atual + 0.25` permitiria chegar em `1.25`, `1.5`, `1.75`… e o estado
+ * passaria a guardar valores que o menu não consegue mostrar — e que o dedo da
+ * pessoa não consegue acertar de novo. Bater na ponta é o que mantém a lista
+ * honesta.
+ *
+ * ## Por que um valor fora da lista não vira erro
+ *
+ * O estado vem do `localStorage`, que qualquer pessoa pode editar, e uma versão
+ * antiga do jogo pode ter gravado um valor que hoje não existe. Desistir deixaria
+ * a barra sem posição e o controle sem resposta nenhuma, sem aviso. Entrar pelo
+ * mais próximo custa um valor errado em vez de um controle morto.
  */
-export function proximaSensibilidade(atual, passo) {
-  const valor = Number.isFinite(atual) ? atual : SENSIBILIDADE_PADRAO;
-  const indice = SENSIBILIDADES.indexOf(valor);
+function proximoValor(atual, passo, lista, padrao) {
+  const valor = Number.isFinite(atual) ? atual : padrao;
+  const indice = lista.indexOf(valor);
+  const base = indice >= 0 ? indice + passo : lista.indexOf(padrao);
 
-  // Um valor fora da lista — storage editado à mão, ou um padrão antigo — entra
-  // na lista pelo mais próximo, em vez de ficar sem botão nenhum.
-  const base = indice >= 0 ? indice + passo : SENSIBILIDADES.indexOf(SENSIBILIDADE_PADRAO);
-  const alvo = limitar(base, 0, SENSIBILIDADES.length - 1);
-
-  return SENSIBILIDADES[alvo];
+  return lista[Math.min(Math.max(base, 0), lista.length - 1)];
 }
 
-/** A sensibilidade em porcentagem, que é como o menu mostra. */
-export function porcentagemDaSensibilidade(valor) {
-  const numero = Number.isFinite(valor) ? valor : SENSIBILIDADE_PADRAO;
+/**
+ * Onde um valor está na lista, que é o que a barra mostra.
+ *
+ * Uma barra `range` trabalha com números, e a lista é a fonte da verdade. Convertir
+ * os dois é o que impede que a barra mostre uma casa que não existe: sem esta
+ * conversão, um `value` fora da lista deixaria o `input` sem posição — e um `range`
+ * sem valor é um campo morto na tela.
+ */
+export function indiceDaLista(valor, lista) {
+  const indice = lista.indexOf(valor);
+
+  if (indice >= 0) return indice;
+
+  // Valor fora da lista — `localStorage` editado à mão, ou um padrão antigo. Entra
+  // pelo mais próximo, e não por 0: 0 é o valor mais lento das duas listas, e cair
+  // nele sem querer é pior do que ficar perto do que a pessoa escolheu.
+  let melhor = 0;
+  let menor = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < lista.length; i += 1) {
+    const distancia = Math.abs(lista[i] - (Number.isFinite(valor) ? valor : 1));
+
+    if (distancia < menor) {
+      menor = distancia;
+      melhor = i;
+    }
+  }
+
+  return melhor;
+}
+
+/**
+ * O valor que um controle mostra, já preso à lista.
+ *
+ * Passa por `indiceDaLista` de propósito: os dois caminhos precisam cair no mesmo
+ * lugar para o valor, e um "valor mais próximo" escrito duas vezes diverge na
+ * primeira borda. O `padrao` é o que entra quando não há lista nenhuma.
+ */
+export function valorDaLista(valor, lista, padrao) {
+  if (!Array.isArray(lista) || lista.length === 0) return padrao;
+
+  return lista[indiceDaLista(valor, lista)];
+}
+
+/** A sensibilidade do passo seguinte. */
+export function proximaSensibilidade(atual, passo) {
+  return proximoValor(atual, passo, SENSIBILIDADES, SENSIBILIDADE_PADRAO);
+}
+
+/** A velocidade do passo seguinte. */
+export function proximaVelocidade(atual, passo) {
+  return proximoValor(atual, passo, VELOCIDADES, VELOCIDADE_PADRAO);
+}
+
+/** Um valor em porcentagem, que é como as barras mostram. */
+export function porcentagem(valor, padrao) {
+  const numero = Number.isFinite(valor) ? valor : padrao;
 
   return Math.round(numero * 100);
+}
+
+/** A sensibilidade em porcentagem. */
+export function porcentagemDaSensibilidade(valor) {
+  return porcentagem(valor, SENSIBILIDADE_PADRAO);
+}
+
+/** A velocidade em porcentagem. */
+export function porcentagemDaVelocidade(valor) {
+  return porcentagem(valor, VELOCIDADE_PADRAO);
 }

@@ -5,7 +5,53 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- **Sensibilidade e velocidade do ponteiro são dois controles, e não um.** A
+  sensibilidade é a resposta embaixo: quanto anda com um empurrão pequeno, que é a mira
+  fina. A velocidade é o teto: quanto anda com o analógico no fim do curso, que é o
+  deslocamento longo. São coisas de natureza diferente e que se regula em momentos
+  diferentes — e se fossem um número só, quem quisesse atravessar a tela depressa
+  acabaria com a mira fina também acelerada.
+
+  A conta é `min(empurrao * base * sensibilidade, base * velocidade)`. Com o padrão,
+  o resultado é exatamente o de antes: a mudança não mexe em quem já estava no padrão.
+
+  **Velocidade do ponteiro** entrou nos dez idiomas, e o teste de i18n confere a
+  posição: a chave tem de vir logo depois da da sensibilidade, porque as duas barras
+  são lidas na ordem em que aparecem e a segunda sem a primeira parece opção sem
+  parente.
+
+- **Os dois controles são barras, e não pares de botões.** A barra é o formato que a
+  pessoa já conhece de qualquer controle de vídeo: arrastar e ver o número mudar junto.
+
+  A objeção anterior — que um `range` sem arraste vira campo de texto que ninguém sabe
+  usar com controle — era real, e a resposta não foi voltar aos botões e sim **dar o
+  caminho que faltava**: com a barra em foco, o d-pad para os lados muda o valor, com a
+  mesma espera e o mesmo intervalo que a navegação do menu usa. Sem isso, segurar o
+  botão levava a barra de 25% a 300% em um quarto de segundo, e a barra virava um botão
+  de pular.
+
+  O valor da barra é o **índice** na lista, e não o número de pixels: um `range`
+  contínuo deixaria o estado guardar valores que o menu não sabe mostrar de volta.
+
+- **A seta do controle tem ação em todas as telas e em todos os botões.** O foco segue
+  a seta em todo o jogo, e o `A` aciona o alvo que estiver embaixo dela — inclusive os
+  botões do HUD, que ficam por cima do canvas durante a partida.
+
+  Antes, na caverna, o `A` ia direto para o Phaser: a seta passava por cima de todos os
+  botões do jogo sem acionar nenhum deles. Agora o `A` responde à mesma pergunta que o
+  clique do mouse responde — o que está embaixo do ponteiro.
+
+  E quando um botão do HUD está embaixo da seta, o `confirmar` **não** chega na cena:
+  mirar num botão e apertar `A` aciona o botão **e** quebrava a pedra da frente.
+
 ### Corrigido
+
+- **No fim de uma barra, o d-pad passeava pelo resto das configurações.** Ajustar a
+  sensibilidade até o máximo e segurar o botão andava o foco pelo menu inteiro com a
+  barra parada. A barra agora devolve "esta direção é minha" mesmo quando o valor não
+  mudou, que é o que segura o foco nela.
 
 - **O ponteiro não existia dentro da caverna.** Ele andava nos menus e na caverna
   simplesmente não estava lá — que era o jeito, e pelos vistos ficou parecendo
@@ -29,6 +75,15 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   alvos vizinhos já passava um quarto de tela, e parar em cima de algo exigia acertar
   o empurrão no meio do curso. Caiu para metade, e há teste prendendo o teto — sem ele
   a velocidade volta sozinha na próxima mexida.
+
+### Mudado
+
+- **A seta do controle ficou menor e branca.** De 26×34 para 18×24, e da cor do acento
+  para o branco.
+
+  O branco não é estética: a seta passa por cima de tudo, e a cor do tema deixava de
+  ser legível justamente onde ela mais aparece — em cima do alvo escolhido. Branco é a
+  cor do ponteiro de todo sistema operacional, e é o que o dedo já conhece.
 
 ### Removido
 

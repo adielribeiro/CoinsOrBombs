@@ -349,6 +349,7 @@ export default {
 
   // --- ponteiro do menu --------------------------------------
   'settings.pointerSensitivity': 'Sensibilité du pointeur',
+  'settings.pointerSpeed': 'Vitesse du pointeur',
   'settings.pointerLess': 'Moins',
   'settings.pointerMore': 'Plus',
   'settings.pointerPercent': '{valor}%',

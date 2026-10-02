@@ -3,11 +3,17 @@ import { createGame } from './game/createGame.js';
 import { duracaoDaCarta } from './game/cartaFinal.js';
 import {
   MARGEM_DO_PONTEIRO_PX,
+  SENSIBILIDADES,
   SENSIBILIDADE_PADRAO,
+  VELOCIDADES,
+  VELOCIDADE_PADRAO,
   deslocamentoDoPonteiro,
+  indiceDaLista,
   limitarPonteiro,
   porcentagemDaSensibilidade,
-  proximaSensibilidade
+  porcentagemDaVelocidade,
+  proximaSensibilidade,
+  proximaVelocidade
 } from './game/ponteiro.js';
 import {
   describeFullscreenError,
@@ -76,7 +82,7 @@ import {
   saveCompativelComOModo
 } from './game/saves.js';
 import { criarLeitorDeControle } from './game/gamepad.js';
-import { alvoSobElemento, criarNavegadorDeFoco } from './game/foco.js';
+import { alvoSobElemento, criarNavegadorDeFoco, passoDeRepeticao } from './game/foco.js';
 import { fechaTelaDoTopo, telaDoTopo } from './game/telas.js';
 import { buildRewardCatalog, getRewardVisual, pickRewardOptions, shuffle } from './game/rewards.js';
 import {
@@ -266,7 +272,17 @@ const DEFAULT_SETTINGS = {
    * aritmética — um `+0.25` deixaria o estado guardar valores que o menu não
    * sabe mostrar.
    */
-  ponteiroSensibilidade: SENSIBILIDADE_PADRAO
+  ponteiroSensibilidade: SENSIBILIDADE_PADRAO,
+  /**
+   * O teto de quanto o ponteiro anda por segundo.
+   *
+   * Separate da sensibilidade de propósito. A sensibilidade é a resposta embaixo —
+   * quanto anda com um empurrão pequeno, que é a mira fina. A velocidade é o teto:
+   * quanto anda no fim do curso, que é o deslocamento longo. Se fossem um número
+   * só, quem quisesse atravessar a tela depressa acabaria com a mira fina também
+   * acelerada.
+   */
+  ponteiroVelocidade: VELOCIDADE_PADRAO
 };
 
 /**
@@ -1915,6 +1931,7 @@ export default function App() {
     // vem pela ref: ler `settings` direto nele congelaria no valor da montagem, e
     // mudar a sensibilidade nas configurações só valeria na próxima sessão.
     sensibilidadePonteiro: settings.ponteiroSensibilidade ?? SENSIBILIDADE_PADRAO,
+    velocidadePonteiro: settings.ponteiroVelocidade ?? VELOCIDADE_PADRAO,
     lore: entryPhase === ENTRY_PHASE.LORE ? { avancar: avancarLore, pular: pularLore } : null,
     cenaFinal: cenaFinalAberta
       ? {
@@ -1955,8 +1972,8 @@ export default function App() {
      * Devolve `true` quando o ponteiro andou, que é o que faz o `A` ativar o que
      * está embaixo dele em vez de um item do d-pad.
      */
-    const moverPonteiro = (estado, dt, sensibilidade) => {
-      const deslocamento = deslocamentoDoPonteiro(estado.eixo, dt, sensibilidade);
+    const moverPonteiro = (estado, dt, opcoes) => {
+      const deslocamento = deslocamentoDoPonteiro(estado.eixo, dt, opcoes);
       const andou = Math.hypot(deslocamento.x, deslocamento.y) > 0;
 
       if (!andou) return false;
@@ -1971,7 +1988,7 @@ export default function App() {
       // ponta aponta para o alto e à esquerda, e sem isto ela encostaria na borda
       // com o corpo para fora.
       const proxima = limitarPonteiro(
-        { x: ponteiro.x - area.left, y: ponteiro.y - area.top },
+        { x: ponteiro.x - (area?.left ?? 0), y: ponteiro.y - (area?.top ?? 0) },
         deslocamento,
         limites,
         MARGEM_DO_PONTEIRO_PX
@@ -2026,6 +2043,87 @@ export default function App() {
       return alvoSobElemento(nav.alvos(), document.elementFromPoint(ponteiro.x, ponteiro.y));
     };
 
+    /**
+     * O d-pad mexendo na barra que está em foco.
+     *
+     * ## Por que isto existe
+     *
+     * A barra de sensibilidade e de velocidade é um `input[type=range]`, e um
+     * `range` só muda por arraste ou por tecla. Sem arraste com controle, a barra
+     * seria um campo morto na tela — e era exatamente esse o motivo que havia
+     * Levado os dois botões no lugar dela.
+     *
+     * ## Por que só esquerda e direita
+     *
+     * Porque as duas barras são de uma dimensão só. Uma barra vertical mudaria com
+     * cima e baixo, mas nenhuma existe aqui, e aceitar as duas direções num menu
+     * horizontal andaria o foco sem mudar nada visível.
+     *
+     * ## Por que devolve `true` mesmo no fim da lista
+     *
+     * Porque devolver `false` no fim entrega o d-pad de volta ao menu: quem segura
+     * o botão para ver o máximo viajava pelo resto das configurações, com a barra
+     * parada e o foco andando. O `true` quer dizer "a barra comeu esta direção", e
+     * é isso que segura o foco nela.
+     *
+     * ## Por que a repetição é a do menu
+     *
+     * `passoDeRepeticao` é o mesmo que a navegação usa, com a mesma espera e o mesmo
+     * intervalo. Sem ele, cada quadro do laço era um passo, e segurar o botão levava
+     * a barra de 25% a 300% em um quarto de segundo — o que faz a barra parecer um
+     * botão de pular, e não um controle.
+     */
+    const repeticoesDaBarra = { esquerda: null, direita: null };
+
+    const ajustarBarraEmFoco = (direcao, agoraMs = Date.now()) => {
+      const focado =
+        direcao === 'esquerda' || direcao === 'direita' ? document.activeElement : null;
+      const ehBarra = focado?.tagName === 'INPUT' && focado.type === 'range';
+
+      if (!ehBarra) {
+        for (const lado of Object.keys(repeticoesDaBarra)) repeticoesDaBarra[lado] = null;
+
+        return false;
+      }
+
+      const passo = passoDeRepeticao(repeticoesDaBarra[direcao], agoraMs);
+
+      repeticoesDaBarra[direcao] = passo;
+
+      if (!passo.repetir) return true;
+
+      const minimo = Number(focado.min);
+      const maximo = Number(focado.max);
+      const tamanho = Math.abs(Number(focado.step)) || 1;
+
+      const atual = Number(focado.value);
+      const proximo =
+        direcao === 'direita'
+          ? Math.min(atual + tamanho, maximo)
+          : Math.max(atual - tamanho, minimo);
+
+      // No fim da lista o passo não acontece, e `true` mesmo assim: quem segura o
+      // botão aqui quer ficar na barra, e não passear pelo resto das configurações.
+      if (proximo === atual) return true;
+
+      // Escrever `focado.value` direto não chega ao `onChange` do React: o React
+      // guarda o último valor que ele mesmo escreveu, e ver o mesmo valor de novo
+      // parece que "não mudou" — a lâmina anda e o estado não. Chamar o `setter`
+      // nativo de `value` contorna essa comparação, e o evento `input` é o que o
+      // React escuta.
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+
+      if (typeof setter === 'function') setter.call(focado, String(proximo));
+      else focado.value = String(proximo);
+
+      focado.dispatchEvent(new Event('input', { bubbles: true }));
+
+      return true;
+    };
+
     let ultimoQuadro = 0;
 
     const quadro = () => {
@@ -2063,20 +2161,37 @@ export default function App() {
         if (nomeDaTela || atual.menuVisivel) ponteiroSobre(document.activeElement);
       }
 
-      // O ponteiro anda em **todo** o jogo, e não só nos menus. Quem joga com
-      // analógico na caverna usa a seta para mirar: o cursor de tile segue o tile
-      // que está embaixo dela, e a ação continua quebrando um tile inteiro.
-      //
-      // O que muda entre menus e caverna é o que acontece com o movimento: no menu
-      // o foco vai para o botão embaixo da seta; na caverna quem recebe é a cena,
-      // pelo evento `cob-controle`.
-      const naCavena = !nomeDaTela && !atual.menuVisivel && !atual.cenaFinal && !atual.lore;
+      // O ponteiro anda em **todo** o jogo, e não em parte dele. Antes ele andava nos
+      // menus e na caverna; agora anda na lore, na cena final e nos botões que
+      // ficam por cima do canvas durante a partida — que são botões de verdade, e
+      // que o `A` precisa acionar como o mouse aciona.
       const ponteiroAndou =
         estado.conectado &&
-        (naCavena || nomeDaTela || atual.menuVisivel) &&
-        moverPonteiro(estado, dt, atual.sensibilidadePonteiro);
+        moverPonteiro(estado, dt, {
+          sensibilidade: atual.sensibilidadePonteiro,
+          velocidade: atual.velocidadePonteiro
+        });
 
-      if (naCavena && ponteiroRef.current) {
+      /**
+       * O que está embaixo da seta agora, e que dá para ativar.
+       *
+       * É o que decide o `A` no jogo inteiro, e não só nos menus. A pergunta que
+       * responde é a mesma que o mouse responde ao clicar: o que está embaixo do
+       * ponteiro? Havendo algo, o `A` aciona aquilo — inclusive um botão do HUD em
+       * cima do canvas, onde antes o `A` só quebrava pedra.
+       *
+       * Quando não há nada, o foco **fica** onde está: é o que um mouse faz ao
+       * passar pelo fundo, e sem isto a seta jogaria o foco no chão e o `A`
+       * perderia o alvo que a pessoa já tinha escolhido com o d-pad.
+       */
+      const sob = ponteiro.visivel ? alvoSobOPonteiro() : null;
+      const domTemOComando = Boolean(sob?.elemento);
+
+      if (domTemOComando && sob.elemento !== document.activeElement) sob.elemento.focus();
+
+      const naCavena = !nomeDaTela && !atual.menuVisivel && !atual.cenaFinal && !atual.lore;
+
+      if (ponteiroRef.current) {
         ponteiroRef.current.style.visibility = estado.conectado ? 'visible' : 'hidden';
       }
 
@@ -2127,31 +2242,45 @@ export default function App() {
         // ela, o analógico é o ponteiro e o d-pad é o passo a passo — que é
         // também o que o desenho das teclas sugere.
         //
-        // O movimento em si acontece mais acima, para os menus e para a caverna
-        // compartilharem o mesmo quadro de ponteiro; aqui só se usa o booleano.
+        // O movimento em si acontece mais acima, para todas as telas compartilharem
+        // o mesmo quadro de ponteiro; aqui só se usa o booleano. O foco já seguiu a
+        // seta antes dos ramos, porque é uma regra do jogo inteiro e não do menu.
         const analogoMoveu = ponteiroAndou;
-
-        if (analogoMoveu) {
-          // O foco segue o ponteiro. Passar por cima de um botão e apertar `A` é o
-          // que um mouse faz, e fazer o foco acompanhar evita ter dois alvos
-          // disputando quem é o escolhido.
-          const sob = alvoSobOPonteiro();
-
-          if (sob?.elemento && sob.elemento !== document.activeElement) sob.elemento.focus();
-        }
 
         if (nomeDaTela === 'pausa' && estado.bordas.pausa) {
           atual.fechar('pausa');
         } else if (estado.bordas.voltar && nomeDaTela && !analogoMoveu) {
           atual.fechar(nomeDaTela);
-        } else if (estado.direcoes.dominante && !analogoMoveu) {
-          nav.moverComRepeticao(estado.direcoes.dominante);
+        } else if (!analogoMoveu) {
+          // Com a barra em foco, o d-pad para os lados mexe nela e não no foco.
+          // Sem esta guarda, configurar a sensibilidade andaria a seleção do menu a
+          // cada passo, e a barra mudaria de posição debaixo do dedo.
+          //
+          // `ajustarBarraEmFoco` recebe a direção mesmo quando ela é nula, e é
+          // assim que a repetição da barra zera ao soltar o botão. Sem isso, soltar
+          // e apertar de novo logo em seguida perderia o primeiro passo.
+          const mexeuNaBarra = ajustarBarraEmFoco(estado.direcoes.dominante, agora);
+
+          if (estado.direcoes.dominante && !mexeuNaBarra) {
+            nav.moverComRepeticao(estado.direcoes.dominante);
+          }
         } else if (estado.bordas.confirmar) {
           nav.ativar();
         }
+      } else if (domTemOComando) {
+        // Um botão do jogo está embaixo da seta, e o `A` é dele.
+        //
+        // Isto é o que faltava para a seta ter ação em todas as telas: na caverna
+        // o `A` ia direto para o Phaser, e a seta passava por cima de todos os
+        // botões do HUD sem acionar nenhum deles. Agora o `A` responde à mesma
+        // pergunta que o mouse responde ao clicar.
+        if (estado.bordas.confirmar) {
+          foiParaOMenu = true;
+          nav.ativar();
+        }
       } else if (estado.bordas.pausa || (estado.bordas.voltar && atual.podePausar)) {
-        // Sem tela aberta, `voltar` também abre a pausa: é o que o `Esc` faz, e
-        // os dois precisam concordar.
+        // Sem tela aberta e sem botão embaixo da seta, `voltar` também abre a
+        // pausa: é o que o `Esc` faz, e os dois precisam concordar.
         foiParaOMenu = true;
         setShowPause(true);
       }
@@ -2175,10 +2304,19 @@ export default function App() {
       // usa esse campo para decidir se pode mexer no mapa — `telaAberta !== null`
       // quer dizer "tem algo na frente", e devolve o cursor para casa. Sem esta
       // linha, o direcional andaria o losango por baixo da tarja.
+      //
+      // E o `confirmar` vem desligado quando um botão do jogo está embaixo da seta:
+      // o `A` foi para o botão, como o clique vai para o botão, e a caverna não pode
+      // quebrar uma pedra ao mesmo tempo. Sem esta linha, mirar num botão do HUD e
+      // apertar `A` aciona o botão **e** quebra a pedra da frente.
+      const paraCena = domTemOComando
+        ? { ...estado, bordas: { ...estado.bordas, confirmar: false } }
+        : estado;
+
       window.dispatchEvent(
         new CustomEvent('cob-controle', {
           detail: {
-            estado,
+            estado: paraCena,
             telaAberta: nomeDaTela ?? (atual.cenaFinal ? 'cenaFinal' : atual.lore ? 'lore' : null),
             /**
              * A posição da seta, para a caverna mirar.
@@ -3569,56 +3707,79 @@ export default function App() {
               </label>
 
               {/*
-                A sensibilidade do ponteiro. São dois botões e um número, e não um
-                `input[type=range]`: o jogo não tem Mouse Orbit para o `range`
-               idersar ao arrastar, e sem arraste ele viraria um campo de texto
-                que ninguém sabe usar com controle. Com dois botões o valor anda
-                nos dois sentidos pelo mesmo caminho do resto do menu.
+                Sensibilidade e velocidade são duas barras, e não dois pares de
+                botões. A barra é o formato que a pessoa já conhece de qualquer
+                controle de vídeo: arrastar e ver o número mudar junto.
+
+                Sem arraste com controle, uma barra vira campo de texto que ninguém
+                sabe usar — e era esse o motivo dos botões. O que faltava era o
+                caminho do controle até a barra, e ele existe: com a barra em foco, o
+                d-pad para os lados muda o valor. Está em `ajustarBarraEmFoco`, no
+                laço do controle.
+
+                O valor da barra é o **índice** na lista, e não o número de pixels:
+                um `range` contínuo deixaria o estado guardar valores que o menu não
+                consegue mostrar de volta, e `step={1}` é o que garante que a barra
+                e o d-pad andem pelo mesmo caminho.
               */}
               <div className="settings-stepper">
                 <strong>{t('settings.pointerSensitivity')}</strong>
 
                 <div className="settings-stepper-row">
-                  <button
-                    type="button"
-                    className="settings-stepper-btn"
-                    onClick={() =>
+                  <input
+                    type="range"
+                    className="settings-bar"
+                    min={0}
+                    max={SENSIBILIDADES.length - 1}
+                    step={1}
+                    value={indiceDaLista(settings.ponteiroSensibilidade, SENSIBILIDADES)}
+                    onChange={(event) =>
                       setSettings((current) => ({
                         ...current,
-                        ponteiroSensibilidade: proximaSensibilidade(
-                          current.ponteiroSensibilidade,
-                          -1
-                        )
+                        ponteiroSensibilidade:
+                          SENSIBILIDADES[Number(event.target.value)] ?? SENSIBILIDADE_PADRAO
                       }))
                     }
-                  >
-                    {t('settings.pointerLess')}
-                  </button>
+                  />
 
                   <output className="settings-stepper-value">
                     {t('settings.pointerPercent', {
                       valor: porcentagemDaSensibilidade(settings.ponteiroSensibilidade)
                     })}
                   </output>
+                </div>
 
-                  <button
-                    type="button"
-                    className="settings-stepper-btn"
-                    onClick={() =>
+                <strong>{t('settings.pointerSpeed')}</strong>
+
+                <div className="settings-stepper-row">
+                  <input
+                    type="range"
+                    className="settings-bar"
+                    min={0}
+                    max={VELOCIDADES.length - 1}
+                    step={1}
+                    value={indiceDaLista(settings.ponteiroVelocidade, VELOCIDADES)}
+                    onChange={(event) =>
                       setSettings((current) => ({
                         ...current,
-                        ponteiroSensibilidade: proximaSensibilidade(
-                          current.ponteiroSensibilidade,
-                          1
-                        )
+                        ponteiroVelocidade:
+                          VELOCIDADES[Number(event.target.value)] ?? VELOCIDADE_PADRAO
                       }))
                     }
-                  >
-                    {t('settings.pointerMore')}
-                  </button>
+                  />
+
+                  <output className="settings-stepper-value">
+                    {t('settings.pointerPercent', {
+                      valor: porcentagemDaVelocidade(settings.ponteiroVelocidade)
+                    })}
+                  </output>
                 </div>
 
+                <div className="settings-stepper-legends">
+                  <span>{t('settings.pointerLess')}</span>
+                  <span>{t('settings.pointerMore')}</span>
                 </div>
+              </div>
 
               <label className="settings-toggle settings-toggle-dev">
                 <input

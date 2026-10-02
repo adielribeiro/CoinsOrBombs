@@ -346,6 +346,7 @@ export default {
 
   // --- ponteiro do menu --------------------------------------
   'settings.pointerSensitivity': '指针灵敏度',
+  'settings.pointerSpeed': '指针速度',
   'settings.pointerLess': '降低',
   'settings.pointerMore': '提高',
   'settings.pointerPercent': '{valor}%',
