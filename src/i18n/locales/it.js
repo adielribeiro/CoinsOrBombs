@@ -164,6 +164,7 @@ export default {
   'pause.hint': 'Esc riprende',
   'pause.controllerHint': 'D-pad muove · A conferma · B indietro · Start pausa',
   'hud.controller': '{name} connesso',
+  'hud.pause': 'Pausa',
   'pause.aria': 'Gioco in pausa',
 
   // --- decisione sull’uscita ---------------------------------------------------------

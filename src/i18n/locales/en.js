@@ -162,6 +162,7 @@ export default {
   'pause.hint': 'Esc resumes',
   'pause.controllerHint': 'D-pad moves · A confirms · B goes back · Start pauses',
   'hud.controller': '{name} connected',
+  'hud.pause': 'Pause',
   'pause.aria': 'Game paused',
 
   // --- exit decision ------------------------------------------------------

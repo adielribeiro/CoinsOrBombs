@@ -815,25 +815,83 @@ export default function App() {
   };
 
   /**
-   * Esc fecha o que estiver aberto, da camada mais alta para a mais baixa, e
-   * na falta de qualquer modal abre a pausa.
+   * O pedido de pausa, e o mesmo para o `Esc` e para a engrenagem do canto.
    *
-   * Em tela cheia o Esc pertence ao navegador, então é ignorado aqui — do
-   * contrário o modal fecharia junto com a tela cheia. Quem entra em tela cheia
-   * e aperta Esc antes continua sem pausa; o botão na tela faz esse papel.
+   * ## Por que um caminho só
+   *
+   * Porque são a mesma ação com duas entradas, e duas entradas com ações
+   * ligeiramente diferentes é como se descobre que a pausa fecha um modal num lugar
+   * e abre outro. O `Esc` fecha o que estiver aberto e, na falta de modal, abre a
+   * pausa; a engrenagem tem de fazer o mesmo — é o que a pessoa que toca na tela
+   * espera de um botão que diz "pausa".
+   *
+   * Na prática, durante a partida quase nunca há outro modal aberto, e a engrenagem
+   * só abre a pausa. O caminho único é o que garante que isso continue verdade se
+   * amanhã existir uma tela que abre por cima da partida.
+   *
+   * ## Por que `useCallback`
+   *
+   * Porque o `useEffect` do `keydown` depende dele. Sem isso, o efeito seria
+   * desrebindado a cada quadro do React — o par `telasAbertas`/`fecharTelaPeloNome`
+   * deste mesmo arquivo mostra o que custa.
+   *
+   * Em tela cheia o `Esc` pertence ao navegador, então é ignorado pelo efeito:
+   * do contrário o modal fecharia junto com a tela cheia. Quem entra em tela cheia e
+   * aperta `Esc` antes continua sem pausa; a engrenagem na tela faz esse papel, e é
+   * por isso que ela existe.
    */
+  const pedirPausa = useCallback(() => {
+    if (fechaTelaDoTopo(telasAbertas, fecharTelaPeloNome)) return;
+
+    if (pauseAvailable) setShowPause(true);
+  }, [telasAbertas, fecharTelaPeloNome, pauseAvailable]);
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key !== 'Escape' || isFullscreenActive()) return;
 
-      if (fechaTelaDoTopo(telasAbertas, fecharTelaPeloNome)) return;
-
-      if (pauseAvailable) setShowPause(true);
+      pedirPausa();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [telasAbertas, pauseAvailable]);
+  }, [pedirPausa]);
+
+  /**
+   * A pausa começa com o foco dentro dela.
+   *
+   * ## O problema que isto resolve
+   *
+   * Nenhum modal do jogo toma o foco ao abrir. Quem abre a pausa — pelo `Esc`, pelo
+   * `Start` do controle, ou pela engrenagem da tela — deixa o foco onde estava, e o
+   * foco pode estar em qualquer lugar: num botão do HUD, na engrenagem, no chão.
+   *
+   * Com o controle isso vira uma armadilha: os botões da pausa ficam no meio da tela,
+   * e os alvos alcançáveis com o direcional são os da página inteira. De um botão no
+   * canto inferior, `cima` e `baixo` não acham caminho para o painel — a pessoa fica
+   * andando em círculo pelos botões do canto, com a pausa aberta na frente.
+   *
+   * ## Por que só a pausa
+   *
+   * Porque é a tela que o botão novo torna fácil de abrir com o foco já no canto. As
+   * outras têm o mesmo defeito e a correção certa para elas é geral — cada modal
+   * ganhar foco ao abrir —, e isso é mudança de sistema, não correção de botão.
+   *
+   * ## Por que o primeiro botão e não o painel
+   *
+   * Porque o painel não recebe foco e o primeiro botão é "Continuar", que é a ação
+   * que a pessoa quer na maioria das vezes em que abre a pausa. Deixar o `A` em
+   * "Continuar" e o `B`/`Esc` fechando é o caminho mais curto de volta ao jogo.
+   */
+  const pausaRef = useRef(null);
+
+  useEffect(() => {
+    if (!pauseOpen) return;
+
+    const primeiro = pausaRef.current?.querySelector('button');
+
+    primeiro?.focus();
+  }, [pauseOpen]);
 
   /**
    * As teclas da lore e da cena final.
@@ -2267,6 +2325,18 @@ export default function App() {
         } else if (estado.bordas.confirmar) {
           nav.ativar();
         }
+      } else if (estado.bordas.pausa || (estado.bordas.voltar && atual.podePausar)) {
+        // Sem tela aberta, `voltar` também abre a pausa: é o que o `Esc` faz, e
+        // os dois precisam concordar.
+        //
+        // Este ramo vem **antes** do do botão embaixo da seta, e a ordem é o que
+        // importa. `pausa` é o `Start`/`Options`, que é uma ação do jogo inteiro e
+        // não do alvo que a seta está sobre: deixar o botão na frente faria o
+        // `Start` parar de funcionar em toda vez que a seta restsse em cima de um
+        // botão do HUD — que é o que a seta faz quando a pessoa a leva para o
+        // canto e solta.
+        foiParaOMenu = true;
+        setShowPause(true);
       } else if (domTemOComando) {
         // Um botão do jogo está embaixo da seta, e o `A` é dele.
         //
@@ -2278,11 +2348,6 @@ export default function App() {
           foiParaOMenu = true;
           nav.ativar();
         }
-      } else if (estado.bordas.pausa || (estado.bordas.voltar && atual.podePausar)) {
-        // Sem tela aberta e sem botão embaixo da seta, `voltar` também abre a
-        // pausa: é o que o `Esc` faz, e os dois precisam concordar.
-        foiParaOMenu = true;
-        setShowPause(true);
       }
 
       // O anel de foco. `:focus-visible` sozinho não serviria, porque o navegador
@@ -2734,17 +2799,63 @@ export default function App() {
           <span className="hud-controller">{t('hud.controller', { name: controleNome })}</span>
         )}
 
-        {showGameHud && fullscreenAvailable && (
-          <button
-            type="button"
-            className={`fullscreen-toggle ${isFullscreen ? 'active' : ''}`}
-            onClick={handleToggleFullscreen}
-            aria-pressed={isFullscreen}
-            aria-label={t(isFullscreen ? 'fullscreen.exit' : 'fullscreen.enter')}
-            title={t(isFullscreen ? 'fullscreen.exitWithKey' : 'fullscreen.enter')}
-          >
-            <span aria-hidden="true">{isFullscreen ? '⤢' : '⤡'}</span>
-          </button>
+        {/*
+          O canto inferior direito: pausa e tela cheia.
+
+          ## Por que a engrenagem só aparece quando dá para pausar
+          Porque `pauseAvailable` é exatamente a condição que decide se a pausa abre
+          — o mesmo teste do `Esc` e do `Start` do controle. Usar `showGameHud` aqui
+          colocaria o botão na tela em estados em que ele não faz nada, e um botão que
+          não faz nada é pior do que um botão que não está.
+
+          ## Por que um SVG e não um glifo de fonte
+          Porque o glifo depende da fonte que o aparelho tem, e o desenho da engrenagem
+          é o que faz a pessoa saber o que é sem ler. Duas fontes desenham "⚙" como
+          engrenagem ou como emoji colorido, e o emoji vem com o fundo próprio que
+          briga com o canto escuro do HUD. O SVG é o mesmo em todo aparelho.
+
+          ## Por que o agrupamento é `pointer-events: none`
+          Porque o agrupamento tem o tamanho da fileira, e o vão entre os dois botões
+          cairia no agrupamento em vez de no canvas. Com o `none` no agrupamento e
+          `auto` nos botões, só os botões themselves interceptam o toque.
+        */}
+        {(pauseAvailable || (showGameHud && fullscreenAvailable)) && (
+          <div className="hud-corner-actions">
+            {pauseAvailable && (
+              <button
+                type="button"
+                className="corner-action"
+                onClick={pedirPausa}
+                aria-label={t('hud.pause')}
+                title={t('hud.pause')}
+              >
+                <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm0 5.8a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4Z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M10.6 2h2.8a.9.9 0 0 1 .9.8l.3 2a7.6 7.6 0 0 1 1.9 1.1l1.9-.8a.9.9 0 0 1 1.1.4l1.4 2.4a.9.9 0 0 1-.2 1.2l-1.5 1.3a7.7 7.7 0 0 1 0 2.2l1.5 1.3a.9.9 0 0 1 .2 1.2l-1.4 2.4a.9.9 0 0 1-1.1.4l-1.9-.8a7.6 7.6 0 0 1-1.9 1.1l-.3 2a.9.9 0 0 1-.9.8h-2.8a.9.9 0 0 1-.9-.8l-.3-2a7.6 7.6 0 0 1-1.9-1.1l-1.9.8a.9.9 0 0 1-1.1-.4L4.2 15a.9.9 0 0 1 .2-1.2l1.5-1.3a7.7 7.7 0 0 1 0-2.2L4.4 9a.9.9 0 0 1-.2-1.2l1.4-2.4a.9.9 0 0 1 1.1-.4l1.9.8a7.6 7.6 0 0 1 1.9-1.1l.3-2a.9.9 0 0 1 .8-.8Z"
+                    opacity="0.92"
+                  />
+                </svg>
+              </button>
+            )}
+
+            {showGameHud && fullscreenAvailable && (
+              <button
+                type="button"
+                className={`corner-action ${isFullscreen ? 'active' : ''}`}
+                onClick={handleToggleFullscreen}
+                aria-pressed={isFullscreen}
+                aria-label={t(isFullscreen ? 'fullscreen.exit' : 'fullscreen.enter')}
+                title={t(isFullscreen ? 'fullscreen.exitWithKey' : 'fullscreen.enter')}
+              >
+                <span aria-hidden="true">{isFullscreen ? '⤢' : '⤡'}</span>
+              </button>
+            )}
+          </div>
         )}
 
         {showLobby && (
@@ -2989,7 +3100,13 @@ export default function App() {
         )}
 
         {pauseOpen && (
-          <div className="pause-overlay" role="dialog" aria-modal="true" aria-label={t('pause.aria')}>
+          <div
+            className="pause-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('pause.aria')}
+            ref={pausaRef}
+          >
             <div className="pause-panel">
               <span className="pause-kicker">{t('pause.kicker')}</span>
 

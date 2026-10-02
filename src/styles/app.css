@@ -1051,29 +1051,57 @@ button {
   }
 }
 
-.fullscreen-toggle {
+/* O canto inferior direito: pausa e tela cheia, lado a lado.
+
+   ## Por que o agrupamento não intercepta o toque
+
+   O agrupamento tem o tamanho da fileira, e o vão entre os dois botões cairia nele em
+   vez de cair no canvas — um buraco de 8px no canto onde o jogo para de responder. Com
+   `none` aqui e `auto` nos botões, só os botões interceptam.
+
+   ## Por que o `bottom` é do canto e não do agrupamento
+
+   Porque o canto é do aparelho: é o que fica embaixo do gesto do sistema e ao lado do
+   indicador de gesto. O `env(safe-area-inset-bottom)` é o que tira o botão de baixo
+   desses lugares, e é ele que faz o botão não cair exatamente onde o polegar do
+   jogador fecha a tela. */
+.hud-corner-actions {
   position: absolute;
   right: clamp(10px, 2vw, 20px);
-  bottom: clamp(10px, 2.5vh, 22px);
+  bottom: max(clamp(10px, 2.5vh, 22px), env(safe-area-inset-bottom));
   z-index: 32;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.corner-action {
+  pointer-events: auto;
   width: 38px;
   height: 38px;
   display: grid;
   place-items: center;
+  padding: 0;
   background: rgba(8, 11, 16, 0.7);
   border: 1px solid var(--line-soft);
   color: var(--ink-dim);
   font-size: 16px;
   line-height: 1;
+  cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.fullscreen-toggle:hover {
+.corner-action:hover {
   color: var(--ink);
   border-color: var(--line);
 }
 
-.fullscreen-toggle.active {
+.corner-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 2px;
+}
+
+.corner-action.active {
   color: var(--accent);
   border-color: rgba(141, 240, 176, 0.4);
 }

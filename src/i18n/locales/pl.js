@@ -179,6 +179,7 @@ export default {
   'pause.hint': 'Esc wznawia',
   'pause.controllerHint': 'Kierunek przesuwa · A zatwierdza · B wraca · Start pauzuje',
   'hud.controller': '{name} podłączony',
+  'hud.pause': 'Pauza',
   'pause.aria': 'Gra wstrzymana',
 
   // --- decyzja przy wyjściu -------------------------------------------------

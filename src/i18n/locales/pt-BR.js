@@ -189,6 +189,7 @@ export default {
   'pause.hint': 'Esc continua',
   'pause.controllerHint': 'Direcional move · A confirma · B volta · Start pausa',
   'hud.controller': '{name} conectado',
+  'hud.pause': 'Pausar',
   'pause.aria': 'Jogo pausado',
 
   // --- decisão da saída ----------------------------------------------------

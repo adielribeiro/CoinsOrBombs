@@ -7,6 +7,46 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Uma engrenagem no canto inferior direito abre a pausa, e no celular não havia
+  caminho nenhum.** A pausa só existia pelo `Esc` do teclado e pelo `Start` do
+  controle. Quem joga no celular não tem nenhum dos dois, e ficava preso na partida.
+
+  A engrenagem fica ao lado do botão de tela cheia, no mesmo canto, e só aparece
+  quando `pauseAvailable` — que é exatamente a condição que decide se a pausa abre, a
+  mesma do `Esc` e do `Start`. Usar a condição do HUD colocaria o botão na tela em
+  estados em que ele não faria nada.
+
+  **A função é a mesma do `Esc`, por um caminho só.** `Esc` fecha o que estiver aberto
+  e, na falta de modal, abre a pausa; a engrenagem faz o mesmo. Duas entradas com
+  ações ligeiramente diferentes é como se descobre que a pausa fecha um modal num lugar
+  e abre outro.
+
+  O desenho é um SVG em vez de um glifo de fonte: o glifo depende da fonte que o
+  aparelho tem, e duas fontes desenham o símbolo como engrenagem ou como emoji
+  colorido, e o emoji vem com o fundo próprio que briga com o canto escuro do HUD.
+
+  O canto também cede ao `env(safe-area-inset-bottom)`, que é o que tira o botão de
+  baixo do gesto do sistema e do indicador de gesto do aparelho.
+
+### Corrigido
+
+- **Com a seta parada em cima de um botão, o `Start` deixava de abrir a pausa.** O
+  ramo do botão embaixo da seta estava à frente do `pausa`, e `pausa` é o
+  `Start`/`Options` — uma ação do jogo inteiro, não do alvo que a seta está sobre.
+  Levar a seta para o canto e soltar, que é o gesto mais natural com controle, deixava
+  o `Start` sem efeito. O ramo do `pausa` vem antes.
+
+- **A pausa agora toma o foco ao abrir.** Nenhum modal do jogo tomava o foco, e quem
+  abria a pausa — pelo `Esc`, pelo `Start` ou pela engrenagem — deixava o foco onde
+  estava. Com controle isso era uma armadilha: os botões da pausa ficam no meio da
+  tela, e os alvos alcançáveis com o direcional são os da página inteira, então de um
+  botão no canto `cima` e `baixo` não achavam caminho para o painel. O foco começa em
+  "Continuar".
+
+### Adicionado (anterior)
+
+- **Sensibilidade e velocidade do ponteiro são dois controles, e não um.** A
+
 - **Sensibilidade e velocidade do ponteiro são dois controles, e não um.** A
   sensibilidade é a resposta embaixo: quanto anda com um empurrão pequeno, que é a mira
   fina. A velocidade é o teto: quanto anda com o analógico no fim do curso, que é o
