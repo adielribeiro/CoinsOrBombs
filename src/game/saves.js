@@ -31,6 +31,7 @@
  * Cada slot carrega o seu `bestCave`, e a trava lê o `gameState` do slot ativo. Um
  * jogo novo começa na Mina Solar, mesmo que outro slot já tenha chegado ao gelo.
  */
+import { NIVEL_MAXIMO, UPGRADE_IDS, UPGRADE_POR_CAMPO, UPGRADES } from './melhorias.js';
 import {
   IMPROVEMENT_FIELDS,
   MELHORIAS_DE_PICARETA,
@@ -49,6 +50,20 @@ const SAVES_KEY = 'coinsorbombs:saves:v1';
 const PROFILE_KEY = 'coinsorbombs:profile:v1';
 
 const FORMAT_VERSION = 1;
+
+/**
+ * O que a morte e a troca de cave não podem tocar.
+ *
+ * Derivado da configuração das melhorias, e não escrito à mão: um campo novo em
+ * `UPGRADES` entra no disco sozinho. A lista escrita à mão funciona até alguém
+ * acrescentar a próxima melhoria — e o sintoma é uma melhoria que a pessoa comprou e que
+ * desaparece na morte, sem erro em lugar nenhum.
+ *
+ * Fica **antes** de `PERSISTENTE` porque a lista de baixo a consome, e uma constante
+ * usada antes da declaração morre com "Cannot access before initialization" — que é
+ * exatamente o tipo de erro que só aparece quando outro arquivo importa este.
+ */
+export const PERMANENTE = ['relics', ...UPGRADE_IDS.map((id) => UPGRADES[id].field)];
 
 /** Campos gravados no slot. Tudo que é estado de tela fica de fora. */
 export const PERSISTENTE = [
@@ -82,8 +97,26 @@ export const PERSISTENTE = [
   // melhoria não estava em lugar nenhum. Não basta um save de uma linha que não
   // guarda o que a pessoa conquistou.
   ...
-    IMPROVEMENT_FIELDS
+    IMPROVEMENT_FIELDS,
+  // O saldo de relíquias e as cinco melhorias compradas com elas. A lista acima é o que
+  // a morte reconstrói a partir do estado inicial; estes são o que ela **não** toca,
+  // porque são permanentes por decisão de jogo — uma relíquia gasta não volta, e uma
+  // melhoria comprada não se perde morrendo.
+  //
+  // `relics` é separado da `collection` de propósito: a coleção é o catálogo "x3 Âmbar"
+  // e não pode encolher quando a pessoa gasta uma. Sem separá-las, o saldo cresceria
+  // contra a conta do catálogo, e nenhuma das duas mostraria a verdade.
+    ...PERMANENTE
 ];
+
+/**
+ * Relíquias com que o modo desenvolvedor começa.
+ *
+ * A soma dos custos das cinco melhorias dá 90. O valor é o dobro, e não o exato, porque
+ * o modo também serve para testar a recusa por saldo insuficiente — e um saldo que dá
+ * exatamente para comprar tudo nunca chega nesse caminho.
+ */
+export const RELIQUIAS_NO_DEV = 200;
 
 /** Limite do nome. Curto o bastante para caber na lista, longo o bastante para nomear. */
 const NOME_MAX = 28;
@@ -184,6 +217,16 @@ export function estadoInicial(cave = 1) {
     stats: createStatsState(),
     lastRelicFound: null,
     utilities: createUtilityInventory(),
+    // O saldo e as cinco melhorias entram aqui zerados, e não só quando um save antigo é
+    // hidratado. São os campos que `hidratarEstado` completa a partir deste estado, e
+    // sem eles um save de antes das melhorias abria sem o campo `relics` — a leitura
+    // devolvia zero por acaso, num `?? 0` dentro da função, e o próximo que aparecesse
+    // leria direto do estado e receberia `undefined`.
+    //
+    // Vem de `comPermanentes({})`, e não de uma lista escrita aqui: os campos saem de
+    // `PERMANENTE`, que por sua vez sai da configuração das melhorias. Uma lista escrita
+    // à mão funciona até a próxima melhoria aparecer.
+    ...comPermanentes({}),
     ...createImprovementState(),
     // Todo jogo começa marcado como jogo de verdade. Um save antigo, de antes do
     // modo desenvolvedor, recebe `false` — e é exatamente isso que impede que ele
@@ -220,6 +263,14 @@ export function estadoInicialDev(cave = 1) {
     pickaxeLevel: PICARETA_MAXIMA,
     pickaxePower: PICARETA_MAXIMA,
     pickaxeUpgradeLevel: MELHORIAS_DE_PICARETA,
+    // A melhoria de relíquia da picareta também vai no máximo. Sem ela o modo dev
+    // entrega uma picareta de 13 **por decreto** enquanto o valor derivado daria 10, e
+    // a primeira vez que o estado é recalculado a picareta cai sozinha — o modo
+    // desenvolvedor perdendo ferramenta no meio do teste.
+    melhoriaPickaxe: NIVEL_MAXIMO,
+    // Relíquias para exercitar a loja de melhorias sem ter que caçar 45 no mapa. Um
+    // save de teste não conta progresso, então o saldo não vira nada real.
+    relics: RELIQUIAS_NO_DEV,
     utilities: {
       ...base.utilities,
       safePath: POCOES_CAMINHO_SEGURO_NO_DEV
@@ -264,6 +315,58 @@ export function hidratarEstado(bruto, caveInicial = 1) {
     // `undefined` e a morte zeraria as doze melhorias.
     melhoriasFixas: { ...createMelhoriasFixasState(), ...(bruto?.melhoriasFixas ?? {}) }
   };
+}
+
+/**
+ * Só os campos permanentes, completos e limitados.
+ *
+ * ## Por que devolve SÓ os campos, e não o estado inteiro
+ *
+ * Porque quem chama espalha o resultado por cima de um estado que acabou de montar. Uma
+ * função que devolvesse `...estado` inteiro traria de volta a cave, o bioma, as moedas, a
+ * coleção e as estatísticas — e é o bug que `melhoriasReiniciadas` já tinha e que
+ * `test/morte.test.mjs` existe para segurar.
+ *
+ * A primeira versão desta função começou em `{ ...estado }`, e o efeito foi o mesmo bug
+ * pelo caminho oposto: `buildResetState` montava a cave do bioma, chamava
+ * `melhoriasReiniciadas` e espalhava `comPermanentes` por cima — e a volta trazia a cave
+ * da morte de volta, anulando a regra do recomeço. O sintoma era idêntico ao do bug
+ * anterior, e por um tempo pareceu que a correção do recomeço tinha voltado a falhar.
+ *
+ * A lista devolvida é `PERMANENTE`, e a função não pode devolver nada fora dela. É o que
+ * o teste `devolve so os campos permanentes, e nada mais` segura.
+ *
+ * ## Por que isto é separado da hidratação
+ *
+ * Porque a hidratação monta o estado de **uma run que vai começar**, e o saldo de
+ * relíquias e as cinco melhorias não recomeçam: eles atravessam a morte, a troca de cave
+ * e a ida ao menu. Usar a hidratação para eles resolveria o problema errado.
+ *
+ * ## Por que `saldoDeReliquias`, e não `?? 0` direto
+ *
+ * Porque o save pode vir editado à mão, e `NaN` somado a `NaN` é `NaN`: o saldo viraria
+ * `NaN`, o preço da melhoria compararia `NaN < 3` como falso — que é "sem relíquia" — e
+ * a pessoa veria um saldo quebrado e nenhuma melhoria comprável, sem erro no console.
+ */
+export function comPermanentes(estado) {
+  const saida = {};
+
+  for (const campo of PERMANENTE) {
+    const bruto = estado?.[campo];
+    const config = UPGRADE_POR_CAMPO[campo];
+
+    // Um nível de melhoria é limitado ao máximo, porque um save editado com 99 não pode
+    // dar vida 101. O saldo não é limitado: é um número, e a depreciação é dele.
+    saida[campo] = config
+      ? Number.isFinite(bruto)
+        ? Math.min(Math.max(0, Math.trunc(bruto)), config.maxLevel)
+        : 0
+      : Number.isFinite(bruto) && bruto > 0
+        ? Math.trunc(bruto)
+        : 0;
+  }
+
+  return saida;
 }
 
 /**

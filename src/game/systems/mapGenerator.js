@@ -3,6 +3,17 @@ import { getRockVariantCount } from '../rocks.js';
 import { findSafeRoute, getNeighbors4, getNeighbors8 } from './helpers.js';
 
 /**
+ * Os 3 pontos percentuais que a chance de relíquia ganhou, em fração.
+ *
+ * Somados antes do teto, e o teto é a soma antiga mais estes 3 pontos: era 28%, e
+ * passou a 31%. É o que faz o ganho valer também nas caves que já estavam no teto.
+ */
+export const BONUS_RELICIA = 0.03;
+
+/** O teto da chance de relíquia, com o bônus já somado. */
+export const CHANCE_MAXIMA_RELICIA = 0.28 + BONUS_RELICIA;
+
+/**
  * Índice do modelo de rocha, escolhido dentro da folha do bioma.
  *
  * Antes isto era uma lista de CHAVES de textura, com `rock` repetido para pesar
@@ -511,7 +522,15 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
     bombCandidates[i].hiddenContent = 'bomb';
   }
 
-  const relicChance = Math.min(0.28, biome.relicChance + Math.floor((localCave - 1) / 5) * 0.01);
+  // A chance da relíquia é a chance do bioma, mais 1% a cada 5 caves, mais o bônus.
+  //
+  // O bônus entra **antes** do teto de propósito: somar depois faria as caves que já
+  // estavam no teto não ganharem nada, e são elas as mais difíceis. O teto é a soma
+  // antiga mais o bônus, e não um número solto — os dois saem das mesmas constantes.
+  const relicChance = Math.min(
+    CHANCE_MAXIMA_RELICIA,
+    biome.relicChance + Math.floor((localCave - 1) / 5) * 0.01 + BONUS_RELICIA
+  );
   if (Math.random() < relicChance) {
     const relicCandidates = bombCandidates.filter((tile) => tile.hiddenContent === 'empty');
 

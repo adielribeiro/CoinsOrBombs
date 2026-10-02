@@ -2,6 +2,15 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createGame } from './game/createGame.js';
 import { duracaoDaCarta } from './game/cartaFinal.js';
 import {
+  UPGRADE_IDS,
+  chaveDoProximoBeneficio,
+  comprarMelhoria,
+  custoDoProximoNivel,
+  nivelDe,
+  nivelMaximo,
+  saldoDeReliquias
+} from './game/melhorias.js';
+import {
   MARGEM_DO_PONTEIRO_PX,
   SENSIBILIDADES,
   SENSIBILIDADE_PADRAO,
@@ -71,6 +80,7 @@ import {
 } from './game/progression.js';
 import {
   apagarJogo,
+  comPermanentes,
   criarJogo,
   estadoInicial,
   estadoInicialDev,
@@ -649,6 +659,15 @@ export default function App() {
    */
   const t = useMemo(() => createTranslator(settings.language), [settings.language]);
   const utilityCatalog = useMemo(() => buildUtilityCatalog(t), [t]);
+
+  /*
+   * O saldo de relíquias que a loja mostra.
+   *
+   * Sai do estado, e não de um contador próprio: um contador na tela contaria as compras
+   * e esqueceria as relíquias achadas na caverna, e a loja mostraria um número que não é
+   * o do save.
+   */
+  const saldoReliquias = saldoDeReliquias(gameState);
 
   /**
    * Quanto tempo a carta do fim leva para subir, no idioma em tela.
@@ -1369,6 +1388,10 @@ export default function App() {
       // percam na morte, e trocar de bioma não é morrer. O que vai para cá são os
       // níveis que já estão no estado, mais o que as fixas produzem.
       ...aplicarEfeitosDasMelhorias(baseState),
+      // Mesmo motivo do reinicio apos a morte: o recalculo devolve os derivados e
+      // nao os niveis de reliquia. Trocar de bioma nao pode custar uma melhoria
+      // comprada.
+      ...comPermanentes(baseState),
       bestCave: baseState.bestCave ?? 1,
       lastRelicFound: baseState.lastRelicFound ?? null,
       lastMessage: message
@@ -1716,7 +1739,50 @@ export default function App() {
     );
   };
 
-  const sellUtility = (utility) => {
+  /*
+     * Compra um nível de melhoria com relíquias.
+     *
+     * ## A atomicidade vem da função, e não desta
+     *
+     * `comprarMelhoria` decide e devolve o estado pronto, ou o motivo da recusa. Aqui não
+     * há uma sequência de "debita, sobe o nível, aplica o bônus" em que um passo possa
+     * rodar sem o outro — e é assim que se gasta uma melhoria e não recebe, ou recebe e
+     * não paga. Quem valida é a função, e ela valida antes de escrever qualquer coisa.
+     *
+     * ## Por que `niveis` se espalha no estado, e não `niveisDe`
+     *
+     * `niveis` já vem com o nome de campo (`melhoriaHealth`), que é como o estado
+     * guarda. A versão anterior devolvia com o nome da melhoria (`health`), e espalhada
+     * no estado ela escrevia uma chave que nada lia: o saldo caía e o nível não subia.
+     *
+     * ## Por que o bônus aparece na hora
+     *
+     * Porque quem compra vida e vê a vida continuar igual nos leva a clicar de novo. O
+     * recálculo roda sobre o estado novo e devolve `maxHp` e `pickaxeLevel` — o derivado
+     * vem sempre dos níveis, então não há como o bônus ser aplicado duas vezes.
+     */
+    const buyUpgrade = (id) => {
+      const baseState = stateRef.current;
+      const compra = comprarMelhoria(baseState, id);
+
+      if (!compra.ok) return;
+
+      const comNiveis = { ...baseState, ...compra.niveis };
+      const efeitos = aplicarEfeitosDasMelhorias(comNiveis);
+      const nextState = normalizeProgressState({
+        ...comNiveis,
+        relics: compra.relics,
+        maxHp: efeitos.maxHp,
+        hp: efeitos.hp,
+        pickaxeLevel: efeitos.pickaxeLevel,
+        pickaxePower: efeitos.pickaxePower,
+        lastMessage: t('shop.relicBalance', { n: compra.relics })
+      });
+
+      syncLocalState(nextState);
+    };
+
+    const sellUtility = (utility) => {
     const baseState = stateRef.current;
     const owned = baseState.utilities?.[utility.id] ?? 0;
     const resaleValue = Math.max(1, Math.floor(utility.cost / 2));
@@ -2502,6 +2568,18 @@ export default function App() {
       // Foi esse o bug que fez a regra do recomeço parecer implementada e não valendo:
       // a aritmética estava certa e o resultado não.
       ...melhoriasReiniciadas(baseState),
+      // O saldo de reliquias e as cinco melhorias compradas com ele atravessam a
+      // morte. Entram **depois** do recalculo acima porque ele devolve so os campos
+      // derivados - `maxHp`, `hp`, `pickaxeLevel`, `pickaxePower` - e nao os niveis
+      // de onde veio. Sem esta linha o estado novo saia sem `relics` e sem os cinco
+      // `melhoria*`.
+      //
+      // A falha era discreta e convincente: a vida maxima continuava certa na HUD,
+      // porque o recalculo ja tinha somado o nivel de reliquia ao computar `maxHp`.
+      // Quem compra vida e morre ve a vida certa, o que faz a compra parecer
+      // permanente; o nivel some do save meio segundo depois e a compra se perde no
+      // F5, com o saldo de volta a zero e nenhuma mensagem.
+      ...comPermanentes(baseState),
       // bestCave só avança quando a cave é concluída. A versão anterior
       // fazia Math.max(bestCave, cave) também ao morrer, o que destravava
       // o próximo bioma sem nunca ter concluído nenhuma cave dele.
@@ -3051,6 +3129,18 @@ export default function App() {
                     {t('lobby.retry')}
                   </button>
 
+                  {/* A loja aparece na derrota tambem, e e o unico lugar onde a
+                      pessoa pode gastar as reliquias que acabou de juntar. Antes ela
+                      ficava presa aqui sem porta de saida para o saldo, e gastava
+                      so depois de concluir uma caverna. */}
+                  <button
+                    className="ghost-btn utility-lobby-btn"
+                    type="button"
+                    onClick={() => setShowUtilityShopModal(true)}
+                  >
+                    {t('lobby.utilityShop')}
+                  </button>
+
                   <button className="ghost-btn utility-lobby-btn" type="button" onClick={backToMainMenu}>
                     {t('lobby.mainMenu')}
                   </button>
@@ -3060,7 +3150,12 @@ export default function App() {
           </div>
         )}
 
-        {showLobby && showUtilityShopModal && !isDeathLobby && (
+        /* A loja abre na derrota também.
+
+     Sem esta guarda o modal nunca aparecia depois de morrer, e o botão que o abre só
+     existia na vitória — os dois tinham de mudar juntos, e é por isso que a guarda
+     mora aqui e não dentro do botão. */
+{showLobby && showUtilityShopModal && (
           <div className="utility-shop-modal-overlay" onClick={() => setShowUtilityShopModal(false)}>
             <div className="utility-shop-modal" onClick={(event) => event.stopPropagation()}>
               <div className="utility-shop-modal-header">
@@ -3102,10 +3197,14 @@ export default function App() {
                           onClick={() => buyUtility(utility)}
                           disabled={!canBuy}
                         >
-                          {canBuy
-                            ? t('shop.buy', { n: utility.cost })
-                            : t('shop.missing', { n: utility.cost - gameState.coins })}
+                          {t('shop.buy', { n: utility.cost })}
                         </button>
+
+                        {!canBuy && (
+                          <small className="shop-buy-note">
+                            {t('shop.missing', { n: utility.cost - gameState.coins })}
+                          </small>
+                        )}
 
                         <button
                           className="shop-sell-btn"
@@ -3121,6 +3220,57 @@ export default function App() {
                     </div>
                   );
                 })}
+
+                <div className="shop-section">
+                  <div className="shop-section-head">
+                    <h3>{t('shop.sectionUpgrades')}</h3>
+                    <strong>{t('shop.relicBalance', { n: saldoReliquias })}</strong>
+                  </div>
+
+                  <p className="shop-section-note">{t('shop.upgradesSubtitle')}</p>
+
+                  <div className="shop-upgrade-grid">
+                    {UPGRADE_IDS.map((id) => {
+                      const nivel = nivelDe(gameState, id);
+                      const maximo = nivelMaximo(id);
+                      const custo = custoDoProximoNivel(id, nivel);
+                      const noMaximo = custo === null;
+                      const podeComprar = !noMaximo && saldoReliquias >= custo;
+
+                      return (
+                        <div key={id} className="shop-upgrade-card">
+                          <div className="shop-upgrade-head">
+                            <strong>{t(`shop.upgrade.${id}.name`)}</strong>
+                            <span>{t('shop.level', { atual: nivel, max: maximo })}</span>
+                          </div>
+
+                          <p className="shop-upgrade-benefit">
+                            {noMaximo
+                              ? t('shop.maxLevel')
+                              : t('shop.upgradeNext', { benefit: chaveDoProximoBeneficio(id) })}
+                          </p>
+
+                          <div className="shop-action-row">
+                            <button
+                              className="shop-buy-btn"
+                              type="button"
+                              onClick={() => buyUpgrade(id)}
+                              disabled={noMaximo || !podeComprar}
+                            >
+                              {noMaximo ? t('shop.maxLevel') : t('shop.buyNext', { n: custo })}
+                            </button>
+
+                            {!podeComprar && !noMaximo && (
+                              <small className="shop-buy-note">
+                                {t('shop.notEnoughRelics')}
+                              </small>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

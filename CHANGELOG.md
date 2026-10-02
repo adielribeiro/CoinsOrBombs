@@ -5,6 +5,55 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- **As relíquias deixaram de ser colecionáveis e viraram moeda de progressão.** Antes
+  elas respondiam "qual relíquia a pessoa já achou?" — a tela de Informações mostra
+  "x3 Âmbar" — e não "quantas eu tenho para gastar?". Agora existe um saldo, e ele
+  atravessa a morte, a troca de cave, a ida ao menu e o F5.
+
+  O saldo é `relics`, e é **separado da coleção** de propósito. A coleção é o registro
+  de descoberta e não encolhe quando a pessoa gasta; `stats.totalRelicsFound` é o
+  histórico e nunca diminui. Três perguntas, três campos: usar um só para as três é
+  o caminho para a tela de Informações deixar de dizer quantas relíquias a pessoa
+  já achou.
+
+  A chance de encontrar relíquias subiu **3 pontos percentuais em todas as caves**, e
+  o teto subiu junto (28% → 31%). Somar os 3 pontos *antes* do teto é o que faz o
+  ganho valer nas caves que já estavam nele — o fim do bioma 3 em diante — que são
+  justamente as mais difíceis de garimpar.
+
+- **A loja virou "Melhorias / Utilitários", em duas seções.**
+
+  **Utilitários** é a seção de antes: poções compradas com moedas, com a mesma lógica.
+
+  **Melhorias** é nova, paga com relíquias e **permanente**. Cada uma tem três níveis:
+
+  | Melhoria | Efeito por nível | Custos |
+  |---|---|---|
+  | Melhorar Vida | +1 de vida máxima | 3 / 6 / 10 |
+  | Melhorar Picareta | +1 de nível de picareta | 4 / 8 / 15 |
+  | Melhorar Poção de Vida | +1 de vida recuperada por poção | 10 / 15 / 20 |
+  | Melhorar Poção Dedo Duro | +1 bomba revelada por poção | 10 / 15 / 20 |
+  | Melhorar Poção Caminho Seguro | um efeito novo por nível | 10 / 15 / 20 |
+
+  Os custos e os limites moram em `src/game/melhorias.js`, e **a tela e a regra leem a
+  mesma tabela**. Um custo escrito no botão e outro na regra divergem no primeiro
+  ajuste, e a pessoa paga o preço errado sem nenhum aviso.
+
+  Vida e picareta **somam** às cartas de melhoria do fim da caverna, e não as
+  substituem. O teto da picareta passou a ter duas parcelas: as 9 melhorias do catálogo
+  de cartas mais os 3 níveis da melhoria de relíquia — 10 vira 13. Alcançar o máximo
+  exige as duas no máximo.
+
+  A loja passou a abrir **também na derrota**. Quem morre é quem mais tem relíquias para
+  gastar, e antes ficava preso no lobby sem porta de saída para o saldo.
+
+- **O preço da loja passou a ser sempre exato.** O botão dizia "Faltam 4" quando
+  faltava moeda — e o preço sumia da tela justamente quando a pessoa mais precisa dele,
+  que é para saber quanto guardar. Agora o botão diz o preço, e o motivo da recusa fica
+  ao lado.
+
 ### Corrigido
 
 - **A regra do recomeço nunca chegou a valer, por dois motivos ao mesmo tempo.** Morre-se

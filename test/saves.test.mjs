@@ -270,6 +270,16 @@ test('todo campo de PERSISTENTE é gravado, e nenhum outro', () => {
     screen: 'cave',
     inLobby: false,
     lastMessage: 'x',
+    // O saldo e as cinco melhorias entram aqui porque `PERSISTENTE` os declara, e
+    // este teste existe para amarrar a lista ao comportamento: um campo na lista que
+    // o estado de exemplo nao tem vira um campo que o teste acusa como declarado e
+    // nunca gravado -- que e o proprio estado de exemplo desatualizado.
+    relics: 12,
+    melhoriaHealth: 1,
+    melhoriaPickaxe: 2,
+    melhoriaLifePotion: 0,
+    melhoriaRevealBomb: 3,
+    melhoriaSafePath: 1,
     campoDoFuturo: 123
   };
   gravarEstadoDoJogo(storage, id, cheio);

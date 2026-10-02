@@ -7,6 +7,7 @@ import {
   POCOES_CAMINHO_SEGURO_NO_DEV,
   pickaxeLevelDe
 } from '../src/game/progression.js';
+import { NIVEL_MAXIMO } from '../src/game/melhorias.js';
 import {
   PERSISTENTE,
   criarJogo,
@@ -77,8 +78,8 @@ test('o modo desenvolvedor começa com a picareta no máximo, e o nível junto',
 test('a picareta do modo dev é a mesma que o catálogo permite', () => {
   // Duas fontes de verdade para o mesmo teto. Se o catálogo subir para 5 e o kit
   // continuar em 5+1, o modo dev entrega uma picareta que o jogo nunca dá.
-  assert.equal(PICARETA_MAXIMA, pickaxeLevelDe(MELHORIAS_DE_PICARETA));
-  assert.equal(PICARETA_MAXIMA, MELHORIAS_DE_PICARETA + 1);
+  assert.equal(PICARETA_MAXIMA, pickaxeLevelDe(MELHORIAS_DE_PICARETA, NIVEL_MAXIMO));
+  assert.equal(PICARETA_MAXIMA, MELHORIAS_DE_PICARETA + 1 + NIVEL_MAXIMO);
 });
 
 test('o modo desenvolvedor não inventa head start de progresso', () => {

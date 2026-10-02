@@ -1,3 +1,5 @@
+import { NIVEL_MAXIMO, saldoDeReliquias, upgradesDe } from './melhorias.js';
+
 /**
  * Biomas, em ordem de progressão.
  *
@@ -362,8 +364,8 @@ export function improvementsDe(estado) {
 }
 
 /** A vida máxima que um nível de vitalidade dá. A base é 2, e cada nível soma 1. */
-export function maxHpDe(vitalityLevel) {
-  return 2 + (vitalityLevel ?? 0);
+export function maxHpDe(vitalityLevel, nivelReliquia = 0) {
+  return 2 + (vitalityLevel ?? 0) + (nivelReliquia ?? 0);
 }
 
 /**
@@ -396,8 +398,8 @@ export const MELHORIAS_DE_PICARETA = 9;
  * É esta fórmula que `aplicarEfeitosDasMelhorias` usa ao recalcular o estado, e é
  * ela que decide o que a HUD mostra depois de uma morte.
  */
-export function pickaxeLevelDe(pickaxeUpgradeLevel) {
-  return Math.min(PICARETA_MAXIMA, 1 + (pickaxeUpgradeLevel ?? 0));
+export function pickaxeLevelDe(pickaxeUpgradeLevel, nivelReliquia = 0) {
+  return Math.min(PICARETA_MAXIMA, 1 + (pickaxeUpgradeLevel ?? 0) + (nivelReliquia ?? 0));
 }
 
 /**
@@ -410,8 +412,14 @@ export function pickaxeLevelDe(pickaxeUpgradeLevel) {
  */
 export const POCOES_CAMINHO_SEGURO_NO_DEV = 5;
 
-/** O nível de picareta do modo desenvolvedor: o máximo que o catálogo permite. */
-export const PICARETA_MAXIMA = MELHORIAS_DE_PICARETA + 1;
+/**
+ * O nível de picareta do modo desenvolvedor: o máximo que o catálogo permite.
+ *
+ * São 10: as 9 melhorias de picareta do catálogo de cartas, mais a base. E mais os 3
+ * níveis que a melhoria de relíquia soma por cima — as duas fontes **somam**, e quem
+ * compra com relíquias não troca o lugar de quem escolheu carta.
+ */
+export const PICARETA_MAXIMA = MELHORIAS_DE_PICARETA + 1 + NIVEL_MAXIMO;
 
 /**
  * Recalcula o que as melhorias **derivam**, a partir dos níveis das melhorias.
@@ -454,8 +462,14 @@ export const PICARETA_MAXIMA = MELHORIAS_DE_PICARETA + 1;
  */
 export function aplicarEfeitosDasMelhorias(estado) {
   const melhorias = improvementsDe(estado);
-  const maxHp = maxHpDe(melhorias.vitalityLevel);
-  const pickaxeLevel = pickaxeLevelDe(melhorias.pickaxeUpgradeLevel);
+  const reliquias = upgradesDe(estado);
+
+  // Vida e picareta têm duas fontes: as cartas do fim da caverna e as melhorias de
+  // relíquia. As duas **somam**, e é por isso que a fórmula recebe os dois níveis em vez
+  // de escolher um. O save guarda os níveis, nunca os totais — é o que impede o bônus de
+  // ser aplicado duas vezes ao carregar.
+  const maxHp = maxHpDe(melhorias.vitalityLevel) + (reliquias.health ?? 0);
+  const pickaxeLevel = pickaxeLevelDe(melhorias.pickaxeUpgradeLevel, reliquias.pickaxe ?? 0);
 
   return {
     ...melhorias,
@@ -833,6 +847,11 @@ export function registrarReliquiaEncontrada(estado, relicId) {
 
   return {
     ...base,
+    // O saldo que a pessoa gasta na loja. Separado da coleção de propósito: a
+    // coleção responde "esta relíquia já foi encontrada?", e o saldo responde
+    // "quantas eu tenho para gastar?". Gastar não pode apagar a primeira resposta,
+    // e é por isso que os dois campos não são o mesmo.
+    relics: saldoDeReliquias(estado) + 1,
     collection: {
       ...createCollectionState(),
       ...estado?.collection,
@@ -841,6 +860,8 @@ export function registrarReliquiaEncontrada(estado, relicId) {
     stats: {
       ...createStatsState(),
       ...estado?.stats,
+      // O histórico não anda junto com o saldo: é a soma de todas as relíquias
+      // já encontradas, e é o único dos três que nunca deve diminuir.
       totalRelicsFound: (estado?.stats?.totalRelicsFound ?? 0) + 1
     }
   };

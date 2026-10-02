@@ -11,6 +11,7 @@ import {
   maxHpDe,
   pickaxeLevelDe
 } from '../src/game/progression.js';
+import { NIVEL_MAXIMO } from '../src/game/melhorias.js';
 import { PERSISTENTE, partePersistente } from '../src/game/saves.js';
 import { buildRewardCatalog, pickRewardOptions } from '../src/game/rewards.js';
 
@@ -209,9 +210,13 @@ test('a forca da picareta nao passa do teto', () => {
   // O teto vem de `PICARETA_MAXIMA`, e nao e um numero escrito aqui. O teste
   // antigo fixava 5 e passou a reprovar quando o teto subiu para 10 -- que e o
   // comportamento certo dele, e a razao de o numero estar numa constante so.
+  //
+  // O teto tem DUAS parcelas agora: as cartas do fim da caverna e a melhoria de
+  // reliquia. As duas somam, e alcancar o maximo exige as duas no maximo.
   const resultado = aplicarEfeitosDasMelhorias({
     ...createImprovementState(),
-    pickaxeUpgradeLevel: MELHORIAS_DE_PICARETA
+    pickaxeUpgradeLevel: MELHORIAS_DE_PICARETA,
+    melhoriaPickaxe: NIVEL_MAXIMO
   });
 
   assert.equal(
@@ -225,7 +230,8 @@ test('a forca da picareta nao passa do teto', () => {
   // nunca chega, nao pode virar uma picareta maior que a maxima.
   const acima = aplicarEfeitosDasMelhorias({
     ...createImprovementState(),
-    pickaxeUpgradeLevel: MELHORIAS_DE_PICARETA + 20
+    pickaxeUpgradeLevel: MELHORIAS_DE_PICARETA + 20,
+    melhoriaPickaxe: NIVEL_MAXIMO + 20
   });
 
   assert.equal(acima.pickaxePower, PICARETA_MAXIMA, 'aforca estourou o teto');

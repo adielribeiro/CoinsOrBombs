@@ -7,6 +7,7 @@ import {
   createImprovementState,
   pickaxeLevelDe
 } from '../src/game/progression.js';
+import { NIVEL_MAXIMO } from '../src/game/melhorias.js';
 import { buildRewardCatalog } from '../src/game/rewards.js';
 import { generateMap } from '../src/game/systems/mapGenerator.js';
 
@@ -41,8 +42,11 @@ function comPicareta(n) {
 // --- o teto tem um lugar só -----------------------------------------------
 
 test('o teto e um numero so, e a picareta maxima vem dele', () => {
-  assert.equal(PICARETA_MAXIMA, MELHORIAS_DE_PICARETA + 1);
-  assert.equal(PICARETA_MAXIMA, 10, 'a picareta maxima mudou de 10');
+  // O teto tem duas parcelas: as 9 melhorias do catálogo de cartas e os 3 níveis da
+  // melhoria de relíquia. As duas somam, e o teto acompanha — senão comprar a melhoria
+  // de relíquia não mudaria nada e a pessoa pagaria por umaupgrade invisível.
+  assert.equal(PICARETA_MAXIMA, MELHORIAS_DE_PICARETA + 1 + NIVEL_MAXIMO);
+  assert.equal(PICARETA_MAXIMA, 13, 'a picareta maxima mudou de 13');
   assert.equal(MELHORIAS_DE_PICARETA, 9, 'o numero de melhorias mudou de 9');
 });
 
