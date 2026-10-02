@@ -344,7 +344,6 @@ export default {
   'lore.crystal.p4.a': 'Quei cristalli sembrano affilati... meglio andare piano....',
 
   // --- cena final antes do fim do jogo ---------------
-  'cenaFinal.rotulo': 'La bocca della caverna. Entra il sole.',
   'cenaFinal.dica': 'Clicca per continuare',
 
   // --- cena final ------------------------------------------

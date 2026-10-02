@@ -342,7 +342,6 @@ export default {
   'lore.crystal.p4.a': '这些晶体看起来很锋利...还是慢一点好....',
 
   // --- cena final antes do fim do jogo ---------------
-  'cenaFinal.rotulo': '洞口。阳光照进来了。',
   'cenaFinal.dica': '点击继续',
 
   // --- cena final ------------------------------------------

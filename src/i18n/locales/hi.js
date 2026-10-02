@@ -353,7 +353,6 @@ export default {
   'lore.crystal.p4.a': 'ये क्रिस्टल धारदार लगते हैं... धीरे चलना बेहतर....',
 
   // --- cena final antes do fim do jogo ---------------
-  'cenaFinal.rotulo': 'गुफा का मुख। सूरज अंदर आ रहा है।',
   'cenaFinal.dica': 'जारी रखने के लिए क्लिक करें',
 
   // --- cena final ------------------------------------------

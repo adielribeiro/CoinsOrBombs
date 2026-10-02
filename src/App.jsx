@@ -517,14 +517,17 @@ export default function App() {
   const finaleTimerRef = useRef(null);
 
   /**
-   * A cena final tem duas fases: os painéis falados e a vista muda da boca da
-   * caverna. `null` é a cena fechada.
+   * A cena final está aberta nos painéis?
    *
-   * `null` em vez de dois booleanos porque são fases de uma mesma sequência, e
-   * dois booleanos admitem o estado impossível "painéis fora e vista fora", que
-   * deixaria a tela em branco esperando alguém apertar alguma coisa.
+   * Era uma fase com dois valores — `'paineis'` e `'vista'` — e a tela muda saiu do
+   * jogo. Sobrou uma coisa só, e uma fase com um valor é um booleanovestido de
+   * string: cada `cenaFinalFase === 'x'` no código era uma chance de escrever
+   * `'painel'` e ficar comparando com `null` para sempre, sem erro nenhum.
+   *
+   * O bioma continua aqui porque é ele que diz **quais** painéis são, e o roteiro
+   * vive por bioma mesmo tendo um só preenchido.
    */
-  const [cenaFinalFase, setCenaFinalFase] = useState(null);
+  const [cenaFinalAberta, setCenaFinalAberta] = useState(false);
   const [cenaFinalBioma, setCenaFinalBioma] = useState(null);
   const [cenaFinalIndice, setCenaFinalIndice] = useState(0);
 
@@ -800,12 +803,11 @@ export default function App() {
    * jogar". Juntar as duas num botão só faria quem quer ler perder o roteiro
    * inteiro, e faria quem quer pular ter que apertar seis vezes.
    *
-   * ## A vista final não pula
+   * ## A cena final pula para a carta
    *
-   * É a última coisa do jogo antes da carta, e ela aceita uma tecla só: avançar.
-   * Deixar o `Enter` pular daqui para a carta tiraria do jogador a única imagem
-   * que mostra o mundo do jogo pela última vez — que é justamente o que a cena
-   * existe para mostrar.
+   * O `Enter` e o `B`/`Quadrado` levam dos painéis direto para os créditos. Havia
+   * uma tela muda no meio — a paisagem sem ninguém — e ela só custava um toque a
+   * mais no fim do jogo.
    *
    * ## O efeito depende do índice, e não da função
    *
@@ -823,10 +825,9 @@ export default function App() {
    */
   useEffect(() => {
     const naLore = entryPhase === ENTRY_PHASE.LORE;
-    const nosPaineisFinais = cenaFinalFase === 'paineis';
-    const naVistaFinal = cenaFinalFase === 'vista';
+    const nosPaineisFinais = cenaFinalAberta;
 
-    if (!naLore && !nosPaineisFinais && !naVistaFinal) return undefined;
+    if (!naLore && !nosPaineisFinais) return undefined;
 
     const handleLoreKey = (event) => {
       if (event.repeat) return;
@@ -834,13 +835,8 @@ export default function App() {
       if (event.key === 'Enter') {
         event.preventDefault();
 
-        if (naVistaFinal) {
-          sairDaVistaFinal();
-          return;
-        }
-
         if (nosPaineisFinais) {
-          pularParaVista();
+          pularCenaFinal();
           return;
         }
 
@@ -850,11 +846,6 @@ export default function App() {
 
       if (event.key === ' ') {
         event.preventDefault();
-
-        if (naVistaFinal) {
-          sairDaVistaFinal();
-          return;
-        }
 
         if (nosPaineisFinais) {
           avancarCenaFinal();
@@ -867,7 +858,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleLoreKey);
     return () => window.removeEventListener('keydown', handleLoreKey);
-  }, [entryPhase, loreBioma, loreIndice, cenaFinalFase, cenaFinalIndice]);
+  }, [entryPhase, loreBioma, loreIndice, cenaFinalAberta, cenaFinalIndice]);
 
   /** Um timer que sobrevive ao unmount derrubaria a tela depois dela ter saído. */
   useEffect(
@@ -1774,7 +1765,7 @@ export default function App() {
       cenaFinalRef.current.indice = 0;
       setCenaFinalIndice(0);
       setCenaFinalBioma(gameState.biomeId);
-      setCenaFinalFase('paineis');
+      setCenaFinalAberta(true);
       return;
     }
 
@@ -1789,18 +1780,17 @@ export default function App() {
   };
 
   /**
-   * Um painel adiante, ou a vista da boca da caverna se era o último.
+   * Um painel adiante, ou os créditos se era o último.
    *
-   * `proximoIndiceFinal` decide que acabou, pelo mesmo motivo de
-   * `avancarLore`: reescrever a conta na tela reintroduz o painel `undefined` do
-   * último índice.
+   * `proximoIndiceFinal` decide que acabou, pelo mesmo motivo de `avancarLore`:
+   * reescrever a conta na tela reintroduz o painel `undefined` do último índice.
    */
   const avancarCenaFinal = () => {
     const paineis = paineisDaCenaFinal(cenaFinalBioma);
     const proximo = proximoIndiceFinal(paineis, cenaFinalIndice);
 
     if (proximo === -1) {
-      setCenaFinalFase('vista');
+      sairDaCenaFinal();
       return;
     }
 
@@ -1809,29 +1799,27 @@ export default function App() {
   };
 
   /**
-   * Pula os painéis e vai direto para a vista da boca da caverna.
+   * Pula os painéis e vai direto para os créditos.
    *
-   * O `Enter` do teclado e o `B`/`Quadrado` do controle entram aqui. A vista não é
-   * pulável: ela é a última coisa do jogo antes da carta, e deixá-la explícita é o
-   * que impede de um toque a mais levar direto para o fim sem ela ser vista.
+   * O `Enter` do teclado e o `B`/`Quadrado` do controle entram aqui.
    */
-  const pularParaVista = () => {
-    setCenaFinalFase('vista');
+  const pularCenaFinal = () => {
+    sairDaCenaFinal();
   };
 
   /**
-   * A vista fechou, e a carta do fim abre.
+   * A cena final acabou, e a carta do fim abre.
    *
    * Por `abrirCartaFinal`, e não por um `setShowFinale(true)` solto: é aqui que a
    * carta abre na prática, e o relógio que a fecha sozinha mora junto da abertura.
    * A versão anterior abria a carta direto e não armava relógio nenhum — e o
    * relógio que existia em `abrirFinale` já não rodava em lugar nenhum.
    *
-   * Sem o `setCenaFinalFase(null)` no mesmo caminho, a vista ficaria por baixo da
-   * carta e reapareceria quando a carta fechasse.
+   * O `setCenaFinalAberta(false)` no mesmo caminho não é dispensável: sem ele os
+   * painéis ficariam por baixo da carta e reapareceriam quando ela fechasse.
    */
-  const sairDaVistaFinal = () => {
-    setCenaFinalFase(null);
+  const sairDaCenaFinal = () => {
+    setCenaFinalAberta(false);
     abrirCartaFinal();
   };
 
@@ -1894,19 +1882,12 @@ export default function App() {
     fechar: fecharTelaPeloNome,
     podePausar: pauseAvailable,
     lore: entryPhase === ENTRY_PHASE.LORE ? { avancar: avancarLore, pular: pularLore } : null,
-    cenaFinal: cenaFinalFase
+    cenaFinal: cenaFinalAberta
       ? {
           indice: cenaFinalRef.current.indice,
           paineis: paineisDaCenaFinal(cenaFinalBioma),
-          fase: cenaFinalFase,
-          avancar: () => {
-            if (cenaFinalFase === 'vista') {
-              sairDaVistaFinal();
-              return;
-            }
-            avancarCenaFinal();
-          },
-          pular: pularParaVista
+          avancar: avancarCenaFinal,
+          pular: pularCenaFinal
         }
       : null
   };
@@ -1942,13 +1923,12 @@ export default function App() {
       if (atual.cenaFinal) {
         // A cena final vem **antes** da lore: ela é a última sequência do jogo e
         // não pode ficar atrás de uma entrada de bioma. `B`/`Square` pulam os
-        // painéis para a vista, e na vista não ha para onde pular.
-        if (atual.cenaFinal.fase === 'vista') {
-          if (estado.bordas.confirmar || estado.bordas.voltar || estado.bordas.pular) {
-            foiParaOMenu = true;
-            atual.cenaFinal.avancar();
-          }
-        } else if (estado.bordas.voltar || estado.bordas.pular) {
+        // painéis direto para os créditos.
+        //
+        // Havia um ramo para a tela muda aqui, lendo `cenaFinal.fase`. Quando a tela
+        // saiu, o `fase` saiu com ela — e a comparação passou a ser sempre falsa, sem
+        // erro nenhum: o ramo virava código morto que parecia caminho principal.
+        if (estado.bordas.voltar || estado.bordas.pular) {
           foiParaOMenu = true;
           atual.cenaFinal.pular();
         } else if (estado.bordas.confirmar) {
@@ -2169,8 +2149,7 @@ export default function App() {
    */
   const paineisFim = cenaFinalBioma ? paineisDaCenaFinal(cenaFinalBioma) : [];
   const painelFim = paineisFim[cenaFinalIndice] ?? null;
-  const mostrarPaineisFinais = cenaFinalFase === 'paineis' && painelFim !== null;
-  const mostrarVistaFinal = cenaFinalFase === 'vista';
+  const mostrarPaineisFinais = cenaFinalAberta && painelFim !== null;
   const isDeathLobby = gameState.lobbyReason === 'death';
   const resolvedOutcomeCave = gameState.outcomeCave ?? gameState.cave;
   const nextCaveNumber = gameState.nextCaveAvailable ?? gameState.cave + 1;
@@ -3153,39 +3132,7 @@ export default function App() {
           </div>
         )}
 
-{mostrarVistaFinal && (
-          <div
-            className="cena-final-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t('cenaFinal.rotulo')}
-            onClick={sairDaVistaFinal}
-          >
-            {/*
-              A imagem ocupa a tela inteira. Nao e a faixa 3:1 com a tarja: e uma
-              paisagem de 1672x941, e corta-la numa tarja perderia a boca da
-              caverna e o vale -- que sao o ponto da cena.
-            */}
-            <img
-              className="cena-final-arte"
-              src={`./${caminhoDaArteFinal()}`}
-              alt=""
-              aria-hidden="true"
-              draggable="false"
-            />
-
-            {/* O chão escurecido. */}
-            <div className="cena-final-chao" aria-hidden="true" />
-
-            {/* Véu fraco. A arte é clara no meio — é um sol nascendo — e escurecer
-                o sol apagaria o motivo da cena. */}
-            <div className="cena-final-veu" aria-hidden="true" />
-
-            <p className="cena-final-dica">{t('cenaFinal.dica')}</p>
-          </div>
-        )}
-
-        {showFinale && (
+{showFinale && (
           <div
             className="finale-overlay"
             role="dialog"

@@ -345,7 +345,6 @@ export default {
   'lore.crystal.p4.a': 'Ces cristaux semblent coupants... mieux y aller doucement....',
 
   // --- cena final antes do fim do jogo ---------------
-  'cenaFinal.rotulo': "L'entrée de la caverne. Le soleil entre.",
   'cenaFinal.dica': 'Cliquez pour continuer',
 
   // --- cena final ------------------------------------------

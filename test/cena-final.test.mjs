@@ -86,29 +86,26 @@ test('o caminho da arte não tem espaço nem extensão dupla', () => {
   assert.match(caminho, /^assets\/[a-z0-9_]+\.png$/, `caminho fora do padrão: "${caminho}"`);
 });
 
-test('a vista final é só a paisagem, sem personagem colado', async () => {
-  // Havia um `solo-mineiro.png` aqui: a faixa 3:1 sem a tarja, com o mineiro de pé
-  // no canto esquerdo da paisagem. Saiu porque ele denunciava a emenda — uma figura
-  // recortada de outro arquivo, no meio de uma paisagem que não a tem.
+test('a cena final tem só os painéis, e nada colado do lado', async () => {
+  // Duas coisas saíram da cena depois de prontas, e as duas voltam fácil.
   //
-  // Este teste segura três coisas: o arquivo não voltou, o módulo não exporta o
-  // caminho dele, e a cena não pede nenhum arquivo fora da paisagem e das expressões
-  // dos painéis.
+  // 1. Um `solo-mineiro.png`: a faixa 3:1 sem a tarja, com o mineiro de pé no canto
+  //    esquerdo da paisagem. Denunciava a emenda — uma figura recortada de outro
+  //    arquivo, no meio de uma paisagem que não a tem.
+  // 2. A tela muda depois do último painel. O último painel vai direto para os
+  //    créditos, e a paisagem continua sendo o fundo de quem fala.
+  //
+  // O que este teste segura é que nenhuma das duas voltou: nem o arquivo, nem
+  // qualquer exportação que as descrevesse. O que a tela faz com o `-1` de
+  // `proximoIndiceFinal` é do React, e se prova no navegador.
   await assert.rejects(
     access(join(raiz, 'public', 'assets', 'solo-mineiro.png')),
     'o recorte do mineiro voltou para public/assets.'
   );
 
-  assert.equal(
-    'caminhoDoMineiroFinal' in cenaFinal,
-    false,
-    'cenaFinal.js ainda exporta caminhoDoMineiroFinal.'
-  );
-  assert.equal(
-    'CENA_FINAL_MINEIRO' in cenaFinal,
-    false,
-    'cenaFinal.js ainda exporta CENA_FINAL_MINEIRO.'
-  );
+  for (const nome of ['caminhoDoMineiroFinal', 'CENA_FINAL_MINEIRO', 'CENA_FINAL_VISTA']) {
+    assert.equal(nome in cenaFinal, false, `cenaFinal.js ainda exporta ${nome}.`);
+  }
 
   // E a lista de imagens que a cena usa tem que ser exatamente as expressões do
   // roteiro: a paisagem entra por `caminhoDaArteFinal`, e o mineiro saía por um
@@ -117,6 +114,24 @@ test('a vista final é só a paisagem, sem personagem colado', async () => {
     'minerador_feliz',
     'minerador_sorridente'
   ]);
+
+  // A paisagem continua sendo arte da cena — é o fundo dos painéis. Sem isso ela
+  // seria um arquivo órfão, e o teste de imagens acima passaria sem ela.
+  assert.equal(CENA_FINAL_ARTE, 'saida_cave.png');
+  assert.doesNotReject(access(join(raiz, 'public', caminhoDaArteFinal())));
+});
+
+test('o roteiro termina em créditos, sem passo no meio', () => {
+  // `proximoIndiceFinal` devolvendo `-1` no último painel é o que faz o React abrir
+  // os créditos. O que não pode é `-1` chegar antes da conta ter acabado: um `-1`
+  // no meio pularia metade do roteiro e o jogador nunca leria a saída.
+  const paineis = paineisDaCenaFinal('crystal');
+  const encerra = paineis.map((_, indice) => proximoIndiceFinal(paineis, indice));
+
+  assert.deepEqual(encerra, [1, 2, 3, -1], 'o roteiro não fecha só no último painel');
+
+  // E nenhuma posição intermediária devolve `-1`, nem `-1` aparece duas vezes.
+  assert.equal(encerra.filter((i) => i === -1).length, 1, 'o roteiro fechou antes de acabar');
 });
 
 test('toda expressão dos painéis existe em public/assets', async () => {

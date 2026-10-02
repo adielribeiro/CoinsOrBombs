@@ -15,7 +15,7 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   Roteiro: **AAAAHH MULEQUE.....** / **Finalmente a saída** / **Preciso parar de
   arrumar essas confusões...hehehehe** / **Bom...agora só me resta a Saída!!!!!**
 
-  ## As falas caem sobre a paisagem, não numa sala antes dela
+  ## As falas caem sobre a paisagem, e o último painel vai direto para os créditos
 
   A primeira montagem fazia duas cenas: os painéis sobre a arte da Câmara de
   Cristal, e a vista da boca da caverna depois. Isso estava errado — o mineiro está
@@ -23,10 +23,26 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   ver o vale com o sol entrando são duas cenas diferentes. A última cena do jogo é
   uma só.
 
-  Agora os painéis e a vista são a mesma tela: `saida_cave.png` de fundo nas duas,
-  o chão e o véu iguais, e a faixa do mineiro desce para o rodapé para não cobrir o
-  sol. No fim do roteiro a tarja sai e sobra a paisagem — a mesma imagem, sem nada
-  por cima, que é o que faz a vista ser o último quadro e não um quadro a mais.
+  Agora é uma tela só: `saida_cave.png` de fundo nos quatro painéis, e a faixa do
+  mineiro desce para o rodapé para não cobrir o sol. Depois do quarto painel vai
+  direto para os créditos.
+
+  ## A tela muda do fim também saiu
+
+  Chegou a existir uma tela entre o último painel e a carta: a paisagem da saída
+  sozinha, sem tarja e sem fala, com um "clique para seguir". Custava um toque a
+  mais no fim do jogo e não acrescentava nada que a arte já não dissesse — o mesmo
+  vale com o mesmo sol, agora sem a tarja por cima. Saiu.
+
+  Com ela saiu a fase. `cenaFinalFase` era `'paineis'` ou `'vista'`, e uma fase com
+  um valor só é um booleano vestido de string: cada comparação no código era uma
+  chance de escrever o valor errado e ficar comparando com o outro para sempre, sem
+  erro nenhum. Hoje é `cenaFinalAberta`, e a única coisa que sobrava dela — a tela —
+  é a que o React faz com o `-1` de `proximoIndiceFinal`.
+
+  A chave `cenaFinal.rotulo` existia só para o `aria-label` da tela que saiu, e foi
+  removida dos dez idiomas: chave de tradução sem tela é texto que ninguém lê e que
+  o próximo a mexer na cena teria de adivinhar para que serve.
 
   ## Não é uma lore de bioma, e o gatilho é o oposto
 
@@ -41,9 +57,8 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   Havia um `solo-mineiro.png` — a faixa 3:1 com a tarja e o pergaminho removidos,
   recortado na menor coluna medida entre as expressões (550px na `feliz`, 583px na
   `sorridente`), para o mineiro ficar de pé no canto esquerdo da paisagem. Saiu. O
-  mineiro é o que o jogador vê **falando**; a vista é o que ele vê quando o mineiro
-  já calou, e uma figura recortada de outro arquivo colada no canto só denunciava a
-  emenda. A paisagem sozinha é o último quadro do jogo.
+  mineiro é o que o jogador vê **falando**, e uma figura recortada de outro arquivo
+  colada no canto só denunciava a emenda.
 
   ## A carta do fim passou de 100 s para 53,5 s
 
@@ -84,7 +99,7 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   subtração dava zero. O devanagari saía com o dobro do tempo sem nada na tela
   mudar. Hoje o teste compara as duas grafias e a ordem está presa no comentário.
 
-  ### A vista tem o relógio, e o relógio estava morto
+  ### A carta tem o relógio, e o relógio estava morto
 
   Descobrir isso só foi possível porque a carta passou a ser conferida no
   navegador depois de aberta. `abrirFinale` armava um `setTimeout` para fechar a
@@ -97,11 +112,10 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   caminho feliz e quebrar só no caminho que ninguém testa é o modo de falha mais
   caro que existe — porque parece que está funcionando.
 
-  ## A vista não é pulável
+  ## A cena final pula para os créditos
 
-  O `Enter` e o `B`/`Quadrado` pulam os **painéis** direto para a vista. Na vista,
-  a mesma tecla leva para a carta. Deixar o `Enter` pular da vista tiraria do
-  jogador a única imagem que mostra o mundo do jogo pela última vez.
+  O `Enter` e o `B`/`Quadrado` levam dos quatro painéis direto para a carta. Não há
+  passo no meio.
 
   ## Um teste de riso que reprovava o texto certo
 

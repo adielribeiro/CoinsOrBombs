@@ -375,7 +375,6 @@ export default {
   'lore.crystal.p4.a': 'Esses cristais parecem afiados...é melhor ir com calma....',
 
   // --- cena final antes do fim do jogo ---------------
-  'cenaFinal.rotulo': 'A boca da caverna. O sol está entrando.',
   'cenaFinal.dica': 'Clique para seguir',
 
   // --- cena final ------------------------------------------

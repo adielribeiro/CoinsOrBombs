@@ -516,22 +516,13 @@ button {
    Cena final: a boca da caverna, antes do fim do jogo
    ==========================================================================
 
-   Esta é a única tela do jogo que é **muda** — não tem tarja, não tem fala, e a
-   arte é uma paisagem de 1672x941 em vez da faixa 3:1 das lores de bioma.
+   O mineiro fala sobre a paisagem da saída, e o último painel vai direto para os
+   créditos. Havia uma tela muda no meio — a paisagem sem a tarja — e ela custava um
+   toque a mais no fim do jogo sem acrescentar nada que a arte já não dissesse.
 
    O `object-fit: cover` é o que faz a boca da caverna ficar no meio da tela em
    qualquer proporção: com `contain` apareceria barra preta nas laterais, e a
    caverna encolheria até virar uma miniatura no centro de um quadro preto. */
-/* Os dois momentos da cena final — a fala sobre a paisagem e a paisagem sozinha —
-   são a MESMA tela: a vista da boca da caverna com a tarja por cima, e a vista
-   sem nada por cima.
-
-   Por isso `.cena-final-paineis` e `.cena-final-overlay` precisam do mesmo
-   tratamento de tela cheia, e a tarja desce para o rodapé para não cobrir o sol.
-   Sem isso, a fala aparecia contra o fundo escuro da Câmara de Cristal e a
-   paisagem só entrava depois — que são duas cenas, e a última cena do jogo é só
-   uma. */
-.cena-final-overlay,
 .cena-final-paineis {
   position: absolute;
   inset: 0;
@@ -559,16 +550,15 @@ button {
   z-index: 2;
 }
 
-/* A faixa escura no pé da tela. A arte tem o chão de terra e pedra ocupando
-   uns 15% de baixo, e é ali que o mineiro fica — sem esta faixa, ele aparece no
-   meio do chão e parece colado na imagem em vez de sair da caverna. O degradê
-   some devagar para cima, para não riscar o horizonte. */
+/* A faixa escura no pé da tela, com 62% da altura: a tarja desce até o rodapé e
+   precisa de fundo atrás dela, ou o creme fica sobre o chão de terra da arte. O
+   degradê some devagar para cima, para não riscar o horizonte. */
 .cena-final-chao {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 38%;
+  height: 62%;
   background: linear-gradient(
     to bottom,
     rgba(6, 7, 11, 0) 0%,
@@ -590,71 +580,18 @@ button {
   -webkit-user-drag: none;
 }
 
-/* A vista não tem personagem. Havia um `solo-mineiro.png` aqui — a faixa 3:1 sem
-   a tarja — e ele saiu: a paisagem sozinha é o último quadro do jogo, e uma figura
-   recortada no canto esquerdo só denunciava que veio de outro arquivo.
-
-   Sem o mineiro, o chão escurecido é o que assenta a paisagem e nada mais. */
-/* O véu é mais forte quando a tarja está por cima. Na vista sozinha a arte pode
-   ficar clara — é um sol nascendo, e escurecer o sol apagaria o motivo da cena. */
+/* O véu escurece a esquerda, o topo e o pé — a esquerda porque o mineiro é escuro e
+   precisa de contorno contra o céu, e o pé porque é onde a tarja de creme vai cair.
+   O meio fica limpo: ali está o sol nascendo, e escurecer o sol apagaria o motivo
+   da cena. */
 .cena-final-veu {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to right, rgba(4, 6, 10, 0.5) 0%, rgba(4, 6, 10, 0) 40%),
-    linear-gradient(to bottom, rgba(4, 6, 10, 0.3) 0%, rgba(4, 6, 10, 0) 26%);
-  pointer-events: none;
-}
-
-.cena-final-paineis .cena-final-veu {
-  background:
     linear-gradient(to right, rgba(4, 6, 10, 0.55) 0%, rgba(4, 6, 10, 0) 42%),
     linear-gradient(to bottom, rgba(4, 6, 10, 0.42) 0%, rgba(4, 6, 10, 0) 34%),
     linear-gradient(to top, rgba(4, 6, 10, 0.5) 0%, rgba(4, 6, 10, 0) 46%);
-}
-
-/* O chão dos painéis é mais alto: a tarja desce até o rodapé e precisa de fundo
-   atrás dela, ou o creme fica sobre o chão de terra da arte. */
-.cena-final-paineis .cena-final-chao {
-  height: 62%;
-}
-
-.cena-final-dica {
-  position: absolute;
-  left: 50%;
-  bottom: 4%;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 8px 18px;
-  border-radius: 999px;
-  background: rgba(4, 6, 10, 0.62);
-  border: 1px solid var(--line-soft);
-  font-family: var(--font-ui);
-  font-size: 13px;
-  letter-spacing: var(--track-label);
-  color: var(--ink-dim);
   pointer-events: none;
-  /* Some devagar: a dica é para quem chega atrasado na cena, não para quem
-     está lendo. */
-  animation: cena-final-dica-some 5.5s ease forwards;
-}
-
-@keyframes cena-final-dica-some {
-  0%,
-  70% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-/* Quem pede menos movimento não recebe a dica pulsando: a cena é muda e fica
-   muda, e o clique funciona igual. */
-@media (prefers-reduced-motion: reduce) {
-  .cena-final-dica {
-    animation: none;
-  }
 }
 
 /* ==========================================================================

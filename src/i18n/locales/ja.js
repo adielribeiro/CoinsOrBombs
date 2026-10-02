@@ -343,7 +343,6 @@ export default {
   'lore.crystal.p4.a': 'この結晶は鋭そうだ...急がないほうがいい....',
 
   // --- cena final antes do fim do jogo ---------------
-  'cenaFinal.rotulo': '洞窟の出口。太陽が入ってくる。',
   'cenaFinal.dica': 'クリックで次へ',
 
   // --- cena final ------------------------------------------

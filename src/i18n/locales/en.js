@@ -340,7 +340,6 @@ export default {
   'lore.crystal.p4.a': 'Those crystals look sharp...better go slow....',
 
   // --- cena final antes do fim do jogo ---------------
-  'cenaFinal.rotulo': 'The cave mouth. The sun is coming in.',
   'cenaFinal.dica': 'Click to continue',
 
   // --- cena final ------------------------------------------

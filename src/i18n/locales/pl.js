@@ -362,7 +362,6 @@ export default {
   'lore.crystal.p4.a': 'Te kryształy wyglądają na ostre... lepiej iść powoli....',
 
   // --- cena final antes do fim do jogo ---------------
-  'cenaFinal.rotulo': 'Wejście do jaskinii. Wchodzi słońce.',
   'cenaFinal.dica': 'Kliknij, aby kontynuować',
 
   // --- cena final ------------------------------------------

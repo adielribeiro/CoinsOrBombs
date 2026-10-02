@@ -344,7 +344,6 @@ export default {
   'lore.crystal.p4.a': 'Diese Kristalle wirken scharf... lieber langsam....',
 
   // --- cena final antes do fim do jogo ---------------
-  'cenaFinal.rotulo': 'Der Höhlenmund. Die Sonne kommt herein.',
   'cenaFinal.dica': 'Zum Fortfahren klicken',
 
   // --- cena final ------------------------------------------
