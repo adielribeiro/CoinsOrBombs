@@ -36,6 +36,57 @@
  */
 export const MARGEM_DO_PONTEIRO_PX = 10;
 
+/**
+ * O tile que a seta está mirando, ou `null` se não dá para mirar.
+ *
+ * ## Por que a decisão mora aqui, e não na cena
+ *
+ * Porque a cena do Phaser não roda no Node, e uma mira que só existe dentro dela
+ * não tem teste: ela ficaria correta por inspeção e erraria em silêncio. Aqui
+ * ficam as três decisões — o tile existe, cabe no mapa, e é inteiro — e a cena
+ * passa só o ponto que o Phaser sabe medir.
+ *
+ * ## O que NÃO é a mira
+ *
+ * Não é um clique em coordenada de tela. Um clique erra por meio pixel, e meio pixel
+ * numa aresta de pedra isométrica é clicar na pedra errada ou em nada. A mira
+ * **diz em que tile se está**, e a ação continua resolvendo um tile inteiro. A
+ * precisão volta a ser do grid, que é a unidade em que o jogo pensa.
+ *
+ * @param {object} mundo o ponto do mundo, já convertido pela câmera
+ * @param {object} opcoes
+ * @param {{x: number, y: number}} opcoes.origem a origem da projeção isométrica
+ * @param {{tileWidth: number, tileHeight: number}} opcoes.metricas
+ * @param {number} opcoes.largura largura do mapa, em tiles
+ * @param {number} opcoes.altura altura do mapa, em tiles
+ * @param {(col: number, row: number) => boolean} opcoes.existe o que o mapa aceita
+ * @returns {{col: number, row: number}|null}
+ */
+export function tileSobOPonteiro(mundo, { origem, metricas, largura, altura, existe }) {
+  if (!Number.isFinite(mundo?.x) || !Number.isFinite(mundo?.y)) return null;
+  if (!Number.isFinite(largura) || !Number.isFinite(altura)) return null;
+  if (largura <= 0 || altura <= 0) return null;
+
+  const { col, row } = fromIso(
+    mundo.x,
+    mundo.y,
+    origem?.x ?? 0,
+    origem?.y ?? 0,
+    metricas?.tileWidth,
+    metricas?.tileHeight
+  );
+
+  const alvoCol = Math.round(col);
+  const alvoRow = Math.round(row);
+
+  if (alvoCol < 0 || alvoCol >= largura || alvoRow < 0 || alvoRow >= altura) return null;
+  if (typeof existe === 'function' && !existe(alvoCol, alvoRow)) return null;
+
+  return { col: alvoCol, row: alvoRow };
+}
+
+import { fromIso } from './config.js';
+
 /** A sensibilidade que o jogo assume, e que o menu chama de "padrão". */
 export const SENSIBILIDADE_PADRAO = 1;
 
@@ -45,11 +96,17 @@ export const SENSIBILIDADES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3];
 /**
  * A velocidade do ponteiro com o analógico no fim do curso, em pixels por segundo.
  *
- * 1200 px/s atravessa uma tela de 1000px de altura em menos de um segundo — rápido
- * para quem empurra até o fim, e o empurrão leve que dá a precisão fica perto de
- * 300 px/s, que é o ritmo de quem mira.
+ * São 620, e não os 1200 da primeira versão. A primeira atravessava uma tela de
+ * 1000px de altura em menos de um segundo — rápido demais para mirar: entre dois
+ * botões vizinhos já passava um quarto de tela, e parar em cima de um alvo exigia
+ * acertar o empurrão no meio do curso.
+ *
+ * Com 620, o curso inteiro leva quase dois segundos de ponta a ponta, e meio
+ * empurrão dá o passo curto que permite assentar em cima de algo. Quem quiser
+ * atravessar a tela depressa sobe a sensibilidade nas configurações — que é para
+ * isso que a sensibilidade existe.
  */
-export const VELOCIDADE_MAXIMA_PX_S = 1200;
+export const VELOCIDADE_MAXIMA_PX_S = 620;
 
 /**
  * O deslocamento do ponteiro neste quadro.

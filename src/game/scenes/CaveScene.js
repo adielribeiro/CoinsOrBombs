@@ -8,6 +8,7 @@ import {
   EXIT_LADDER_DISPLAY,
   PICKAXE_ASPECT,
   PICKAXE_DISPLAY,
+  fromIso,
   getTileMetrics,
   toIso
 } from '../config.js';
@@ -15,7 +16,8 @@ import { GROUND_CELL_HEIGHT, GROUND_CELL_WIDTH, GROUND_TEXTURE_KEYS, groundFrame
 import { getLocale, setLocale, t } from '../../i18n/index.js';
 import { BIOMA_INICIAL, getBackdropKey } from '../backdrops.js';
 import { ENTRANCE_DISPLAY, getEntranceAspect, getEntranceForBiome } from '../entrances.js';
-import { proximoTileValido, tileInicialDoCursor } from '../cursor.js';
+import { dentroDoMapa, proximoTileValido, tileInicialDoCursor } from '../cursor.js';
+import { tileSobOPonteiro } from '../ponteiro.js';
 
 /**
  * A cena tem uma textura DE VERDADE para esta chave?
@@ -342,6 +344,7 @@ export class CaveScene extends Phaser.Scene {
     this.onGamepad = (event) => {
       const estado = event?.detail?.estado;
       const telaAberta = event?.detail?.telaAberta ?? null;
+      const ponteiro = event?.detail?.ponteiro ?? null;
 
       const querMenu = telaAberta !== null;
       const conectado = Boolean(estado?.conectado);
@@ -366,9 +369,14 @@ export class CaveScene extends Phaser.Scene {
         this.cursorTile = tileInicialDoCursor(entrada, this.mapData.width, this.mapData.height);
       }
 
+      // O ponteiro tem precedência sobre o passo em grade, pelo mesmo motivo do
+      // menu: quem mexe o analógico está mirando em algum lugar, e deixar o
+      // cursor andar para outro lado seria brigar com a mão da pessoa.
+      const mirarComPonteiro = ponteiro?.andou ? this.mirarPeloPonteiro(ponteiro) : false;
+
       const direcao = estado.direcoes?.dominante ?? null;
 
-      if (direcao && this.cursorTile) {
+      if (direcao && this.cursorTile && !mirarComPonteiro) {
         const { tileWidth, tileHeight } = this.renderMetrics;
 
         this.cursorTile = proximoTileValido(
@@ -1582,6 +1590,61 @@ export class CaveScene extends Phaser.Scene {
      * cores para a mesma forma diriam "aqui é o mouse, aqui é o controle" — e a
      * pessoa não teria como saber qual está em uso.
      */
+    /**
+     * Aponta o cursor para o tile que está embaixo do ponteiro.
+     *
+     * ## Por que a mira continua sendo um tile
+     *
+     * Um clique em coordenada de tela erra por meio pixel, e meio pixel numa aresta
+     * de pedra isométrica é clicar na pedra errada ou em nada. Por isso o ponteiro
+     * **mira** — diz em que tile se está — e a ação continua resolvendo um tile
+     * inteiro. A precisão volta a ser do grid.
+     *
+     * ## O caminho do pixel até o tile
+     *
+     * O ponteiro chega em coordenada de viewport, que é o que o DOM dá. O canvas
+     * pode estar em outra posição, e a câmera rola e tem zoom: entra
+     * `getWorldPoint` para sair disso, e só então a projeção isométrica é
+     * invertida.
+     *
+     * Devolve `true` quando o cursor foi de fato mirado — e `false` quando o
+     * ponteiro está fora do mapa, para o passo em grade poder seguir valendo em vez
+     * de o cursor travar no último tile.
+     */
+    mirarPeloPonteiro(ponteiro) {
+      if (!this.origin || !this.mapData) return false;
+
+      const canvas = this.game?.canvas;
+      const caixa = canvas?.getBoundingClientRect?.();
+
+      if (!caixa) return false;
+
+      // O React dá coordenada de viewport, e a câmera rola e tem zoom: só depois
+      // de `getWorldPoint` o ponto é do mundo.
+      const mundo = this.cameras.main.getWorldPoint(ponteiro.x - caixa.left, ponteiro.y - caixa.top);
+
+      const { tileWidth, tileHeight } = this.renderMetrics;
+
+      // A decisão — o tile existe, cabe no mapa e é inteiro — mora em
+      // `tileSobOPonteiro`, e não aqui. Uma cena do Phaser não roda no Node, e
+      // uma mira escrita dentro dela ficaria correta por inspeção e erraria em
+      // silêncio.
+      const alvo = tileSobOPonteiro(mundo, {
+        origem: this.origin,
+        metricas: { tileWidth, tileHeight },
+        largura: this.mapData.width,
+        altura: this.mapData.height,
+        existe: (col, row) => Boolean(this.mapData.tiles[row]?.[col])
+      });
+
+      if (!alvo) return false;
+      if (this.cursorTile?.col === alvo.col && this.cursorTile?.row === alvo.row) return true;
+
+      this.cursorTile = alvo;
+
+      return true;
+    }
+
     renderCursorIndicator() {
       const tile = this.cursorTile;
       const linha = tile && this.mapData ? this.mapData.tiles[tile.row] : null;

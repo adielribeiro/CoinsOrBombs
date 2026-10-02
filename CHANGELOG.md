@@ -5,6 +5,46 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Corrigido
+
+- **O ponteiro não existia dentro da caverna.** Ele andava nos menus e na caverna
+  simplesmente não estava lá — que era o jeito, e pelos vistos ficou parecendo
+  defeito.
+
+  A mira **não** é um clique em coordenada de tela: ela diz em que tile a seta está, e
+  a ação continua resolvendo um tile inteiro. Meio pixel de erro numa aresta de pedra
+  isométrica é clicar na pedra errada, e essa é a razão de a mira ser por tile e não
+  por pixel.
+
+  O caminho do ponto até o tile tem três etapas, e cada uma tem um motivo: a posição
+  chega em coordenada de viewport porque é o que o DOM dá; passa por `getWorldPoint`
+  porque a câmera rola e tem zoom; e só então a projeção isométrica é invertida, por
+  `fromIso`. A decisão — o tile existe, cabe no mapa e é inteiro — ficou em
+  `ponteiro.js`, e não na cena do Phaser: **cena não roda no Node**, e uma mira
+  escrita dentro dela ficaria correta por inspeção e erraria em silêncio. O erro nem
+  avisa: o cursor aponta para o canto oposto e a pessoa acha que o jogo anda torto.
+
+- **O ponteiro andava rápido demais para mirar.** A velocidade máxima era 1200 px/s, e
+  uma tela de 1000px de altura era atravessada em menos de um segundo: entre dois
+  alvos vizinhos já passava um quarto de tela, e parar em cima de algo exigia acertar
+  o empurrão no meio do curso. Caiu para metade, e há teste prendendo o teto — sem ele
+  a velocidade volta sozinha na próxima mexida.
+
+### Removido
+
+- **Quatro textos da tela de configurações**: a explicação da sensibilidade do
+  ponteiro, "Entrada" com o estado do movimento, "Orientação recomendada" e "Melhor
+  cave registrada".
+
+  As duas do meio eram resposta a perguntas que a pessoa já fez no sistema — se pediu
+  menos movimento, se o aparelho está deitado. Repetir a resposta dentro do jogo só
+  ocupa espaço e dá a impressão de que é uma opção, quando não há interruptor ao lado
+  para mudar nada.
+
+  A última é o pior caso: um número que muda sozinho, numa tela de preferências,
+  parece algo que a pessoa pode mexer. Ele já aparece no HUD e na tela de jogos, onde
+  é fato e não promessa.
+
 ### Adicionado
 
 - **O analógico esquerdo move um ponteiro de verdade nos menus.** Uma seta que
@@ -12,11 +52,11 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   dela é o que o `A` aciona. É um mouse, e não o passo a passo em grade que o
   d-pad continua sendo.
 
-  Na caverna **não** há ponteiro, e a decisão é a mesma que o `cursor.js` já
-  registrava: o jogo se joga clicando numa pedra, e um clique em coordenada de tela
-  erra por meio pixel — e meio pixel numa aresta isométrica é clicar na pedra errada
-  ou em nada. Aí o cursor continua andando de tile em tile, que é a unidade em que o
-  jogo pensa.
+  Na caverna o ponteiro **mira** o tile em vez de andar de tile em tile, e o
+  raciocínio continua o que o `cursor.js` já registrava: o jogo se joga clicando numa
+  pedra, e um clique em coordenada de tela erra por meio pixel — e meio pixel numa
+  aresta isométrica é clicar na pedra errada ou em nada. O d-pad continua sendo o
+  passo a passo, para quem prefere.
 
   ## A sensibilidade é o DPI do mouse, e é configurável
 

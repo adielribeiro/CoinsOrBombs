@@ -115,13 +115,6 @@ export default {
   'settings.rememberRun': 'Meinen Fortschritt merken',
   'settings.devMode': 'Entwicklermodus',
   'settings.devNote': '{unlocked} von {total} Biomen freigeschaltet',
-  'settings.input': 'Eingabe',
-  'settings.inputReduced': 'Reduziert',
-  'settings.inputAnimated': 'Animiert',
-  'settings.orientation': 'Empfohlene Ausrichtung',
-  'settings.orientationLandscape': 'Querformat',
-  'settings.orientationLandscapeDesktop': 'Querformat (Desktop)',
-  'settings.bestCaveRecorded': 'Erfasste beste Höhle',
 
   // --- Infos --------------------------------------------------------------
   'info.title': 'Fortschrittsinfos',
@@ -358,5 +351,4 @@ export default {
   'settings.pointerLess': 'Weniger',
   'settings.pointerMore': 'Mehr',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': 'Wie weit der Zeiger läuft, wenn du den linken Stick drückst. Gilt für die Menüs, nicht für die Höhle.',
 };

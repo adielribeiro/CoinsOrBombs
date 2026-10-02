@@ -2053,9 +2053,31 @@ export default function App() {
       // mostrava a seta do lado oposto ao botão que a pessoa já tinha escolhido, e
       // o primeiro toque de analógico a levava embora num pulo que atravessa a
       // tela inteira.
+      //
+      // A semeadura é dos menus. Na caverna quem nasce em cima do alvo é o cursor
+      // de tile, e semear a seta por cima dele a deixaria fora da pedra que está
+      // mirada.
       if (nomeDaTela !== telaDoPonteiroAnterior) {
         telaDoPonteiroAnterior = nomeDaTela;
-        ponteiroSobre(document.activeElement);
+
+        if (nomeDaTela || atual.menuVisivel) ponteiroSobre(document.activeElement);
+      }
+
+      // O ponteiro anda em **todo** o jogo, e não só nos menus. Quem joga com
+      // analógico na caverna usa a seta para mirar: o cursor de tile segue o tile
+      // que está embaixo dela, e a ação continua quebrando um tile inteiro.
+      //
+      // O que muda entre menus e caverna é o que acontece com o movimento: no menu
+      // o foco vai para o botão embaixo da seta; na caverna quem recebe é a cena,
+      // pelo evento `cob-controle`.
+      const naCavena = !nomeDaTela && !atual.menuVisivel && !atual.cenaFinal && !atual.lore;
+      const ponteiroAndou =
+        estado.conectado &&
+        (naCavena || nomeDaTela || atual.menuVisivel) &&
+        moverPonteiro(estado, dt, atual.sensibilidadePonteiro);
+
+      if (naCavena && ponteiroRef.current) {
+        ponteiroRef.current.style.visibility = estado.conectado ? 'visible' : 'hidden';
       }
 
       let foiParaOMenu = false;
@@ -2104,11 +2126,10 @@ export default function App() {
         // andaria a seta E o foco do menu, e cada um puxaria para o seu lado. Com
         // ela, o analógico é o ponteiro e o d-pad é o passo a passo — que é
         // também o que o desenho das teclas sugere.
-        // Em qualquer tela do jogo o ponteiro anda: o menu principal, a pausa, as
-        // configurações, os saves, o idioma. Restringir a algumas delas faria a
-        // seta sumir e aparecer conforme a pessoa navega, que é o oposto de um
-        // ponteiro.
-        const analogoMoveu = estado.conectado && moverPonteiro(estado, dt, atual.sensibilidadePonteiro);
+        //
+        // O movimento em si acontece mais acima, para os menus e para a caverna
+        // compartilharem o mesmo quadro de ponteiro; aqui só se usa o booleano.
+        const analogoMoveu = ponteiroAndou;
 
         if (analogoMoveu) {
           // O foco segue o ponteiro. Passar por cima de um botão e apertar `A` é o
@@ -2158,7 +2179,20 @@ export default function App() {
         new CustomEvent('cob-controle', {
           detail: {
             estado,
-            telaAberta: nomeDaTela ?? (atual.cenaFinal ? 'cenaFinal' : atual.lore ? 'lore' : null)
+            telaAberta: nomeDaTela ?? (atual.cenaFinal ? 'cenaFinal' : atual.lore ? 'lore' : null),
+            /**
+             * A posição da seta, para a caverna mirar.
+             *
+             * Vai em coordenada de viewport, que é o que o DOM dá. A cena subtrai
+             * a posição do canvas e passa por `getWorldPoint` antes de inverter a
+             * projeção isométrica — porque a câmera rola e tem zoom, e um pixel de
+             * tela não é um pixel do mundo.
+             *
+             * `andou` vem separado da posição porque uma posição parada ainda
+             * significa algo: a cena precisa saber se a pessoa está mirando naquele
+             * tile, e não se o ponteiro passou por ele no quadro anterior.
+             */
+            ponteiro: { x: ponteiro.x, y: ponteiro.y, andou: ponteiroAndou }
           }
         })
       );
@@ -3584,8 +3618,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <small>{t('settings.pointerHint')}</small>
-              </div>
+                </div>
 
               <label className="settings-toggle settings-toggle-dev">
                 <input
@@ -3606,30 +3639,18 @@ export default function App() {
                 </p>
               )}
 
-              {/* A linha ficou, e agora ela informa. Antes era o par do
-                  interruptor que estava acima dela; sem o interruptor, "Entrada:
-                  Reduzida" passaria a ser um fato que o jogador não pode
-                  mudar. Com `prefers-reduced-motion` atrás dela, é a resposta a
-                  uma pergunta que o jogador fez no sistema e que o jogo
-                  respeitou. */}
-              <div className="settings-line">
-                <span>{t('settings.input')}</span>
-                <strong>{t(prefersReducedMotion() ? 'settings.inputReduced' : 'settings.inputAnimated')}</strong>
-              </div>
-              <div className="settings-line">
-                <span>{t('settings.orientation')}</span>
-                <strong>
-                  {t(isCoarsePointer ? 'settings.orientationLandscape' : 'settings.orientationLandscapeDesktop')}
-                </strong>
-              </div>
+              {/* Estas três linhas saíram: "Entrada", "Orientação recomendada" e "Melhor cave
+                  registrada".
 
-              <div className="settings-line">
-                <span>{t('settings.bestCaveRecorded')}</span>
-                <strong>
-                  {gameState.bestCave ?? 1} · {bestCaveProgress.label}
-                </strong>
-              </div>
+                  As duas primeiras eram resposta a perguntas que o jogador já fez no
+                  sistema — se pediu menos movimento no SO, se o aparelho está deitado.
+                  Repetir a resposta na tela do jogo só ocupa espaço e dá a impressão
+                  de que é uma opção, quando não é: não há interruptor ao lado.
 
+                  A terceira é o estado do jogo dentro das configurações, e é a pior
+                  das três: um número que muda sozinho, numa tela de preferências,
+                  parece algo que a pessoa pode mexer. Ele já aparece no HUD e na
+                  tela de jogos, onde ele é fato e não promessa. */}
               <div className="settings-actions">
                 <button className="menu-primary-btn compact" type="button" onClick={() => setShowSettings(false)}>
                   {t('common.close')}

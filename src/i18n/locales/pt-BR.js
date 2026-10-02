@@ -140,13 +140,6 @@ export default {
   'settings.rememberRun': 'Lembrar meu progresso',
   'settings.devMode': 'Modo desenvolvedor',
   'settings.devNote': '{unlocked} de {total} biomas liberados',
-  'settings.input': 'Entrada',
-  'settings.inputReduced': 'Reduzida',
-  'settings.inputAnimated': 'Animada',
-  'settings.orientation': 'Orientação recomendada',
-  'settings.orientationLandscape': 'Paisagem',
-  'settings.orientationLandscapeDesktop': 'Paisagem (desktop)',
-  'settings.bestCaveRecorded': 'Melhor cave registrada',
 
   // --- informações --------------------------------------------------------
   'info.title': 'Informações da Progressão',
@@ -389,5 +382,4 @@ export default {
   'settings.pointerLess': 'Menos',
   'settings.pointerMore': 'Mais',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': 'Quão longe o ponteiro anda quando você empurra o analógico esquerdo. Vale para os menus, não para a caverna.',
 };

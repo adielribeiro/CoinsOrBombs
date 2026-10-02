@@ -102,3 +102,45 @@ export function toIso(
     y: originY + (col + row) * (tileHeight / 2)
   };
 }
+
+/**
+ * O inverso de `toIso`: o ponto do mapa que um pixel representa.
+ *
+ * ## Por que isto existe, e o que ele NÃO é
+ *
+ * A projeção tem duas equações e duas incógnitas, então a volta é direta:
+ *
+ *     (x - origem) * 2 / largura  = col - row
+ *     (y - origem) * 2 / altura   = col + row
+ *
+ * Somando e subtraindo, `col` e `row` saem. O resultado é **contínuo**, e quem
+ * decide o tile é o arredondamento — que fica para quem chama.
+ *
+ * ## Por que isto não torna a caverna um mouse
+ *
+ * Porque um clique em coordenada de tela erra por meio pixel, e meio pixel numa
+ * aresta de pedra isométrica é clicar na pedra errada. Aqui o ponteiro serve para
+ * **mirar** — dizer em que tile se está — e a ação continua resolvendo um tile
+ * inteiro. A precisão volta a ser do grid, que é a unidade em que o jogo pensa.
+ *
+ * A projeção é usada para desenhar os tiles; invertê-la é o que faz o ponteiro
+ * apontar para o mesmo tile que o losango marca.
+ *
+ * @returns {{col: number, row: number}} coordenadas contínuas, não arredondadas
+ */
+export function fromIso(
+  x,
+  y,
+  originX,
+  originY,
+  tileWidth = BASE_TILE_WIDTH,
+  tileHeight = BASE_TILE_HEIGHT
+) {
+  const dx = Number.isFinite(x) ? x - originX : 0;
+  const dy = Number.isFinite(y) ? y - originY : 0;
+
+  const a = (dx * 2) / tileWidth;
+  const b = (dy * 2) / tileHeight;
+
+  return { col: (a + b) / 2, row: (b - a) / 2 };
+}

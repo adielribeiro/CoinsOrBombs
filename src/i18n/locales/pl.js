@@ -130,13 +130,6 @@ export default {
   'settings.rememberRun': 'Zapamiętaj mój postęp',
   'settings.devMode': 'Tryb dewelopera',
   'settings.devNote': 'Odblokowane biome: {unlocked} z {total}',
-  'settings.input': 'Wejście',
-  'settings.inputReduced': 'Ograniczone',
-  'settings.inputAnimated': 'Animowane',
-  'settings.orientation': 'Zalecana orientacja',
-  'settings.orientationLandscape': 'Pozioma',
-  'settings.orientationLandscapeDesktop': 'Pozioma (komputer)',
-  'settings.bestCaveRecorded': 'Zapisana najlepsza jaskinia',
 
   // --- informacje ----------------------------------------------------------
   'info.title': 'Informacje o postępie',
@@ -376,5 +369,4 @@ export default {
   'settings.pointerLess': 'Mniej',
   'settings.pointerMore': 'Więcej',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': 'Jak daleko wędruje wskaźnik, gdy pchasz lewy drążek. Dotyczy menu, nie jaskini.',
 };

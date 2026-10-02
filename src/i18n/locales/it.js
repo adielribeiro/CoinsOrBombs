@@ -115,13 +115,6 @@ export default {
   'settings.rememberRun': 'Ricorda i miei progressi',
   'settings.devMode': 'Modalità sviluppatore',
   'settings.devNote': '{unlocked} di {total} biomi sbloccati',
-  'settings.input': 'Input',
-  'settings.inputReduced': 'Ridotto',
-  'settings.inputAnimated': 'Animato',
-  'settings.orientation': 'Orientamento consigliato',
-  'settings.orientationLandscape': 'Orizzontale',
-  'settings.orientationLandscapeDesktop': 'Orizzontale (desktop)',
-  'settings.bestCaveRecorded': 'Miglior grotta registrata',
 
   // --- informazioni -------------------------------------------------------------
   'info.title': 'Informazioni sui progressi',
@@ -358,5 +351,4 @@ export default {
   'settings.pointerLess': 'Meno',
   'settings.pointerMore': 'Più',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': 'Quanto si muove il puntatore quando spingi lo stick sinistro. Vale per i menu, non per la caverna.',
 };

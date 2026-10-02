@@ -116,13 +116,6 @@ export default {
   'settings.rememberRun': 'Mémoriser ma progression',
   'settings.devMode': 'Mode développeur',
   'settings.devNote': '{unlocked} biomes sur {total} débloqués',
-  'settings.input': 'Entrées',
-  'settings.inputReduced': 'Réduites',
-  'settings.inputAnimated': 'Animées',
-  'settings.orientation': 'Orientation recommandée',
-  'settings.orientationLandscape': 'Paysage',
-  'settings.orientationLandscapeDesktop': 'Paysage (bureau)',
-  'settings.bestCaveRecorded': 'Meilleure grotte enregistrée',
 
   // --- informations --------------------------------------------------------
   'info.title': 'Infos de progression',
@@ -359,5 +352,4 @@ export default {
   'settings.pointerLess': 'Moins',
   'settings.pointerMore': 'Plus',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': 'Distance parcourue par le pointeur quand vous poussez le stick gauche. Pour les menus, pas pour la caverne.',
 };

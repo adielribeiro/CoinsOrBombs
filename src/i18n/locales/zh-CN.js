@@ -119,13 +119,6 @@ export default {
   'settings.rememberRun': '记住我的进度',
   'settings.devMode': '开发者模式',
   'settings.devNote': '已解锁 {unlocked}/{total} 个 Biome',
-  'settings.input': '输入',
-  'settings.inputReduced': '已降低动态',
-  'settings.inputAnimated': '动态效果',
-  'settings.orientation': '推荐方向',
-  'settings.orientationLandscape': '横屏',
-  'settings.orientationLandscapeDesktop': '横屏（桌面）',
-  'settings.bestCaveRecorded': '已记录的最好 Cave',
 
   // --- 信息 -----------------------------------------------------------------------
   'info.title': '进度信息',
@@ -356,5 +349,4 @@ export default {
   'settings.pointerLess': '降低',
   'settings.pointerMore': '提高',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': '推动左摇杆时光标移动的距离。只作用于菜单，不作用于洞窟。',
 };

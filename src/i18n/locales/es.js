@@ -115,13 +115,6 @@ export default {
   'settings.rememberRun': 'Recordar mi progreso',
   'settings.devMode': 'Modo desarrollador',
   'settings.devNote': '{unlocked} de {total} biomas desbloqueados',
-  'settings.input': 'Entrada',
-  'settings.inputReduced': 'Reducida',
-  'settings.inputAnimated': 'Animada',
-  'settings.orientation': 'Orientación recomendada',
-  'settings.orientationLandscape': 'Horizontal',
-  'settings.orientationLandscapeDesktop': 'Horizontal (escritorio)',
-  'settings.bestCaveRecorded': 'Mejor cueva registrada',
 
   // --- información --------------------------------------------------------
   'info.title': 'Información de progreso',
@@ -359,5 +352,4 @@ export default {
   'settings.pointerLess': 'Menos',
   'settings.pointerMore': 'Más',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': 'Cuánto se mueve el puntero al empujar el stick izquierdo. Vale para los menús, no para la cueva.',
 };

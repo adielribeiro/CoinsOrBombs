@@ -125,13 +125,6 @@ export default {
   'settings.rememberRun': 'मेरी प्रगति याद रखें',
   'settings.devMode': 'डेवलपर मोड',
   'settings.devNote': '{total} में से {unlocked} Biome खुले',
-  'settings.input': 'इनपुट',
-  'settings.inputReduced': 'कम',
-  'settings.inputAnimated': 'एनिमेटेड',
-  'settings.orientation': 'सुझाई गई दिशा',
-  'settings.orientationLandscape': 'लैंडस्केप',
-  'settings.orientationLandscapeDesktop': 'लैंडस्केप (डेस्कटॉप)',
-  'settings.bestCaveRecorded': 'दर्ज सबसे अच्छी Cave',
 
   // --- जानकारी --------------------------------------------------------------
   'info.title': 'प्रगति की जानकारी',
@@ -367,5 +360,4 @@ export default {
   'settings.pointerLess': 'कम',
   'settings.pointerMore': 'ज़्यादा',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': 'बायाँ स्टिक दबाने पर पॉइंटर कितना चलता है। यह मेन्यू पर लागू होती है, गुफा पर नहीं।',
 };

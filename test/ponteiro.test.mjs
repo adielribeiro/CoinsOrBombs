@@ -78,6 +78,18 @@ test('um empurrão leve anda bem devagar, que é onde fica a precisão', () => {
   assert.ok(leve.x < VELOCIDADE_MAXIMA_PX_S / 3, `empurrão leve andou ${leve.x}px em 1s`);
 });
 
+test('o curso inteiro não atravessa a tela em menos de um segundo', () => {
+  // A primeira versão andava 1200 px por segundo, e uma tela de 1000px de altura
+  // era atravessada em menos de um segundo: entre dois botões vizinhos já passava
+  // um quarto de tela, e parar em cima de um alvo exigia acertar o empurrão no meio
+  // do curso. A velocidade virou metade por isso, e este teste é o que impede que
+  // ela volte sozinha.
+  assert.ok(
+    VELOCIDADE_MAXIMA_PX_S <= 700,
+    `a velocidade máxima subiu para ${VELOCIDADE_MAXIMA_PX_S} px/s e o ponteiro ficou rápido de novo`
+  );
+});
+
 test('a sensibilidade multiplica a velocidade, e o padrão não multiplica nada', () => {
   const base = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, 1);
   const triplo = deslocamentoDoPonteiro({ x: 1, y: 0 }, 1, 3);

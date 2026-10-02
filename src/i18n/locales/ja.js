@@ -119,13 +119,6 @@ export default {
   'settings.rememberRun': '進捗を記憶する',
   'settings.devMode': '開発者モード',
   'settings.devNote': '{total} 個中 {unlocked} 個の Biome が解放済み',
-  'settings.input': '入力',
-  'settings.inputReduced': '控えめ',
-  'settings.inputAnimated': 'アニメーション',
-  'settings.orientation': '推奨の向き',
-  'settings.orientationLandscape': '横向き',
-  'settings.orientationLandscapeDesktop': '横向き（デスクトップ）',
-  'settings.bestCaveRecorded': '記録された最高 Cave',
 
   // --- 情報 --------------------------------------------------------------------------
   'info.title': '進捗の情報',
@@ -357,5 +350,4 @@ export default {
   'settings.pointerLess': '遅く',
   'settings.pointerMore': '速く',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': '左スティックを倒したときのポインターの移動量。洞窟ではなくメニューに効きます。',
 };

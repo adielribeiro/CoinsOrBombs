@@ -113,13 +113,6 @@ export default {
   'settings.rememberRun': 'Remember my progress',
   'settings.devMode': 'Developer mode',
   'settings.devNote': '{unlocked} of {total} biomes unlocked',
-  'settings.input': 'Input',
-  'settings.inputReduced': 'Reduced',
-  'settings.inputAnimated': 'Animated',
-  'settings.orientation': 'Recommended orientation',
-  'settings.orientationLandscape': 'Landscape',
-  'settings.orientationLandscapeDesktop': 'Landscape (desktop)',
-  'settings.bestCaveRecorded': 'Best cave recorded',
 
   // --- info ---------------------------------------------------------------
   'info.title': 'Progress Info',
@@ -354,5 +347,4 @@ export default {
   'settings.pointerLess': 'Less',
   'settings.pointerMore': 'More',
   'settings.pointerPercent': '{valor}%',
-  'settings.pointerHint': 'How far the pointer travels when you push the left stick. It applies to the menus, not to the cave.',
 };
