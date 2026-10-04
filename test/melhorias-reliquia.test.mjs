@@ -6,8 +6,7 @@ import {
   UPGRADE_IDS,
   UPGRADES,
   UPGRADE_POR_CAMPO,
-  chaveDoProximoBeneficio,
-  comprarMelhoria,
+  chaveDoProximoBeneficio,  comprarMelhoria,
   custoDoProximoNivel,
   nivelDe,
   nivelMaximo,
@@ -113,11 +112,12 @@ test('o caminho do beneficio tem uma chave por nivel, e so uma', () => {
 
   assert.deepEqual(porNivel, ['safePath'], 'so o caminho seguro muda de natureza');
 
-  // A lista tem uma chave a mais que níveis: a última é o efeito do nível máximo, que a
-  // tela mostra para quem já o comprou.
+  // Uma chave por nível, e só. Quem chega ao máximo vê "nível máximo", e não a
+  // descrição do último efeito: a chave do nível 3 seria lida por ninguém, e uma chave
+  // morta é uma tradução que pode divergir sozinha sem aviso.
   assert.equal(
     UPGRADES.safePath.benefits.length,
-    NIVEL_MAXIMO + 1,
+    NIVEL_MAXIMO,
     `a lista de benefícios tem ${UPGRADES.safePath.benefits.length} chaves para ${NIVEL_MAXIMO} niveis`
   );
 
@@ -138,6 +138,74 @@ test('cada nivel do caminho seguro tem uma chave diferente da outra', () => {
   const chaves = UPGRADES.safePath.benefits;
 
   assert.equal(new Set(chaves).size, chaves.length, 'o caminho seguro repete chave entre níveis');
+});
+
+test('o beneficio mostrado é o do PRÓXIMO nível, e não o do último', () => {
+  // A tela escreve "Próximo nível: {efeito}". Quem tem zero nível comprados precisa ler
+  // o efeito do nível 1.
+  //
+  // A primeira versão devolvia `benefits[maxLevel]`, que é o último: com nada comprado a
+  // tela anunciava o efeito do nível 3, e o produto some. O texto estava certo, a
+  // Tradução existia, e nada reprovava — porque nenhum teste olhava *qual* chave era.
+  assert.equal(
+    chaveDoProximoBeneficio('safePath', 0),
+    UPGRADES.safePath.benefits[0],
+    'quem não comprou nada viu o efeito do nível errado'
+  );
+
+  assert.equal(chaveDoProximoBeneficio('safePath', 1), UPGRADES.safePath.benefits[1]);
+  assert.equal(chaveDoProximoBeneficio('safePath', 2), UPGRADES.safePath.benefits[2]);
+
+  // No máximo não há próximo, e a tela escreve "nível máximo" — a chave não pode vazar.
+  assert.equal(
+    chaveDoProximoBeneficio('safePath', 3),
+    null,
+    'no nível máximo a tela ia ler o efeito do nível 4'
+  );
+
+  // As outras quatro repetem a mesma chave em todos os níveis, que é o ponto delas.
+  for (const id of UPGRADE_IDS.filter((outro) => outro !== 'safePath')) {
+    for (const nivel of [0, 1, 2]) {
+      assert.equal(
+        chaveDoProximoBeneficio(id, nivel),
+        UPGRADES[id].benefit,
+        `${id} no nível ${nivel} não mostrou o benefício dele`
+      );
+    }
+
+    assert.equal(chaveDoProximoBeneficio(id, 3), null, `${id} no nível máximo devolveu chave`);
+  }
+});
+
+test('toda melhoria tem icone, e nenhum se repete', () => {
+  // O ícone é o que liga "Melhorar Poção de Vida" à "Poção de Vida" logo acima na tela.
+  // Sem ele a linha ainda se entende pelo nome, e a ligação fica por conta de quem lê.
+  //
+  // E nenhum se repete: Vida e Poção de Vida começaram com o mesmo coração, e as duas
+  // linhas ficaram idênticas na mesma coluna. O nome ainda distinguia — mas o ícone é o
+  // que a pessoa procura primeiro, e dois iguais na mesma tela não ajudam a achar nada.
+  const ESPERADOS = {
+    health: '🛡️',
+    pickaxe: '⛏️',
+    lifePotion: '❤️',
+    revealBomb: '💣',
+    safePath: '🧭'
+  };
+
+  const vistos = new Map();
+
+  for (const id of UPGRADE_IDS) {
+    assert.equal(
+      UPGRADES[id].icon,
+      ESPERADOS[id],
+      `${id} não tem o ícone que a seção de utilitários usa`
+    );
+
+    const dono = vistos.get(UPGRADES[id].icon);
+
+    assert.ok(!dono, `${id} repete o ícone de ${dono}, e as duas linhas ficam iguais`);
+    vistos.set(UPGRADES[id].icon, id);
+  }
 });
 
 // --- a compra --------------------------------------------------------------

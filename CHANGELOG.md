@@ -18,11 +18,26 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
   o caminho para a tela de Informações deixar de dizer quantas relíquias a pessoa
   já achou.
 
-  A chance de encontrar relíquias subiu **3 pontos percentuais em todas as caves**, e
-  o teto subiu junto (28% → 31%). Somar os 3 pontos *antes* do teto é o que faz o
-  ganho valer nas caves que já estavam nele — o fim do bioma 3 em diante — que são
-  justamente as mais difíceis de garimpar.
+  **Toda cave tem relíquia agora.** Não é mais uma chance: é uma quantidade, de uma a
+  três, sorteada por um único `Math.random()` — 40% para uma, 50% para duas, 10% para
+  três. O sorteio é um só de propósito: "uma garantida e mais 50% para a segunda" daria
+  25% e 75%, que não é a distribuição pedida, e nenhum teste sobre o código enforçado
+  perceberia, porque o código estaria obedecendo a si próprio.
 
+  Cada cave **lembra** o seu total, em `relicasPorCave`, e devolve só o que ainda não
+  foi colhido. Isso não é um detalhe: a morte leva a pessoa de volta à primeira cave do
+  bioma, e o mapa é gerado em toda entrada numa cave. Com relíquia garantida e sem
+  memória, morrer e recomeçar seria um laço de farm — mesma cave, sorteio novo, mais
+  relíquias, para sempre. Com o total guardado, a segunda visita à mesma cave não
+  rende nada novo.
+
+  **Uma relíquia inalcançável foi corrigida.** A garantia de caminho abre pedras do
+  caminho principal e as vira chão, e isso acontecia *depois* de a relíquia ser
+  posicionada. O conteúdo escondido de um tile só é recolhido ao quebrar a pedra, então
+  uma relíquia em chão nunca era pega: o mapa dizia que ela existia, a cave do contador
+  dizia que havia três, e a pessoa só achava duas. Com a relíquia em toda cave, o caso
+  ia de raro a comum. As relíquias são posicionadas por último, depois das garantias, e
+  só em pedra que ainda não foi aberta.
 - **A loja virou "Melhorias / Utilitários", em duas seções.**
 
   **Utilitários** é a seção de antes: poções compradas com moedas, com a mesma lógica.

@@ -64,6 +64,9 @@ import {
 import { ROCK_DISPLAY, getRockFrameIndex, getRockJitter, getRockSheetKey } from '../rocks.js';
 import { generateMap } from '../systems/mapGenerator.js';
 import { findSafeRoute, getNeighbors4, isFrontierRock } from '../systems/helpers.js';
+import { marcasDoCaminhoSeguro } from '../systems/caminhoSeguro.js';
+import { registraCave, registroDaCave, reliquiasParaColocar } from '../relics.js';
+import { nivelDe } from '../melhorias.js';
 
 /**
  * Desenha a célula do chão.
@@ -735,11 +738,28 @@ export class CaveScene extends Phaser.Scene {
       return;
     }
 
+    // A cave decide quantas relíquias tem na **primeira** visita e lembra. Voltar a uma
+    // cave de onde a pessoa já levou relíquias não sorteia de novo: devolve o que
+    // faltava, e nada quando não falta nada. Sem isso, morrer e recomeçar o bioma seria
+    // um laço de farm — a mesma cave, um sorteio novo, mais relíquias, para sempre.
+    const registro = this.metaState.relicasPorCave;
+    const { total, coletadas, restantes } = reliquiasParaColocar(
+      registroDaCave(registro, this.metaState.cave)
+    );
+
     this.mapData = generateMap(
       this.metaState.cave,
       this.metaState.pickaxePower,
-      (this.metaState.coinBonusLevel ?? 0) * 0.008
+      (this.metaState.coinBonusLevel ?? 0) * 0.008,
+      restantes
     );
+
+    this.metaState.relicasPorCave = registraCave(registro, {
+      total,
+      coletadas,
+      cave: this.metaState.cave
+    });
+
     this.metaState.biomeId = this.mapData.biome?.id ?? getBiomeForCave(this.metaState.cave).id;
     this.metaState.biomeName = this.mapData.biome?.name ?? getBiomeForCave(this.metaState.cave).name;
     this.metaState.bombsRemaining = this.countHiddenBombs();
@@ -1284,18 +1304,17 @@ export class CaveScene extends Phaser.Scene {
         // A rota segura é desenhada DEPOIS da rocha de propósito. Antes ela
         // entrava antes do `if (isRock)` e ficava escondida atrás da laje —
         // ou seja, a poção "funcionava" e não mostrava nada.
-        if (tile.safePath) {
-          this.renderSafePathHighlight(point, point.y + 3);
-        }
+        //
+        // E as marcas passam por UM método só: com uma chamada repetida em dois
+        // lugares, a rota aparecia e o perigo não, sem erro em lugar nenhum.
+        this.renderTileRouteMarks(tile, point);
 
         return;
       }
 
       tile.sprite = floor;
 
-      if (tile.safePath) {
-        this.renderSafePathHighlight(point, point.y + 3);
-      }
+      this.renderTileRouteMarks(tile, point);
 
       if (tile.type === 'exit') {
         this.renderExitHighlight(point);
@@ -2302,7 +2321,10 @@ export class CaveScene extends Phaser.Scene {
       return false;
     }
 
-    const hiddenBomb = this.findHiddenBombTile();
+    // A melhoria de carta que revela bomba continua revelando **uma**, por evento: este
+    // é um bônus que vem junto com a quebra da rocha, e o seu teto é `bombRevealChance`.
+    // A melhoria de relíquia é que revela várias, e ela passa pelo `handleUtilityUse`.
+    const [hiddenBomb] = this.findHiddenBombTiles(1);
 
     if (!hiddenBomb) {
       return false;
@@ -2344,7 +2366,12 @@ export class CaveScene extends Phaser.Scene {
         return;
       }
 
-      this.metaState.hp = Math.min(this.metaState.maxHp, this.metaState.hp + 1);
+      // A cura é `1 + nível`, e o `min` continua no máximo: uma poção que curasse mais
+      // do que falta em vida seria moeda jogada fora, e o aviso de vida cheia acima já
+      // cobre o caso de não curar nada.
+      const cura = 1 + nivelDe(this.metaState, 'lifePotion');
+
+      this.metaState.hp = Math.min(this.metaState.maxHp, this.metaState.hp + cura);
       this.consumeUtility(type);
       this.pulseHudPill('heart');
       this.setMessage(t('msg.lifeUsed', { hp: this.metaState.hp, max: this.metaState.maxHp }));
@@ -2353,14 +2380,27 @@ export class CaveScene extends Phaser.Scene {
     }
 
     if (type === 'revealBomb') {
-      const hiddenBomb = this.findHiddenBombTile();
+      // Revela `1 + nível` bombas, e para quando a cave acabar. A lista vem de
+      // `findHiddenBombTiles`, que só devolve bombas escondidas e ainda não reveladas:
+      // o teto é a lista acabando, e nenhuma bomba é inventada para completar a conta.
+      const quantas = 1 + nivelDe(this.metaState, 'revealBomb');
+      const bombas = this.findHiddenBombTiles(quantas);
 
-      if (!hiddenBomb) {
+      if (bombas.length === 0) {
         this.notify(t('msg.noBombsLeft'));
         return;
       }
 
-      hiddenBomb.utilityRevealBomb = true;
+      for (const bomba of bombas) {
+        bomba.utilityRevealBomb = true;
+
+        if (bomba.rockSprite) {
+          bomba.rockSprite.setTexture('bomb');
+        } else if (bomba.sprite) {
+          bomba.sprite.setTexture('bomb');
+        }
+      }
+
       this.consumeUtility(type);
       this.hoveredRockTile = null;
       this.renderMap();
@@ -2403,7 +2443,22 @@ export class CaveScene extends Phaser.Scene {
     };
   }
 
-  findHiddenBombTile() {
+  /**
+   * Até `quantas` bombas escondidas e ainda não reveladas, em ordem aleatória.
+   *
+   * ## Por que uma lista, e não uma bomba
+   *
+   * Porque a melhoria de relíquia revela mais de uma por uso, e devolver uma só obrigaria
+   * a varredura do mapa a rodar `quantas` vezes. Varrer uma vez e escolher em ordem
+   * aleatória é o que mantém a poção barata: uma varredura por clique, e não uma por
+   * bomba revelada.
+   *
+   * ## Por que devolve lista, e não `null`
+   *
+   * Porque uma lista vazia já diz o que aconteceu: não há bomba para revelar. Com `null`
+   * a cena teria de tratar os dois casos, e `length === 0` é o mesmo teste para os dois.
+   */
+  findHiddenBombTiles(quantas = 1) {
     const candidates = [];
 
     for (let row = 0; row < this.mapData.height; row += 1) {
@@ -2417,16 +2472,25 @@ export class CaveScene extends Phaser.Scene {
     }
 
     if (candidates.length === 0) {
-      return null;
+      return [];
     }
 
-    return Phaser.Utils.Array.GetRandom(candidates);
+    return Phaser.Utils.Array.Shuffle(candidates).slice(0, Math.max(1, quantas));
   }
 
   revealSafePath() {
     for (let row = 0; row < this.mapData.height; row += 1) {
       for (let col = 0; col < this.mapData.width; col += 1) {
-        this.mapData.tiles[row][col].safePath = false;
+        const tile = this.mapData.tiles[row][col];
+
+        // As quatro marcas são limpas juntas, e não só a rota. Deixar a marca velha
+        // valeria quando a pessoa usa a poção outra vez: o perigo do nível 1
+        // continuaria marcado depois de a melhoria subir, e repetir a poção num
+        // nível maior marcaria o mapa inteiro de novo sem apagar nada.
+        tile.safePath = false;
+        tile.routeDanger = false;
+        tile.routeRelic = false;
+        tile.routeDetour = false;
       }
     }
 
@@ -2438,7 +2502,134 @@ export class CaveScene extends Phaser.Scene {
       this.mapData.tiles[step.row][step.col].safePath = true;
     }
 
+    // A rota que acabou de ser calculada é a mesma que entra no cálculo das marcas.
+    // Passá-la é o que mantém a poção barata: `marcasDoCaminhoSeguro` só olha o
+    // entorno dos tiles desta lista, e não refaz a busca nem varre a cave.
+    const marcas = marcasDoCaminhoSeguro(
+      this.mapData,
+      route,
+      nivelDe(this.metaState, 'safePath')
+    );
+
+    for (const perigo of marcas.perigos) {
+      this.mapData.tiles[perigo.row][perigo.col].routeDanger = true;
+    }
+
+    for (const reliquia of marcas.reliquias) {
+      this.mapData.tiles[reliquia.row][reliquia.col].routeRelic = true;
+    }
+
+    for (const passo of marcas.desvio?.tiles ?? []) {
+      this.mapData.tiles[passo.row][passo.col].routeDetour = true;
+    }
+
     return true;
+  }
+
+  /**
+   * As marcas da rota segura em um tile: o caminho, e o que o nível da poção acrescenta.
+   *
+   * A ordem é o que faz a tela ler de cima para baixo: primeiro o caminho verde, que é
+   * o que a pessoa vai andar; depois o perigo ao lado, que é o que ela precisa evitar;
+   * depois a relíquia e o desvio, que são a recompensa do desvio opcional.
+   *
+   * O desvio é desenhado como pontilhado e não como losango por um motivo de leitura: o
+   * losango verde é "caminho seguro", e um losango da mesma forma em outra cor seria
+   * lido como mais caminho seguro. O pontilhado diz "opcional".
+   */
+  renderTileRouteMarks(tile, point) {
+    if (tile.safePath) {
+      this.renderSafePathHighlight(point, point.y + 3);
+    }
+
+    if (tile.routeDetour) {
+      this.renderDetourDots(point, point.y + 4);
+    }
+
+    if (tile.routeDanger) {
+      this.renderRouteOutline(point, 0xff6b5e, point.y + 5);
+    }
+
+    if (tile.routeRelic) {
+      this.renderRelicHint(point, point.y + 6);
+    }
+  }
+
+  /**
+   * O contorno de uma marca da rota, na mesma geometria de losango do caminho verde.
+   *
+   * Mesma forma e cor diferente é o que faz a pessoa ler "isto também é informação da
+   * rota" sem precisar de legenda. Um símbolo novo precisaria ser aprendido.
+   */
+  renderRouteOutline(point, cor, depth) {
+    const { tileWidth, tileHeight } = this.renderMetrics;
+    const brilho = this.add.graphics();
+
+    brilho.lineStyle(3, cor, 0.95);
+    brilho.beginPath();
+    brilho.moveTo(point.x, point.y - tileHeight * 0.28);
+    brilho.lineTo(point.x + tileWidth * 0.3, point.y);
+    brilho.lineTo(point.x, point.y + tileHeight * 0.28);
+    brilho.lineTo(point.x - tileWidth * 0.3, point.y);
+    brilho.closePath();
+    brilho.strokePath();
+    brilho.setDepth(depth);
+
+    this.objectLayer.add(brilho);
+  }
+
+  /**
+   * A relíquia que está perto da rota.
+   *
+   * O ícone é o mesmo da relíquia quando achada, e menor: aqui ela ainda está embaixo de
+   * uma rocha, e um brilho do mesmo tamanho faria a pessoa pensar que ela já está no
+   * chão. O anel diz "sabe onde está", não "aqui está".
+   */
+  renderRelicHint(point, depth) {
+    const { tileWidth, tileHeight } = this.renderMetrics;
+    const conteudo = this.mapData.tiles[point.row]?.[point.col]?.hiddenContent;
+    const reliquia = isRelicContent(conteudo) ? getRelicById(conteudo.relicId) : null;
+
+    const anel = this.add.circle(
+      point.x,
+      point.y - tileHeight * 0.5,
+      Math.max(10, tileWidth * 0.17),
+      0xf3c15c,
+      0.22
+    );
+    anel.setStrokeStyle(2, 0xffe09b, 0.9);
+    anel.setDepth(depth);
+    this.objectLayer.add(anel);
+
+    if (!reliquia) return;
+
+    const icone = this.add.text(point.x, point.y - tileHeight * 0.5, reliquia.icon, {
+      fontSize: this.getMarkerFontSize(13),
+      color: '#3c2400',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    icone.setDepth(depth + 1);
+    this.objectLayer.add(icone);
+  }
+
+  /**
+   * O desvio opcional, como pontilhado.
+   *
+   * Três pontos em diagonal, e não uma linha cheia: a linha cheia é o caminho seguro, e
+   * repetir a forma só queima a informação mais valiosa da tela.
+   */
+  renderDetourDots(point, depth) {
+    const { tileWidth, tileHeight } = this.renderMetrics;
+    const brilho = this.add.graphics();
+
+    brilho.fillStyle(0xffd98a, 0.85);
+
+    for (const [dx, dy] of [[-0.22, 0.08], [0, -0.06], [0.22, -0.2]]) {
+      brilho.fillCircle(point.x + tileWidth * dx, point.y + tileHeight * dy, 2.6);
+    }
+
+    brilho.setDepth(depth);
+    this.objectLayer.add(brilho);
   }
 
   openExitDecision(message) {

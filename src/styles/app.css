@@ -1691,14 +1691,14 @@ button {
    O saldo fica no topo, à direita, e é o número que a pessoa vem conferir: sem ele no
    lugar dos olhos, o motivo de o botão estar desligado fica longe da causa. */
 .shop-section {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line-soft);
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
 }
 
 .shop-section-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
@@ -1706,73 +1706,121 @@ button {
 .shop-section-head h3 {
   margin: 0;
   font-family: var(--font-cond);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink);
 }
 
-.shop-section-head strong {
+/* O saldo é o número que a pessoa veio conferir. Ele fica à direita do título, na
+   mesma linha, porque é o que decide se ela pode comprar. */
+.shop-relic-balance {
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--accent);
+  white-space: nowrap;
 }
 
 .shop-section-note {
-  margin: 6px 0 12px;
+  margin: 4px 0 12px;
   font-size: 12.5px;
-  color: var(--ink-dim);
+  color: var(--ink-faint);
 }
 
-/* Colunas que se ajustam ao espaço. Cinco melhorias numa fileira só dariam cartões de
-   180px, e o texto do benefício do Caminho Seguro quebraria em quatro linhas. */
-.shop-upgrade-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
-}
-
-.shop-upgrade-card {
+/* Uma linha por melhoria. A coluna do meio é a única que cresce: nome e efeito
+   precisam de espaço, e ícone, nível e preço são de tamanho fixo. */
+.shop-upgrade-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.shop-upgrade-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+/* No nível máximo a linha recua: não há mais o que decidir ali, e a pessoa deve
+   ver de relance o que já está resolvido. */
+.shop-upgrade-row.no-maximo {
+  opacity: 0.62;
+}
+
+/* O ícone é o mesmo da poção na seção de utilitários, logo acima. É ele que liga
+   "Melhorar Poção de Vida" à "Poção de Vida" sem precisar ler. */
+.shop-upgrade-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 19px;
+  line-height: 1;
   border: 1px solid var(--line-soft);
 }
 
-.shop-upgrade-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+.shop-upgrade-info {
+  min-width: 0;
 }
 
-.shop-upgrade-head strong {
+.shop-upgrade-info strong {
+  display: block;
   font-family: var(--font-cond);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink);
 }
 
-.shop-upgrade-head span {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-faint);
-  white-space: nowrap;
-}
-
-.shop-upgrade-benefit {
-  margin: 0;
+.shop-upgrade-info p {
+  margin: 3px 0 0;
   font-size: 12.5px;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--ink-dim);
 }
 
-/* O motivo da recusa. Fica ao lado do botão e não dentro dele: um botão que carrega o
-   preço e o motivo faz o motivo parecer parte do que se compra. */
+/* O nível, em três quadradinhos. Diz "um de três" sem a pessoa fazer a conta, e
+   fica na posição em que o olho já procura um progresso. */
+.shop-upgrade-pips {
+  display: flex;
+  gap: 4px;
+}
+
+.shop-upgrade-pips span {
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--line);
+  background: transparent;
+}
+
+.shop-upgrade-pips span.aceso {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Botão e motivo empilhados, e não lado a lado: dividindo a largura, o preço
+   quebrava em duas linhas numa coluna estreita. */
+.shop-upgrade-action {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 132px;
+}
+
+.shop-upgrade-action .shop-buy-btn {
+  white-space: nowrap;
+  padding: 10px 14px;
+}
+
+/* O motivo da recusa. Fica abaixo do botão, e não dentro dele: um botão que carrega
+   o preço e o motivo faz o motivo parecer parte do que se compra. */
 .shop-buy-note {
   font-size: 11.5px;
   color: var(--ink-faint);

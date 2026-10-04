@@ -54,16 +54,17 @@ export const UPGRADE_IDS = ['health', 'pickaxe', 'lifePotion', 'revealBomb', 'sa
  * efeito que muda de natureza — o nível 3 não é o nível 2 com um número maior — e é por
  * isso que ele tem `benefits`, uma chave por nível.
  *
- * ## `benefits` tem uma chave a mais que níveis
+ * ## `benefits` tem uma chave por nível, e não uma a mais
  *
- * A última chave é o efeito do nível máximo, e a tela mostra o que o **próximo** dá: quem
- * está no nível 1 vê a chave do 2, e quem chegou ao 3 vê "nível máximo". A chave do
- * nível 3 existe para a descrição da melhoria, e é a que o teste fixa.
+ * Quem está no nível máximo vê "nível máximo", não a descrição do último efeito. Como
+ * nenhuma tela mostra o efeito de um nível já comprado, a chave do nível 3 seria lida
+ * por ninguém — e uma chave morta é uma chance de a tradução divergir sem ninguém ver.
  */
 export const UPGRADES = {
   health: {
     id: 'health',
     field: 'melhoriaHealth',
+    icon: '🛡️',
     costs: [3, 6, 10],
     maxLevel: 3,
     benefit: 'shop.upgrade.health.benefit'
@@ -71,6 +72,7 @@ export const UPGRADES = {
   pickaxe: {
     id: 'pickaxe',
     field: 'melhoriaPickaxe',
+    icon: '⛏️',
     costs: [4, 8, 15],
     maxLevel: 3,
     benefit: 'shop.upgrade.pickaxe.benefit'
@@ -78,6 +80,7 @@ export const UPGRADES = {
   lifePotion: {
     id: 'lifePotion',
     field: 'melhoriaLifePotion',
+    icon: '❤️',
     costs: [10, 15, 20],
     maxLevel: 3,
     benefit: 'shop.upgrade.lifePotion.benefit'
@@ -85,6 +88,7 @@ export const UPGRADES = {
   revealBomb: {
     id: 'revealBomb',
     field: 'melhoriaRevealBomb',
+    icon: '💣',
     costs: [10, 15, 20],
     maxLevel: 3,
     benefit: 'shop.upgrade.revealBomb.benefit'
@@ -92,13 +96,13 @@ export const UPGRADES = {
   safePath: {
     id: 'safePath',
     field: 'melhoriaSafePath',
+    icon: '🧭',
     costs: [10, 15, 20],
     maxLevel: 3,
     benefits: [
       'shop.upgrade.safePath.b1',
       'shop.upgrade.safePath.b2',
-      'shop.upgrade.safePath.b3',
-      'shop.upgrade.safePath.b4'
+      'shop.upgrade.safePath.b3'
     ]
   }
 };
@@ -140,17 +144,26 @@ export function nivelMaximo(id) {
 }
 
 /**
- * A chave de texto do que o próximo nível faz, ou `null` quando acabou.
+ * A chave de texto do que o **próximo** nível faz, ou `null` quando não há próximo.
+ *
+ * ## Por que o índice é o nível atual, e não o máximo
+ *
+ * Porque a tela mostra "o que o próximo dá": quem está no nível 1 de Caminho Seguro
+ * precisa ler o efeito do 2, e quem está no 0 precisa do 1. Uma versão que devolvesse
+ * sempre a última chave da lista mostrava a descrição do nível 3 para quem tinha zero
+ * níveis comprados — a pessoa lia o efeito mais distante do que tinha, que é o
+ * contrário de informar o próximo passo.
  *
  * Devolve a **chave**, e não o texto: quem traduz é o tradutor, e um texto aqui
  * apareceria na língua errada na tela de quem trocou de idioma.
  */
-export function chaveDoProximoBeneficio(id) {
+export function chaveDoProximoBeneficio(id, nivel) {
   const config = UPGRADES[id];
+  const atual = Number.isFinite(nivel) ? nivel : 0;
 
-  if (!config) return null;
+  if (!config || atual >= config.maxLevel) return null;
 
-  if (Array.isArray(config.benefits)) return config.benefits[config.maxLevel] ?? null;
+  if (Array.isArray(config.benefits)) return config.benefits[atual] ?? null;
 
   return config.benefit ?? null;
 }
@@ -158,10 +171,8 @@ export function chaveDoProximoBeneficio(id) {
 /**
  * A chave do efeito de **um** nível, e não do próximo.
  *
- * A diferença é a de quem já comprou: a tela mostra "o que o próximo dá", e quem está no
- * máximo mostra "nível máximo" em vez do que o nível 3 dá. Por isso o índice é o do
- * próximo e não o do atual — e é por isso que a função acima devolve a chave de quem não
- * tem o efeito ainda, e o efeito do último nível só aparece para quem já o comprou.
+ * Existe para quem já comprou e quer saber o que tem hoje. A tela de compra não usa: ela
+ * mostra sempre o próximo, e no máximo mostra "nível máximo".
  */
 export function chaveDoBeneficio(id, nivel) {
   const config = UPGRADES[id];

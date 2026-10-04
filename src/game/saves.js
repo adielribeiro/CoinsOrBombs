@@ -65,6 +65,24 @@ const FORMAT_VERSION = 1;
  */
 export const PERMANENTE = ['relics', ...UPGRADE_IDS.map((id) => UPGRADES[id].field)];
 
+/**
+ * Os campos permanentes que são um **dicionário**, e não um número.
+ *
+ * ## Por que uma lista à parte
+ *
+ * Porque `comPermanentes` limita os números: um nível de melhoria vai até 3 e o saldo é
+ * um inteiro. Passar um dicionário por esse caminho daria zero — `Number.isFinite({})` é
+ * falso — e o registro das caves sumiria do estado a cada morte, que é exatamente o
+ * laço de farm que o registro existe para fechar.
+ *
+ * A lista é curta e muda junto com a de cima; as duas entram no disco pelo mesmo
+ * `PERMANENTE_OU_ESTRUTURA`.
+ */
+export const PERMANENTE_ESTRUTURA = ['relicasPorCave'];
+
+/** Tudo que a morte não toca: os números e os dicionários. */
+export const PERMANENTE_E_TUDO = [...PERMANENTE, ...PERMANENTE_ESTRUTURA];
+
 /** Campos gravados no slot. Tudo que é estado de tela fica de fora. */
 export const PERSISTENTE = [
   'cave',
@@ -106,7 +124,7 @@ export const PERSISTENTE = [
   // `relics` é separado da `collection` de propósito: a coleção é o catálogo "x3 Âmbar"
   // e não pode encolher quando a pessoa gasta uma. Sem separá-las, o saldo cresceria
   // contra a conta do catálogo, e nenhuma das duas mostraria a verdade.
-    ...PERMANENTE
+    ...PERMANENTE_E_TUDO
 ];
 
 /**
@@ -227,6 +245,11 @@ export function estadoInicial(cave = 1) {
     // `PERMANENTE`, que por sua vez sai da configuração das melhorias. Uma lista escrita
     // à mão funciona até a próxima melhoria aparecer.
     ...comPermanentes({}),
+    // O registro de relíquias por cave nasce vazio. Ele não pode faltar em save nenhum:
+    // um save antigo sem o campo é lido pela cena como "esta cave nunca foi gerada", e
+    // o primeiro retorno a ela seria um sorteio novo — o farm, justamente nos saves que
+    // existiam antes de a proteção existir.
+    relicasPorCave: {},
     ...createImprovementState(),
     // Todo jogo começa marcado como jogo de verdade. Um save antigo, de antes do
     // modo desenvolvedor, recebe `false` — e é exatamente isso que impede que ele
@@ -366,7 +389,66 @@ export function comPermanentes(estado) {
         : 0;
   }
 
+  // Os dicionários não passam pelo caminho dos números. O registro das caves, por
+  // exemplo, é `{ "12": { total: 2, coletadas: 2 } }` — e `Number.isFinite` desse objeto
+  // é falso, o que o zeraria e reabriria o laço de farm.
+  for (const campo of PERMANENTE_ESTRUTURA) {
+    saida[campo] = normalizaEstruturaPermanente(campo, estado?.[campo]);
+  }
+
   return saida;
+}
+
+/**
+ * Limpa um dicionário permanente de um save que veio editado à mão.
+ *
+ * Cada campo tem a sua própria regra, e é por isso que a lista é de **funções** e não de
+ * campos: um dicionário novo precisa trazer a sua normalização junto, e um campo novo na
+ * lista sem normalização passaria a atravessar o save como `undefined` — que a tela
+ * trata como "não há registro" e que é justamente o estado que reabre o farm.
+ */
+const NORMALIZADORES_DE_ESTRUTURA = {
+  relicasPorCave: (valor) => {
+    if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return {};
+
+    const saida = {};
+
+    for (const [cave, entrada] of Object.entries(valor)) {
+      const numero = Number(cave);
+
+      // Uma cave que não é número não volta a ser visitada, e uma entrada sem
+      // `total` não sabe o que tem. Descartar as duas é o que mantém o registro honesto.
+      if (!Number.isFinite(numero) || numero < 1) continue;
+      if (!entrada || typeof entrada !== 'object') continue;
+
+      const total = Number(entrada.total);
+      const coletadas = Number(entrada.coletadas);
+
+      if (!Number.isFinite(total) || total < 1) continue;
+
+      saida[String(numero)] = {
+        total: Math.trunc(total),
+        coletadas: Number.isFinite(coletadas)
+          ? Math.min(Math.trunc(Math.max(0, coletadas)), Math.trunc(total))
+          : 0
+      };
+    }
+
+    return saida;
+  }
+};
+
+function normalizaEstruturaPermanente(campo, valor) {
+  const normalizador = NORMALIZADORES_DE_ESTRUTURA[campo];
+
+  // Um campo da lista **sem** normalizador registrado atravessa como está, desde que seja
+  // um objeto. Devolver `undefined` seria pior: a tela leria "não há nada guardado", e é
+  // esse estado que reabre o laço de farm.
+  if (!normalizador) {
+    return valor && typeof valor === 'object' && !Array.isArray(valor) ? valor : {};
+  }
+
+  return normalizador(valor);
 }
 
 /**

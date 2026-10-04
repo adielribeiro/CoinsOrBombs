@@ -3,6 +3,7 @@ import { createGame } from './game/createGame.js';
 import { duracaoDaCarta } from './game/cartaFinal.js';
 import {
   UPGRADE_IDS,
+  UPGRADES,
   chaveDoProximoBeneficio,
   comprarMelhoria,
   custoDoProximoNivel,
@@ -2780,9 +2781,14 @@ export default function App() {
                   <strong>{gameState.bombsRemaining ?? 0}</strong>
                 </div>
 
+                {/* O saldo, e não a soma do catálogo. A soma responde "quantas relíquias
+                    diferentes eu já achei?", que é pergunta da tela de Informações; a HUD
+                    responde "quanto eu tenho pra gastar?", que é a pergunta de quem está no
+                    meio de uma run. Com as duas no mesmo lugar, a pessoa via "RELÍQUIAS 0"
+                    na HUD com 40 na loja. */}
                 <div className="hud-pill" title={t('hud.titleRelics')}>
                   <span>{t('hud.relics')}</span>
-                  <strong>{totalRelics}</strong>
+                  <strong>{saldoReliquias}</strong>
                 </div>
 
                 <div className="hud-pill" title={t('hud.titlePickaxe')}>
@@ -3221,59 +3227,87 @@ export default function App() {
                   );
                 })}
 
-                <div className="shop-section">
-                  <div className="shop-section-head">
-                    <h3>{t('shop.sectionUpgrades')}</h3>
-                    <strong>{t('shop.relicBalance', { n: saldoReliquias })}</strong>
-                  </div>
+            </div>
 
-                  <p className="shop-section-note">{t('shop.upgradesSubtitle')}</p>
+            <div className="shop-section">
+              <div className="shop-section-head">
+                <h3>{t('shop.sectionUpgrades')}</h3>
+                <span className="shop-relic-balance">
+                  {t('shop.relicBalance', { n: saldoReliquias })}
+                </span>
+              </div>
 
-                  <div className="shop-upgrade-grid">
-                    {UPGRADE_IDS.map((id) => {
-                      const nivel = nivelDe(gameState, id);
-                      const maximo = nivelMaximo(id);
-                      const custo = custoDoProximoNivel(id, nivel);
-                      const noMaximo = custo === null;
-                      const podeComprar = !noMaximo && saldoReliquias >= custo;
+              <p className="shop-section-note">{t('shop.upgradesSubtitle')}</p>
 
-                      return (
-                        <div key={id} className="shop-upgrade-card">
-                          <div className="shop-upgrade-head">
-                            <strong>{t(`shop.upgrade.${id}.name`)}</strong>
-                            <span>{t('shop.level', { atual: nivel, max: maximo })}</span>
-                          </div>
+              {/* Uma linha por melhoria, e não um cartão. Cinco cartões altos deixam
+                  a seção mais longa que a tela, e o efeito de cada melhoria é uma
+                  frase — que cabe ao lado do nome. O pips no meio é o nível: três
+                  quadradinhos, e o que está aceso é o que a pessoa comprou. */}
+              <div className="shop-upgrade-list">
+                {UPGRADE_IDS.map((id) => {
+                  const nivel = nivelDe(gameState, id);
+                  const maximo = nivelMaximo(id);
+                  const custo = custoDoProximoNivel(id, nivel);
+                  const noMaximo = custo === null;
+                  const podeComprar = !noMaximo && saldoReliquias >= custo;
+                  const beneficio = chaveDoProximoBeneficio(id, nivel);
 
-                          <p className="shop-upgrade-benefit">
-                            {noMaximo
-                              ? t('shop.maxLevel')
-                              : t('shop.upgradeNext', { benefit: chaveDoProximoBeneficio(id) })}
-                          </p>
+                  return (
+                    <div
+                      key={id}
+                      className={`shop-upgrade-row${noMaximo ? ' no-maximo' : ''}`}
+                    >
+                      <span className="shop-upgrade-icon" aria-hidden="true">
+                        {UPGRADES[id].icon}
+                      </span>
 
-                          <div className="shop-action-row">
-                            <button
-                              className="shop-buy-btn"
-                              type="button"
-                              onClick={() => buyUpgrade(id)}
-                              disabled={noMaximo || !podeComprar}
-                            >
-                              {noMaximo ? t('shop.maxLevel') : t('shop.buyNext', { n: custo })}
-                            </button>
+                      <div className="shop-upgrade-info">
+                        <strong>{t(`shop.upgrade.${id}.name`)}</strong>
 
-                            {!podeComprar && !noMaximo && (
-                              <small className="shop-buy-note">
-                                {t('shop.notEnoughRelics')}
-                              </small>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                        {/* O benefício vem traduzido, e não a chave. Passar a chave
+                            como valor de substituição imprimia `shop.upgrade.health.benefit`
+                            na tela: a pessoa lia o nome do texto em vez do texto. */}
+                        <p>
+                          {noMaximo
+                            ? t('shop.maxLevel')
+                            : t('shop.upgradeNext', { benefit: beneficio ? t(beneficio) : '' })}
+                        </p>
+                      </div>
+
+                      <div
+                        className="shop-upgrade-pips"
+                        aria-label={t('shop.level', { atual: nivel, max: maximo })}
+                      >
+                        {Array.from({ length: maximo }, (_, indice) => (
+                          <span key={indice} className={indice < nivel ? 'aceso' : ''} />
+                        ))}
+                      </div>
+
+                      <div className="shop-upgrade-action">
+                        <button
+                          className="shop-buy-btn"
+                          type="button"
+                          onClick={() => buyUpgrade(id)}
+                          disabled={noMaximo || !podeComprar}
+                        >
+                          {noMaximo ? t('shop.maxLevel') : t('shop.buyNext', { n: custo })}
+                        </button>
+
+                        {/* A nota fica **abaixo** do botão, e não ao lado: ao lado ela
+                            divide a largura com ele e o preço quebra em duas linhas. */}
+                        {!podeComprar && !noMaximo && (
+                          <small className="shop-buy-note">
+                            {t('shop.notEnoughRelics')}
+                          </small>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
+        </div>
         )}
 
         {pauseOpen && (

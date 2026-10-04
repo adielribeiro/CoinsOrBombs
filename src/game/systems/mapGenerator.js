@@ -3,17 +3,6 @@ import { getRockVariantCount } from '../rocks.js';
 import { findSafeRoute, getNeighbors4, getNeighbors8 } from './helpers.js';
 
 /**
- * Os 3 pontos percentuais que a chance de relíquia ganhou, em fração.
- *
- * Somados antes do teto, e o teto é a soma antiga mais estes 3 pontos: era 28%, e
- * passou a 31%. É o que faz o ganho valer também nas caves que já estavam no teto.
- */
-export const BONUS_RELICIA = 0.03;
-
-/** O teto da chance de relíquia, com o bônus já somado. */
-export const CHANCE_MAXIMA_RELICIA = 0.28 + BONUS_RELICIA;
-
-/**
  * Índice do modelo de rocha, escolhido dentro da folha do bioma.
  *
  * Antes isto era uma lista de CHAVES de textura, com `rock` repetido para pesar
@@ -404,7 +393,79 @@ function floodOpenTiles(mapData, start) {
   return visited;
 }
 
-export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
+/**
+ * Põe `quantas` relíquias em tiles que ainda são pedra, e devolve quantas conseguiu.
+ *
+ * ## Os quatro filtros, e o que cada um impede
+ *
+ * - **`type === 'rock'`**: uma relíquia em chão é inalcançável, porque o conteúdo só é
+ *   recolhido ao quebrar a pedra. É o filtro que importa.
+ * - **`!isHiddenExit`**: a saída escondida é um segredo do mapa, e virar relíquia
+ *   entregaria o segredo de graça.
+ * - **`hiddenContent === 'empty'`**: não cai em cima de bomba nem de moeda. Um tile tem
+ *   um `hiddenContent`, e a relíquia sobrescreveria o outro — o que faria a cave ter uma
+ *   bomba a menos do que o HUD promised.
+ * - **`!revelado`**: uma pedra já descoberta é uma pedra que o jogador não precisa
+ *   quebrar, e não valeria a pena.
+ *
+ * ## A lista é embaralhada e não é uma cauda de outra
+ *
+ * Porque aqui não existe uma lista já embaralhada para reusar: as bombas e as moedas já
+ * usaram as suas, e a garantia de caminho abriu parte do mapa. O embaralhamento é o que
+ * espalha as relíquias pela cave em vez de concentrá-las numa ponta.
+ *
+ * ## Devolve o número colocado, e não nada
+ *
+ * Porque quem chama precisa saber a diferença entre "a cave tem três" e "a cave tinha
+ * três e só cabiam duas". Com o retorno, a diferença é visível; sem, ela é um
+ * desaparecimento silencioso.
+ *
+ * @returns {number} quantas relíquias foram efetivamente colocadas
+ */
+function posicionaReliquias(mapData, relicId, quantas) {
+  const pedidas = Math.max(0, Math.trunc(Number.isFinite(quantas) ? quantas : 0));
+
+  if (pedidas === 0) return 0;
+
+  const candidatos = [];
+
+  for (const linha of mapData.tiles) {
+    for (const tile of linha) {
+      if (tile.type !== 'rock') continue;
+      if (tile.isHiddenExit) continue;
+      if (tile.revealed) continue;
+      if (tile.hiddenContent !== 'empty') continue;
+
+      candidatos.push(tile);
+    }
+  }
+
+  for (let i = candidatos.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidatos[i], candidatos[j]] = [candidatos[j], candidatos[i]];
+  }
+
+  const colocadas = candidatos.slice(0, pedidas);
+
+  for (const tile of colocadas) {
+    tile.hiddenContent = createRelicContent(relicId);
+  }
+
+  return colocadas.length;
+}
+
+/**
+ * Gera a cave.
+ *
+ * @param {number} cave o número global da cave
+ * @param {number} pickaxePower a força da picareta, que muda a vida da rocha
+ * @param {number} coinLuck o bônus de moeda das melhorias de carta
+ * @param {number} reliquiasRestantes quantas relíquias colocar **agora**, já descontadas
+ *   as que a pessoa levou desta cave antes. Quem não passa nada coloca zero — e é o que
+ *   acontece numa cave da qual a pessoa já colheu tudo, o que fecha o farm de morrer e
+ *   voltar.
+ */
+export function generateMap(cave, pickaxePower = 1, coinLuck = 0, reliquiasRestantes = 0) {
   const biome = getBiomeForCave(cave);
 
   // `getMapSize` e `getRockHp` recebem a cave GLOBAL, não a local. A versão
@@ -522,25 +583,6 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
     bombCandidates[i].hiddenContent = 'bomb';
   }
 
-  // A chance da relíquia é a chance do bioma, mais 1% a cada 5 caves, mais o bônus.
-  //
-  // O bônus entra **antes** do teto de propósito: somar depois faria as caves que já
-  // estavam no teto não ganharem nada, e são elas as mais difíceis. O teto é a soma
-  // antiga mais o bônus, e não um número solto — os dois saem das mesmas constantes.
-  const relicChance = Math.min(
-    CHANCE_MAXIMA_RELICIA,
-    biome.relicChance + Math.floor((localCave - 1) / 5) * 0.01 + BONUS_RELICIA
-  );
-  if (Math.random() < relicChance) {
-    const relicCandidates = bombCandidates.filter((tile) => tile.hiddenContent === 'empty');
-
-    if (relicCandidates.length > 0) {
-      const relicTile = pickRandom(relicCandidates);
-      relicTile.hiddenContent = createRelicContent(biome.relicId);
-    }
-  }
-
-
   const mapData = {
     width,
     height,
@@ -553,6 +595,17 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0) {
 
   ensureExitReachable(mapData);
   ensureSafeRoute(mapData);
+
+  // A relíquia é posicionada **por último**, depois das duas garantias acima. Isso não é
+  // escolha de estilo: `ensureExitReachable` abre pedras do caminho principal e as troca
+  // para chão, e o conteúdo escondido de um tile só é recolhido quando a pedra quebra.
+  //
+  // Uma relíqua em chão é, portanto, uma relíquia que **ninguém nunca pega**: o mapa
+  // diz que ela existe, o contador do HUD a desconta do total da cave, e ela não volta
+  // nunca. Com a regra antiga isso era raro — a relíquia precisava cair justamente na
+  // pedra que a garantia abrisse. Com "toda cave tem relíquia" vira caso comum, e o
+  // resultado é a pessoa numa cave de 3 relíquias que só consegue achar 2.
+  posicionaReliquias(mapData, biome.relicId, reliquiasRestantes);
 
   return mapData;
 }

@@ -1,4 +1,5 @@
 import { NIVEL_MAXIMO, saldoDeReliquias, upgradesDe } from './melhorias.js';
+import { registraReliquiaColetada } from './relics.js';
 
 /**
  * Biomas, em ordem de progressão.
@@ -30,7 +31,6 @@ export const BIOMES = [
     rangeKey: 'biome.sunstone.range',
     backgroundKey: 'cave_bg_sunstone',
     relicId: 'amber_fang',
-    relicChance: 0.12,
     coinMultiplier: 1,
     bombMultiplier: 1,
     palette: {
@@ -60,7 +60,6 @@ export const BIOMES = [
     rangeKey: 'biome.frost.range',
     backgroundKey: 'cave_bg_frost',
     relicId: 'frost_bloom',
-    relicChance: 0.14,
     coinMultiplier: 0.94,
     bombMultiplier: 1.04,
     palette: {
@@ -90,7 +89,6 @@ export const BIOMES = [
     rangeKey: 'biome.ember.range',
     backgroundKey: 'cave_bg_ember',
     relicId: 'ember_core',
-    relicChance: 0.16,
     coinMultiplier: 1.02,
     bombMultiplier: 1.08,
     palette: {
@@ -120,7 +118,6 @@ export const BIOMES = [
     rangeKey: 'biome.ruins.range',
     backgroundKey: 'cave_bg_ruins',
     relicId: 'ruin_tablet',
-    relicChance: 0.18,
     coinMultiplier: 0.96,
     bombMultiplier: 1.12,
     palette: {
@@ -150,7 +147,6 @@ export const BIOMES = [
     rangeKey: 'biome.wind.range',
     backgroundKey: 'cave_bg_wind',
     relicId: 'gust_shell',
-    relicChance: 0.2,
     coinMultiplier: 1.12,
     bombMultiplier: 0.94,
     // Mais moedas e menos bombas: o vento espalha o minério e leva a
@@ -179,7 +175,6 @@ export const BIOMES = [
     rangeKey: 'biome.crystal.range',
     backgroundKey: 'cave_bg_crystal',
     relicId: 'prism_core',
-    relicChance: 0.24,
     coinMultiplier: 0.88,
     bombMultiplier: 1.2,
     // Menos moedas e muito mais bomba: o cristal reflete a detonação de volta
@@ -852,6 +847,14 @@ export function registrarReliquiaEncontrada(estado, relicId) {
     // "quantas eu tenho para gastar?". Gastar não pode apagar a primeira resposta,
     // e é por isso que os dois campos não são o mesmo.
     relics: saldoDeReliquias(estado) + 1,
+    // O contador da cave. É ele que impede a mesma relíquia de reaparecer quando a
+    // pessoa morre, recomeça o bioma e volta a entrar na mesma caverna: sem esta
+    // linha a cave gera relíquias novas toda vez, e o jogo vira um laço de farm.
+    //
+    // Ele anda junto do saldo e do catálogo, e não num `sync` depois. Um contador que
+    // só é atualizado por um caminho separado é o que diverge silenciosamente quando
+    // um dos dois caminhos deixa de ser chamado.
+    relicasPorCave: registraReliquiaColetada(estado?.relicasPorCave, estado?.cave ?? 1),
     collection: {
       ...createCollectionState(),
       ...estado?.collection,

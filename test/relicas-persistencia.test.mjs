@@ -19,6 +19,8 @@ import {
 } from '../src/game/progression.js';
 import {
   PERMANENTE,
+  PERMANENTE_E_TUDO,
+  PERMANENTE_ESTRUTURA,
   comPermanentes,
   estadoInicial,
   hidratarEstado,
@@ -49,14 +51,18 @@ import {
  * passa enquanto os dois mudam juntos, que é a situação que a mudança precisa pegar.
  */
 
-/** O que a reconstrução da morte tem de carregar.Escrito à mão, como especificação. */
+/** O que a reconstrução da morte tem de carregar. Escrito à mão, como especificação. */
 const PERMANENTES_ESPERADOS = [
   'relics',
   'melhoriaHealth',
   'melhoriaPickaxe',
   'melhoriaLifePotion',
   'melhoriaRevealBomb',
-  'melhoriaSafePath'
+  'melhoriaSafePath',
+  // O registro de relíquias por cave também é permanente, e por um motivo que não é
+  // óbvio: ele é o que impede a mesma cave render relíquias de novo quando a pessoa morre
+  // e recomeça o bioma. Perder esse registro na morte é o mesmo que permitir o farm.
+  'relicasPorCave'
 ];
 
 /**
@@ -111,10 +117,22 @@ function estadoComMelhoriasCompradas() {
 
 // --- o que a lista de permanentes promised, e entrega ------------------------
 
-test('PERMANENTE tem o saldo e os cinco campos de melhoria', () => {
+test('as listas de permanentes cobrem o saldo, as cinco melhorias e o registro', () => {
   // A lista é o contrato entre a regra e quem reconstrói o estado. Um campo fora dela
   // nunca é carregado, e um campo dentro dela que ninguém espalha também não.
-  assert.deepEqual([...PERMANENTE].sort(), [...PERMANENTES_ESPERADOS].sort());
+  //
+  // São duas listas porque são duas naturezas: `PERMANENTE` são números, que o
+  // `comPermanentes` limita até o máximo da melhoria; `PERMANENTE_ESTRUTURA` é o
+  // registro por cave, que é um dicionário. Passar o dicionário pelo caminho dos números
+  // daria zero — `Number.isFinite({})` é falso — e o registro sumiria na morte, que é o
+  // laço de farm que ele existe para fechar.
+  assert.deepEqual(
+    [...PERMANENTE_E_TUDO].sort(),
+    [...PERMANENTES_ESPERADOS].sort(),
+    'o conjunto de campos permanentes não é o que a lista promete'
+  );
+
+  assert.deepEqual([...PERMANENTE].sort(), [...PERMANENTE_E_TUDO].sort().filter((campo) => campo !== 'relicasPorCave'), 'um dicionário entrou na lista de números');
 
   for (const id of UPGRADE_IDS) {
     assert.ok(
@@ -122,6 +140,8 @@ test('PERMANENTE tem o saldo e os cinco campos de melhoria', () => {
       `${UPGRADES[id].field} nao esta em PERMANENTE`
     );
   }
+
+  assert.ok(PERMANENTE_ESTRUTURA.includes('relicasPorCave'), 'o registro por cave nao esta na lista de dicionarios');
 });
 
 test('o saldo e os niveis sobrevem a uma morte', () => {
