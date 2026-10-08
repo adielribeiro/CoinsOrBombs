@@ -43,7 +43,8 @@ arriscar antes de achar a saída.
 
 ## Como jogar
 
-Tudo acontece com **clique ou toque**. Não existe pressionar tecla.
+Tudo acontece com **clique, toque ou controle**. Mouse, teclado e gamepad jogam o
+mesmo jogo, do menu à última cave.
 
 1. **Quebre a borda da área aberta.** O contorno da rocha fica **verde** quando
    ela está ao seu alcance e **vermelho** quando está cercada por outras rochas.
@@ -56,6 +57,38 @@ Tudo acontece com **clique ou toque**. Não existe pressionar tecla.
 
 Morrer não zera a run: você volta ao **início do bioma atual** e mantém moedas,
 objetivos e relíquias. Só as melhorias são perdidas.
+
+## Controle
+
+Xbox, PlayStation e genéricos chegam pelo mesmo caminho: `navigator.getGamepads()`
+devolve os mesmos índices para todos, porque o driver é do sistema. O que muda é o
+nome do botão, e a tradução para índice fica em um lugar só, em `src/game/gamepad.js`.
+
+| Ação | Xbox | PlayStation |
+| --- | --- | --- |
+| Confirmar, ativar o item em foco | `A` | `X` |
+| Voltar, fechar a tela aberta | `B` | `Círculo` |
+| Pular uma sequência de texto | `B` / `X` | `Círculo` / `Quadrado` |
+| Pausar e retomar | `Start` | `Options` |
+| Navegar e mirar | Direcional e analógico esquerdo | Idem |
+| Mirar continuamente | Analógico esquerdo | Idem |
+
+**Confirmar mira, e não o item em foco, quando a mira está sobre um botão do HUD.** É
+o mesmo caminho que o clique do mouse faz: a seta aponta, e o `A` aciona o que está
+embaixo dela. Sem essa regra, mirar num botão e apertar `A` quebraria uma pedra ao
+mesmo tempo.
+
+**Direcional dá um passo por aperto**, e segurar repete depois de 380 ms — é o que
+permite varrer o mapa sem perder precisão na mira. Na caverna o direcional anda a
+mira, e o `A` quebra a pedra sob ela.
+
+O foco é sempre visível: um anel marca o item em foco, e ele **fica** enquanto houver
+controle conectado. Quem joga com analógico segura a direção para repetir, e um anel
+que pisca some justo quando está servindo.
+
+**Limitação conhecida:** o botão de tela cheia do HUD está fora do alcance da ponta do
+ponteiro, que para antes da faixa onde os botões de canto ficam. A pausa não sofre com
+isso — `Start` abre e fecha. A tela cheia continua sem atalho por controle.
 
 ## Progressão
 
