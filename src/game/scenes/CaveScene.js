@@ -17,6 +17,8 @@ import { getLocale, setLocale, t } from '../../i18n/index.js';
 import { BIOMA_INICIAL, getBackdropKey } from '../backdrops.js';
 import { ENTRANCE_DISPLAY, getEntranceAspect, getEntranceForBiome } from '../entrances.js';
 import { dentroDoMapa, proximoTileValido, tileInicialDoCursor } from '../cursor.js';
+import { deslocamentoDaDirecao } from '../gamepad.js';
+import { passoDeRepeticao } from '../foco.js';
 import { tileSobOPonteiro } from '../ponteiro.js';
 
 /**
@@ -157,6 +159,19 @@ export class CaveScene extends Phaser.Scene {
     // o losango aparece, e ele é desligado sozinho quando um modal abre por cima.
     this.cursorTile = null;
     this.cursorVisivel = false;
+
+    /**
+     * A repetição do passo em grade, por direção.
+     *
+     * Sem isto, segurar o direcional dá um passo por quadro: a 60/s, um aperto de 200 ms
+     * andava seis tiles, e não existe tile que dê para mirar quando o salto é desse
+     * tamanho. É a mesma conta dos menus — passo na hora, 380 ms de espera, 110 ms de
+     * repetição — e é a mesma função, `passoDeRepeticao`.
+     *
+     * Por direção e não um contador só: quem segura "baixo" e vira para "direita" tem
+     * de receber o primeiro passo na hora, e não esperar o tempo do "baixo".
+     */
+    this.repeticaoDoCursor = { cima: null, baixo: null, esquerda: null, direita: null };
     this.pendingResponsiveRefreshes = [];
     this.pendingEffects = [];
     this.clearedCaves = new Set();
@@ -380,14 +395,37 @@ export class CaveScene extends Phaser.Scene {
 
       const direcao = estado.direcoes?.dominante ?? null;
 
+      //
+      // Soltar a direção zera a repetição. Sem esta linha o tempo do aperto anterior
+      // sobrevive, e o aperto seguinte começa já com a espera cumprida — que é o mesmo
+      // defeito que o `App.jsx` tinha, com o ramo de limpeza em código morto.
+      if (!direcao) {
+        for (const nome of Object.keys(this.repeticaoDoCursor)) this.repeticaoDoCursor[nome] = null;
+      }
+
       if (direcao && this.cursorTile && !mirarComPonteiro) {
+        const passo = passoDeRepeticao(this.repeticaoDoCursor[direcao], event.detail.agora ?? Date.now());
+
+        this.repeticaoDoCursor[direcao] = passo;
+
+        if (!passo.repetir) {
+          this.cursorVisivel = true;
+          this.renderCursorIndicator();
+
+          return;
+        }
+
         const { tileWidth, tileHeight } = this.renderMetrics;
+
+        // O deslocamento vem do quadro inteiro, e não do eixo cru: com o direcional
+        // digital o eixo é zero, e um vetor zerado entrava na conta e não andava.
+        const deslocamento = deslocamentoDaDirecao(estado);
 
         this.cursorTile = proximoTileValido(
           this.cursorTile.col,
           this.cursorTile.row,
-          estado.eixo?.x ?? 0,
-          estado.eixo?.y ?? 0,
+          deslocamento.x,
+          deslocamento.y,
           {
             largura: this.mapData.width,
             altura: this.mapData.height,
@@ -1055,6 +1093,14 @@ export class CaveScene extends Phaser.Scene {
    * por cima da arte do bioma.
    */
   publishSceneState() {
+    // A cena fica capturada, e os getters leem por ela.
+    //
+    // `this` dentro de um getter de literal de objeto é o próprio objeto publicado, e
+    // não a cena. Sem esta linha, os três getters devolviam `null` enquanto o mapa
+    // estava desenhado — e `onGamepad` tem um `if (!entrada) return` logo depois de ler
+    // a entrada, o que fazia a mira parecer quebrada quando era o instrumento.
+    const cena = this;
+
     window.__cobSceneState = {
       paused: this.paused,
       cave: this.metaState?.cave ?? null,
@@ -1072,7 +1118,31 @@ export class CaveScene extends Phaser.Scene {
       // Cave 1 apareciam todas com o mesmo modelo, e nada no build, nos testes
       // ou no console dizia por quê. Contar os frames em uso é o que responde
       // "a variação está no mapa ou só na folha de arte" em uma leitura.
-      rockFrames: this.countRockFramesInUse()
+      rockFrames: this.countRockFramesInUse(),
+
+      /**
+       * Para onde a mira aponta, e o que existe naquele tile.
+       *
+       * É o único jeito de responder de fora se o `A` do controle quebrou a pedra.
+       */
+      get mira() {
+        const alvo = cena.cursorTile;
+        const tile = alvo ? cena.mapData?.tiles[alvo.row]?.[alvo.col] : null;
+
+        return alvo ? { col: alvo.col, row: alvo.row, tipo: tile?.type ?? null, hp: tile?.hp ?? null } : null;
+      },
+
+      get entrada() {
+        const e = cena.mapData?.entry ?? null;
+
+        return e ? { col: e.col, row: e.row } : null;
+      },
+
+      get saida() {
+        const s = cena.mapData?.exit ?? null;
+
+        return s ? { col: s.col, row: s.row } : null;
+      }
     };
   }
 

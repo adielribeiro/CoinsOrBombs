@@ -146,6 +146,43 @@ export function direcoesDoQuadro(quadro) {
 }
 
 /**
+ * O vetor de cada direção, para quando a direção não tem intensidade.
+ *
+ * O analógico tem: empurrar mais longe mira mais longe. O direcional digital não tem
+ * essa noção — ele é um botão, e `buttons` não guarda eixo. Um vetor unitário é a
+ * unidade que o passo em grade já normaliza, então dá o mesmo passo que o analógico
+ * empurrado até o fim.
+ */
+export const VETOR_POR_DIRECAO = {
+  cima: { x: 0, y: -1 },
+  baixo: { x: 0, y: 1 },
+  esquerda: { x: -1, y: 0 },
+  direita: { x: 1, y: 0 }
+};
+
+/**
+ * O deslocamento que este quadro pede, em tela.
+ *
+ * Preferimos o eixo quando ele existe, e caímos na direção quando não: é o que faz o
+ * direcional digital andar o cursor da caverna. Sem esta queda, o digital aciona a
+ * guarda de direção — `direcoes.dominante` vem dele — e entra no passo com um vetor
+ * zerado, que não anda. O sintoma é um controle que parece quebrado e não dá erro
+ * nenhum.
+ *
+ * `@returns {{x: number, y: number}}`
+ */
+export function deslocamentoDaDirecao(estado, forca = 1) {
+  const x = estado?.eixo?.x ?? 0;
+  const y = estado?.eixo?.y ?? 0;
+
+  if (x !== 0 || y !== 0) return { x, y };
+
+  const vetor = VETOR_POR_DIRECAO[estado?.direcoes?.dominante ?? ''] ?? null;
+
+  return vetor ? { x: vetor.x * forca, y: vetor.y * forca } : { x: 0, y: 0 };
+}
+
+/**
  * Traduz um controle cru no estado de um quadro.
  *
  * Esta é a função que o teste exercita: recebe o que `getGamepads()` devolve e

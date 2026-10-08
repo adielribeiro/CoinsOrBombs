@@ -2057,6 +2057,11 @@ export default function App() {
     // existe neste ponto do render, e usá-lo aqui pegaria a variável na zona morta
     // temporal — que derruba o jogo inteiro na montagem.
     menuVisivel: entryPhase === ENTRY_PHASE.MENU && !showRotateLock,
+    //
+    // O lobby é uma superfície navegável, e não uma tela da pilha: ele é um estado
+    // da partida, não uma janela aberta sobre outra. A expressão é escrita aqui em vez
+    // de usar o `showLobby` porque este bloco vem antes de onde ele é declarado.
+    lobbyVisivel: entryPhase === ENTRY_PHASE.PLAYING && gameState.inLobby,
     // O laço do controle é criado uma vez e nunca recriado, então a sensibilidade
     // vem pela ref: ler `settings` direto nele congelaria no valor da montagem, e
     // mudar a sensibilidade nas configurações só valeria na próxima sessão.
@@ -2075,7 +2080,15 @@ export default function App() {
 
   useEffect(() => {
     const leitor = criarLeitorDeControle();
-    const nav = criarNavegadorDeFoco({
+    /**
+     * A navegação da superfície aberta.
+     *
+     * Não é `const` porque ela é **recriada por superfície**: cada tela aberta tem a
+     * sua própria navegação, com a própria raiz e o próprio estado de repetição. Uma
+     * navegação única para o `body` inteiro é o que deixava o foco andar por trás dos
+     * modais.
+     */
+    let nav = criarNavegadorDeFoco({
       raiz: document.body,
       elementoAtivo: () => document.activeElement
     });
@@ -2295,12 +2308,37 @@ export default function App() {
       // Menu e tela são o mesmo par para efeitos de semeadura, e é por isso que a
       // chave é uma string: `'menu'` e `'pausa'` são superfícies diferentes, e
       // trocar entre elas tem que semear.
-      const superficie = nomeDaTela ?? (atual.menuVisivel ? 'menu' : null);
+      //
+      // A raiz da navegação é a superfície aberta, e a superfície é o elemento que
+      // carrega `data-tela` com o nome que a pilha já usa.
+      //
+      // Ela é consultada por nome, e não por classe: uma lista de classes seria um
+      // segundo lugar para errar o nome, e a classe já pode mudar por estilo sem que
+      // ninguém perceba. O atributo é uma afirmação, e não uma convenção.
+      const raizTela = nomeDaTela ? document.querySelector(`[data-tela="${nomeDaTela}"]`) : null;
+      const raizMenu = !raizTela && atual.menuVisivel ? document.querySelector('[data-tela="menu"]') : null;
+      const raizLobby = !raizTela && !raizMenu && atual.lobbyVisivel ? document.querySelector('[data-tela="lobby"]') : null;
+      const raizNavegacao = raizTela ?? raizMenu ?? raizLobby;
+      const superficie = raizNavegacao ? raizNavegacao.getAttribute('data-tela') : null;
 
       if (superficie !== telaDoPonteiroAnterior) {
         telaDoPonteiroAnterior = superficie;
 
-        if (superficie) {
+        if (raizNavegacao) {
+          //
+          // Navegar **dentro** da superfície aberta. Sem isto, a lista de alvos é a do
+          // `body` inteiro, e os botões do menu continuavam focáveis por trás do modal:
+          // estão no DOM e não estão escondidos no CSS, então passavam no filtro de
+          // "está na tela agora". O direcional levava o foco para um botão invisível,
+          // o anel aparecia em cima dele e o `A` clicava nele.
+          //
+          // Uma navegação nova por superfície, e não a mesma de antes com outra raiz:
+          // o estado de repetição do modal não pode vazar para a tela de baixo.
+          nav = criarNavegadorDeFoco({
+            raiz: raizNavegacao,
+            elementoAtivo: () => document.activeElement
+          });
+
           /**
            * O foco nasce em um item **escolhido**, e não em um item que o ponteiro
            * passou por cima.
@@ -2311,18 +2349,14 @@ export default function App() {
            * ponteiro também nasce semeado em `document.activeElement`, que no começo
            * de uma tela é o `body`, a seta ficava no meio da tela e o `A` do quadro
            * seguinte fechava o alvo que estivesse embaixo dela.
-           *
-           * Só semeia quando não há alvo em foco: reabrir uma tela não pode devolver
-           * o foco ao começo, e quem abriu uma lista, andou até o quinto item e
-           * abriu um submenu volta e a lista continua no quinto.
            */
-          const haAlvo = nav.alvos().some((alvo) => alvo.elemento === document.activeElement);
-
-          if (!haAlvo) nav.focarPrimeiro();
+          nav.focarPrimeiro();
 
           ponteiroSobre(document.activeElement);
         }
       }
+
+      // O ponteiro anda em **todo** o jogo, e não em parte dele. Antes ele andava nos
 
       // O ponteiro anda em **todo** o jogo, e não em parte dele. Antes ele andava nos
       // menus e na caverna; agora anda na lore, na cena final e nos botões que
@@ -2359,7 +2393,7 @@ export default function App() {
        * põe o foco no alvo, o direcional move, e o quadro seguinte o ponteiro devolve.
        *
        * O sintoma era o direcional **pulando um item em cada três** no menu principal,
-       * com a navegação seeming funcionar e indo sempre para o alvo errado.
+       * com a navegação parecendo funcionar e indo sempre para o alvo errado.
        *
        * Quem está sendo usado decide. Com o direcional solto, o ponteiro manda — que
        * é o que se quer, porque aí a pessoa está apontando e o `A` aciona o que está
@@ -2370,8 +2404,6 @@ export default function App() {
       if (domTemOComando && !direcionalNoQuadro && sob.elemento !== document.activeElement) {
         sob.elemento.focus();
       }
-
-      const naCavena = !nomeDaTela && !atual.menuVisivel && !atual.cenaFinal && !atual.lore;
 
       if (ponteiroRef.current) {
         ponteiroRef.current.style.visibility = estado.conectado ? 'visible' : 'hidden';
@@ -2411,7 +2443,11 @@ export default function App() {
           foiParaOMenu = true;
           atual.lore.avancar();
         }
-      } else if (atual.menuVisivel || nomeDaTela) {
+      } else if (raizNavegacao) {
+        //
+        // A superfície aberta, e não "o menu ou alguma tela". O lobby é uma
+        // superfície navegável sem ser tela da pilha, e com a guarda antiga ele não
+        // entrava em ramo nenhum: o direcional ficava morto lá dentro.
         // O menu principal é uma tela como as outras, e entrou aqui pelo mesmo
         // caminho: sem ele, o laço do controle não tinha onde navegar e a porta de
         // entrada do jogo era só teclado.
@@ -2433,6 +2469,20 @@ export default function App() {
           atual.fechar('pausa');
         } else if (estado.bordas.voltar && nomeDaTela && !analogoMoveu) {
           atual.fechar(nomeDaTela);
+        } else if (estado.bordas.confirmar) {
+          // `A` é uma ação do jogo, e não uma continuação do ponteiro.
+          //
+          // Este ramo era o último `senão` da cadeia, depois do que exige que o
+          // analógico **não** tenha andado — e os dois só podem ser verdadeiros
+          // juntos, porque o `else if` é justamente a negação do primeiro. O `A`
+          // então só era alcançado no quadro em que o analógico se movia.
+          //
+          // Na medição, `A` não abria nada em nenhuma tela de menu: só funcionava
+          // quando a pessoa cutucava o analógico no mesmo quadro do aperto.
+          //
+          // Fica **depois** do `B` de propósito: quem aperta os dois juntos fecha a
+          // tela, que é o que o `Esc` faz, em vez de ativar o item em foco.
+          nav.ativar();
         } else if (!analogoMoveu) {
           // Com a barra em foco, o d-pad para os lados mexe nela e não no foco.
           // Sem esta guarda, configurar a sensibilidade andaria a seleção do menu a
@@ -2461,8 +2511,6 @@ export default function App() {
           // `ajustarBarraEmFoco` existe: soltar zera a repetição, senão o aperto
           // seguinte perde o primeiro passo.
           if (!mexeuNaBarra) nav.moverComRepeticao(estado.direcoes.dominante);
-        } else if (estado.bordas.confirmar) {
-          nav.ativar();
         }
       } else if (estado.bordas.pausa || (estado.bordas.voltar && atual.podePausar)) {
         // Sem tela aberta, `voltar` também abre a pausa: é o que o `Esc` faz, e
@@ -2534,7 +2582,17 @@ export default function App() {
              * significa algo: a cena precisa saber se a pessoa está mirando naquele
              * tile, e não se o ponteiro passou por ele no quadro anterior.
              */
-            ponteiro: { x: ponteiro.x, y: ponteiro.y, andou: ponteiroAndou }
+            ponteiro: { x: ponteiro.x, y: ponteiro.y, andou: ponteiroAndou },
+
+            /**
+             * O relógio do quadro.
+             *
+             * Vai junto porque a cena precisa de tempo **controlável** para a repetição
+             * do passo em grade: `Date.now()` dentro da cena obriga aprovação por espera
+             * real, e uma espera real é um teste que passa ou falha conforme o
+             * computador da máquina.
+             */
+            agora
           }
         })
       );
@@ -2945,7 +3003,7 @@ export default function App() {
         )}
 
         {showExitDecision && showGameHud && !showLobby && (
-          <div className="exit-decision-overlay">
+          <div className="exit-decision-overlay" data-tela="saida">
             <div className="exit-decision-modal">
               <div className="result-badge win">{t('exit.badge')}</div>
 
@@ -3037,7 +3095,7 @@ export default function App() {
         )}
 
         {showLobby && (
-          <div className="lobby-overlay">
+          <div className="lobby-overlay" data-tela="lobby">
             <div className="lobby-modal lobby-modal-modern">
               <div className={`result-hero ${isDeathLobby ? 'death' : 'win'}`}>
                 <div className={`result-badge ${isDeathLobby ? 'death' : 'win'}`}>
@@ -3229,7 +3287,7 @@ export default function App() {
      existia na vitória — os dois tinham de mudar juntos, e é por isso que a guarda
      mora aqui e não dentro do botão. */
 {showLobby && showUtilityShopModal && (
-          <div className="utility-shop-modal-overlay" onClick={() => setShowUtilityShopModal(false)}>
+          <div className="utility-shop-modal-overlay" data-tela="utilitaria" onClick={() => setShowUtilityShopModal(false)}>
             <div className="utility-shop-modal" onClick={(event) => event.stopPropagation()}>
               <div className="utility-shop-modal-header">
                 <div>
@@ -3379,7 +3437,7 @@ export default function App() {
 
         {pauseOpen && (
           <div
-            className="pause-overlay"
+            className="pause-overlay" data-tela="pausa"
             role="dialog"
             aria-modal="true"
             aria-label={t('pause.aria')}
@@ -3423,7 +3481,7 @@ export default function App() {
         )}
 
         {showMenu && (
-          <div className="entry-overlay menu-overlay">
+          <div className="entry-overlay menu-overlay" data-tela="menu">
             {/*
               Menu em coluna à esquerda, com itens como texto em caixa alta e
               tracking largo. A referência é a linguagem de tela de título de
@@ -3490,7 +3548,7 @@ export default function App() {
 
         {showLanguage && showMenu && (
           <div className="menu-settings-backdrop" onClick={() => setShowLanguage(false)}>
-            <div className="menu-settings-modal language-modal" ref={languageModalRef} onClick={(event) => event.stopPropagation()}>
+            <div className="menu-settings-modal language-modal" data-tela="idioma" ref={languageModalRef} onClick={(event) => event.stopPropagation()}>
               <h2>{t('language.title')}</h2>
               <p className="language-hint">{t('language.hint')}</p>
 
@@ -3607,7 +3665,7 @@ export default function App() {
         {showSaves && (
           <div className="menu-settings-backdrop saves-backdrop" onClick={fecharListaDeJogos}>
             <div
-              className="menu-settings-modal saves-modal"
+              className="menu-settings-modal saves-modal" data-tela="jogos"
               onClick={(event) => event.stopPropagation()}
               role="dialog"
               aria-modal="true"
@@ -3888,7 +3946,7 @@ export default function App() {
 
 {showFinale && (
           <div
-            className="finale-overlay"
+            className="finale-overlay" data-tela="final"
             role="dialog"
             aria-modal="true"
             aria-labelledby="cob-finale-titulo"
@@ -3942,7 +4000,7 @@ export default function App() {
 
         {showBiomeSelect && (
           <div className="menu-settings-backdrop biome-select-backdrop" onClick={closeBiomeSelection}>
-            <div className="menu-settings-modal biome-select-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="menu-settings-modal biome-select-modal" data-tela="bioma" onClick={(event) => event.stopPropagation()}>
               <div className="menu-info-head biome-select-head">
                 <div>
                   <h2>
@@ -4068,7 +4126,7 @@ export default function App() {
 
         {showSettings && showMenu && (
           <div className="menu-settings-backdrop" onClick={() => setShowSettings(false)}>
-            <div className="menu-settings-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="menu-settings-modal" data-tela="configuracoes" onClick={(event) => event.stopPropagation()}>
               <h2>{t('settings.title')}</h2>
 
               <label className="settings-toggle">
@@ -4267,7 +4325,7 @@ export default function App() {
 
         {showInfoModal && (
           <div className="menu-settings-backdrop" onClick={() => setShowInfoModal(false)}>
-            <div className="menu-settings-modal info-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="menu-settings-modal info-modal" data-tela="informacoes" onClick={(event) => event.stopPropagation()}>
               <h2>{t('info.title')}</h2>
 
               <section className="menu-info-card">

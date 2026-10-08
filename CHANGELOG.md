@@ -71,6 +71,93 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **O controle não jogava o jogo.** O menu principal respondia a teclado e mouse e a mais
+  nada: o direcional não movia o foco, o `A` não abria nada em nenhuma tela, e a
+  repetição andava dois itens por aperto. Seis defeitos distintos, todos medidos no
+  navegador, nenhum visível para a suíte — porque nenhum deles mora onde um teste de
+  unidade olha.
+
+  **A semeadura do foco nunca rodava no menu principal.** O guarda era
+  `nomeDaTela !== telaDoPonteiroAnterior`, e no menu o nome da tela é `null` — o menu não
+  é uma tela da pilha, é a fase de entrada. `null !== null` é falso, então o bloco inteiro
+  nunca rodava na porta de entrada do jogo: o ponteiro nascia no meio da tela e o primeiro
+  direcional levava o foco ao segundo item em vez do primeiro. A chave passou a ser a
+  **superfície** visível, e não o nome da tela.
+
+  **O ponteiro e o direcional disputavam o foco.** O ponteiro tem a regra de levar o foco
+  junto, para que a seta tenha ação em todos os botões do HUD, e ela rodava antes do passo
+  do direcional no mesmo quadro: o ponteiro punha o foco no alvo, o direcional movia, e o
+  quadro seguinte o ponteiro devolvia. O sintoma era o direcional **pulando um item em
+  cada três**, com a navegação parecendo funcionar e indo sempre para o alvo errado. Com
+  direção no quadro, quem decide o foco é o direcional; sem direção, o ponteiro volta a
+  mandar — que é o que se quer, porque aí a pessoa está apontando.
+
+  **A repetição do foco nunca era zerada.** `moverComRepeticao` tem um ramo que limpa o
+  estado quando recebe `null`, e era código morto: a chamada estava dentro de
+  `if (direcao)`. `desde` e `repetiuEm` sobreviviam de um aperto para o outro, então o
+  primeiro aperto esperava 380 ms e funcionava, e todo aperto seguinte já encontrava a
+  espera cumprida e repetia no primeiro quadro — depois a cada 110 ms. Um aperto de 200 ms
+  levava o foco dois itens, pulando o do meio. A chamada passou a ser incondicional, que é
+  o que a função foi escrita para fazer.
+
+  **O `A` só confirmava quando o analógico tinha andado no mesmo quadro.** O ramo do `A`
+  era o último `senão` de uma cadeia cujo ramo anterior exigia que o analógico **não**
+  tivesse se movido — e os dois só podem ser verdadeiros juntos, porque o `else if` é a
+  negação do primeiro. O `A` então só era alcançado no quadro em que o analógico se
+  movia. Ele virou um ramo próprio, **depois** do `B`: quem aperta os dois juntos continua
+  fechando a tela, que é o que o `Esc` faz.
+
+  **O foco andava por trás dos modais.** Com as configurações abertas, a lista de alvos
+  alcançáveis trazia `ENTRAR`, `CONFIGURAÇÕES`, `IDIOMA` e `INFORMAÇÕES` antes dos
+  controles do modal: eles estão no DOM e não estão escondidos no CSS, então passavam no
+  filtro de "está na tela agora". O direcional levava o foco para um botão invisível, o anel
+  aparecia em cima dele e o `A` clicava nele — a pessoa apertava e o jogo fazia uma coisa
+  que ela não via. Cada superfície navegável agora leva `data-tela`, e a navegação tem
+  essa superfície como **raiz**, recriada a cada troca: uma navegação única para o `body`
+  inteiro é o que deixava o foco sair, e o estado de repetição do modal não pode vazar
+  para a tela de baixo.
+
+  **O lobby não era navegável.** `atual.menuVisivel || nomeDaTela` não é verdade no
+  lobby: não é o menu, e o lobby não é uma tela da pilha. Nenhum ramo o pegava e o
+  direcional ficava morto lá dentro. Ele entrou como **superfície**, e não como tela: a
+  pilha é a ordem de empilhamento de janelas, e o lobby é um estado da partida. E
+  `naCavena` foi removida — era calculada e nunca lida, e fingia descrever o caso da
+  caverna, que é o que escondeu o defeito.
+
+  **O direcional não andava o cursor da caverna, e segurado andava seis tiles.** A cena
+  passava o passo em grade para o eixo analógico, e o direcional digital não move eixo
+  nenhum: com `dx` e `dy` zerados o passo não andava, sem erro nenhum, e o `A` ficava
+  sem o que quebrar porque a mira não saía do lugar. O deslocamento pedido pelo quadro
+  passou a ser uma função de `gamepad.js`, que sabe que o digital não tem intensidade e o
+  analógico tem. E o passo passou a ser **um por aperto**: segurar dava um passo por
+  quadro, e a 60/s um aperto de 200 ms andava seis tiles — o que torna impossível mirar
+  uma pedra. Agora usa a mesma `passoDeRepeticao` dos menus.
+
+  **Limitação que sobrou:** os botões de canto do HUD (tela cheia) estão fora do alcance
+  da ponta do ponteiro. A ponta é o que mira, e o limite mantém a seta inteira dentro da
+  área, então ela não passa de `y ≈ 611` numa janela de 700 px, e os botões começam em
+  `y = 645`. A pausa não sofre com isso — `Start` abre e fecha, e é o mapeamento pedido —
+  mas a tela cheia continua sem atalho por controle. Trocar a convenção de mira ou a
+  posição dos botões é decisão de desenho, e não foi tomada aqui.
+
+- **`window.__cobSceneState` ganhou `mira`, `entrada` e `saida`.** O gancho já existia
+  para tornar a cena observável de fora, e sem ele a única forma de responder "o `A` do
+  controle quebrou a pedra?" era olhar o HUD: uma pedra leva vários golpes, e a contagem de
+  objetos e as moedas só mudam no fim, então `A` que não fez nada e `A` que quebrou ficavam
+  idênticos. São `getter`, e não campos, porque `publishSceneState` roda na geração do
+  mapa: um campo comum publicaria a mira daquele instante para sempre.
+
+- **`deslocamentoDaDirecao` em `gamepad.js`, com teste.** A função é quem responde
+  "quanto anda neste quadro", e é melhor uma resposta do que cada consumidor repetir que
+  botão e eixo são canais diferentes. O teste `controle-cave.test.mjs` cobre os quatro
+  botões, a precedência do analógico e a magnitude não alterar o passo — e verifica,
+  em 300 caves geradas, que a saída fica ao alcance do direcional e que a mira alcança o
+  mapa inteiro. Este último existiu porque a aritmética sugeria o contrário: as quatro
+  direções de tela são quatro passos diagonais da grade, então a paridade de `col + row`
+  é um invariante do direcional e metade das saídas pareceria inalcançável. Não é — o
+  quique de passo de `proximoTileValido` troca a paridade na borda — e é exatamente por
+  isso que o teste mede o jogo em vez de raciocinar sobre a grade.
+
 - **A regra do recomeço nunca chegou a valer, por dois motivos ao mesmo tempo.** Morre-se
   na cave 2 e volta-se na 2, com a aritmética da regra toda certa. Os dois defeitos eram
   invisíveis para os testes, porque nenhum dos dois mora onde eles olham.
