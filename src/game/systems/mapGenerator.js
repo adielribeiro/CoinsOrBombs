@@ -92,31 +92,59 @@ export function getMapSize(cave) {
 }
 
 /**
+ * Quanto a caverna exige de uma pedra, antes de qualquer picareta.
+ *
+ * A cave 1 pede 5, que é o que a fórmula antiga dava com picareta 1: o começo do jogo não
+ * muda. Daí em diante a demanda sobe um ponto a cada {@link CAVES_POR_PONTO} caves, mais
+ * um ponto por bioma.
+ *
+ * A rampa é sobre a cave GLOBAL, e não a local do bioma: usar `localCave` virava um
+ * degrau para baixo a cada bioma, e o mundo parecia ficar mais fácil ao avançar.
+ */
+const DEMANDA_BASE = 5;
+
+/**
+ * A cada quantas caves a pedra exige um clique a mais.
+ *
+ * Antes era 7, e era esse número que segurava a campanha inteira junto com o teto da
+ * picareta: o jogador ganhava quase um nível de picareta a cada caverna e meia, e a
+ * demanda subia um ponto a cada sete. A picareta vencia a subtração por volta da cave 15
+ * e a pedra ficava em 1 clique até a cave 28 — 47% do jogo sem a picareta valer nada. Com
+ * 4 e o teto de carta em 6, nenhuma das duas metades vence a outra.
+ */
+const CAVES_POR_PONTO = 4;
+
+/**
  * Resistência da rocha.
  *
- * A rampa é sobre a cave GLOBAL, não sobre a local do bioma. A versão anterior
- * usava `localCave`, e com as faixas encolhidas para 10 caves isso criava um
- * degrau para baixo a cada bioma: a rocha da Cave 10 era mais dura que a da
- * Cave 11, e o jogador sentia o mundo ficando mais fácil ao avançar. Pior, com
- * o bônus de bioma somando, a soma passava a valer 0 na Cave 51 e a rocha
- * virava inquebrável.
+ * ## Aditiva, e é assim de propósito
  *
- * São duas parcelas: a rampa global, suave e sempre crescente, e o índice do
- * bioma, que é o degrau entre um mundo e outro. É o que dá a sensação de que a
- * Câmara de Cristal é outro jogo, e não a continuação da Mina Solar.
+ * Dar um clique por nível não é um detalhe: é o que garante que nenhuma carta de picareta
+ * seja morta. Subir de nível e o número não mudar é a carta que a pessoa paga e não vê
+ * diferença, e o projeto já teve esse bug — o catálogo e o `Math.min` divergiram e as
+ * cartas de picareta viraram decoração.
  *
- * O total fica em 18 na Cave 60 com picareta base, e 14 com a picareta no
- * máximo. A faixa antiga de 80 caves chegava a 9, então a progressão é mais
- * longa, mas o teto continua em terreno de uma dúzia de cliques por rocha.
+ * ## O que faz a dificuldade não desaparecer
+ *
+ * Não é a forma da conta, é a **demanda**. A picareta satura porque crescia mais rápido
+ * que o mundo; por isso a demanda sobe a cada 4 caves e o teto de picareta por carta caiu
+ * para 6. Com as duas metades, quem joga do zero vai de 5 cliques na cave 1 a 18 na cave
+ * 60 sem tocar o piso de 1, e quem já tem a melhoria de relíquia no máximo chega a 10 e
+ * tem pedra de 1 clique nas caves 1 a 11.
+ *
+ * Exportada porque a curva é a única parte da dificuldade que nenhum teste media: morava
+ * num `function` privado. O que se mede agora está em `test/curva-dificuldade.test.mjs`.
+ *
+ * @param {number} pickaxePower o nível da picareta, começando em 1
+ * @param {number} cave a cave global, de 1 a {@link TOTAL_CAVES}
+ * @param {number} biomeIndex o índice do bioma, de 0 a 5
+ * @returns {number} quantos cliques a pedra custa
  */
-function getRockHp(pickaxePower = 1, cave = 1, biomeIndex = 0) {
-  const base = 6 - pickaxePower;
-  const depthBonus = Math.floor((cave - 1) / 7);
-  // Um ponto por bioma, contra um ponto a cada sete caves: o degrau de bioma
-  // pesa mais do que a escadinha interna, mas não atropela a rampa.
-  const biomeBonus = biomeIndex;
+export function getRockHp(pickaxePower = 1, cave = 1, biomeIndex = 0) {
+  const demanda =
+    DEMANDA_BASE + Math.floor((cave - 1) / CAVES_POR_PONTO) + Math.max(0, biomeIndex);
 
-  return Math.max(1, base + depthBonus + biomeBonus);
+  return Math.max(1, demanda - Math.max(0, pickaxePower - 1));
 }
 
 function pickRandom(list) {

@@ -46,8 +46,20 @@ test('o teto e um numero so, e a picareta maxima vem dele', () => {
   // melhoria de relíquia. As duas somam, e o teto acompanha — senão comprar a melhoria
   // de relíquia não mudaria nada e a pessoa pagaria por umaupgrade invisível.
   assert.equal(PICARETA_MAXIMA, MELHORIAS_DE_PICARETA + 1 + NIVEL_MAXIMO);
-  assert.equal(PICARETA_MAXIMA, 13, 'a picareta maxima mudou de 13');
-  assert.equal(MELHORIAS_DE_PICARETA, 9, 'o numero de melhorias mudou de 9');
+
+  // O total é 10: 6 níveis de carta mais 1 de base mais 3 de relíquia.
+  //
+  // Caiu de 13 por um motivo medido, e não por gosto. A pedra é aditiva, e a demanda
+  // só passa de 11 na cave 21. Uma picareta 13 consome 12 pontos dela, então quem já
+  // tinha a melhoria de relíquia no máximo quebrava pedra de 1 clique da cave 1 até a
+  // cave 20 — um terço da campanha sem gastar nada.
+  //
+  // Baixar o teto **por carta** tira a saturação sem cortar o topo: numa run só dá
+  // para chegar a 7, e os 3 que faltam vêm da relíquia, que é permanente entre runs.
+  // Quem já comprou a melhoria continua vendo a pedra mais rápida; ela só deixa de
+  // apagar a curva.
+  assert.equal(PICARETA_MAXIMA, 10, 'a picareta maxima mudou de 10');
+  assert.equal(MELHORIAS_DE_PICARETA, 6, 'o numero de melhorias mudou de 6');
 });
 
 test('a picareta vai do 1 ao 10, um nivel por melhoria', () => {

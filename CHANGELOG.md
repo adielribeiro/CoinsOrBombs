@@ -80,6 +80,64 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **A picareta não valia nada em quase metade do jogo, e a campanha ficava mais leve no meio
+  do que no começo.** Medido antes da mudança: com a picareta no teto de uma run, a pedra
+  saía com **1 de HP nas caves 1 a 28**; com a melhoria de relíquia no máximo, nas caves 1 a
+  40. E o custo total de quebrar uma caverna **caía** de 175 cliques na cave 1 para 74 na
+  cave 20, só voltando a subir depois da 29.
+
+  **A causa era aritmética, não percepção.** A fórmula era `max(1, 6 - picareta + profundidade
+  + bioma)`: a picareta **subtraía** resistência, e a demanda da caverna crescia mais devagar
+  que ela. O jogador ganha quase um nível de picareta a cada caverna e meia no começo, contra
+  um ponto de demanda a cada sete caves — então a subtração vencia, e o `max(1, ...)` apagava
+  o investimento inteiro. Não era uma curva com um degrau: era uma curva que deixava de
+  existir.
+
+  **O conserto mexe nas duas metades, e não só na conta.** A picareta continua **aditiva**, com
+  um clique por nível, porque isso é o invariante de "carta morta" do projeto — subir de nível
+  e o número não mudar é a carta que a pessoa paga e não vê diferença. Uma versão com divisão
+  foi tentada e **descartada por quebrar esse invariante**: o passo por nível de uma divisão é
+  menor que meio clique no fundo, e o arredondamento achata níveis vizinhos. Fazer valer um
+  clique inteiro exigiria uma pedra de duas dúzia de cliques na cave 60, que troca um defeito
+  por outro e pior.
+
+  O que muda então:
+  - **A demanda sobe um ponto a cada 4 caves**, e não a cada 7, mais um ponto por bioma. Na
+    cave 60 ela vai de 8 para 24 com a picareta fraca.
+  - **O teto de picareta por carta cai de 9 para 6.** `PICARETA_MAXIMA` continua sendo a soma
+    das três parcelas — 6 de carta, 1 de base e 3 de relíquia — mas o **total cai de 13 para
+    10**, e é isso que resolve: quem joga do zero só chega a 7 de picareta numa run, e a
+    demanda nunca é saturada.
+
+  Resultado medido: uma run do zero vai de 5 cliques por pedra na cave 1 a 18 na cave 60, sem
+  tocar o piso de 1 em nenhuma caverna depois do primeiro bioma. Quem já comprou a melhoria de
+  relíquia chega a 10 e tem pedra de 1 clique até a cave 20 — que é estar acima do nível, e é o
+  certo, mas é **um terço da campanha** em vez de dois terços.
+
+  **O custo honesto:** `PICARETA_MAXIMA` cai de 13 para 10. Quem já comprou a melhoria de
+  relíquia de picareta vê os números menores; a compra continua valendo e continua visível — a
+  pedra fica mais rápida —, mas deixa de apagar a curva. É uma mudança de balanceamento, não um
+  ajuste, e o número está escrito no teste com o motivo ao lado para ninguém "corrigir" sem
+  ler.
+
+- **A curva de dificuldade passa a ser medida, e não acreditada.** `getRockHp` era um
+  `function` privado e **nenhum teste o chamava**: a curva é a parte do jogo que define se ele
+  é difícil, e era a única que ninguém verificava. Agora é exportada, e
+  `test/curva-dificuldade.test.mjs` afirma as **propriedades** em vez de números soltos: a
+  pedra nunca fica mais leve de uma cave para a seguinte; cada bioma começa mais duro do que o
+  anterior terminou; nenhum nível de picareta é inerte onde a pedra pesa mais de um clique, em
+  toda cave e não só na mais funda; a trivialidade não passa do primeiro bioma; e o esforço
+  total só sobe dentro de um bioma.
+
+  A última afirmação tem uma ressalva que é **desenho**, e ela está escrita no teste: o mapa
+  **reinicia** a cada bioma (a cave 10 é 9x9 e a cave 11 é 6x7, porque cada bioma é um mundo
+  próprio), então o custo total cai na virada. A propriedade é dentro do bioma, que é onde o
+  defeito antigo aparecia de um jeito pior — a rampa usava a cave local do bioma, e por isso o
+  mundo inteiro ficava mais leve a cada virada, e não só o reset do mapa.
+
+  A fórmula antiga foi reintroduzida para conferir que os testes a rejeitam: dois deles falham,
+  e voltando a fórmula nova passam de novo.
+
 - **O controle não jogava o jogo.** O menu principal respondia a teclado e mouse e a mais
   nada: o direcional não movia o foco, o `A` não abria nada em nenhuma tela, e a
   repetição andava dois itens por aperto. Seis defeitos distintos, todos medidos no

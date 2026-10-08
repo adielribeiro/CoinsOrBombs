@@ -385,7 +385,7 @@ export function maxHpDe(vitalityLevel, nivelReliquia = 0) {
  * A picareta começa no 1, e cada melhoria soma 1. Então 9 melhorias levam ao 10.
  * `PICARETA_MAXIMA` é derivado daqui e não escrito, para os dois nunca discordarem.
  */
-export const MELHORIAS_DE_PICARETA = 9;
+export const MELHORIAS_DE_PICARETA = 6;
 
 /**
  * O nível de picareta que um nível de melhoria dá. Base 1, e cada um soma 1.
