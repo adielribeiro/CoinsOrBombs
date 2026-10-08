@@ -369,4 +369,21 @@ export default {
   'settings.pointerLess': 'Less',
   'settings.pointerMore': 'More',
   'settings.pointerPercent': '{valor}%',
+
+  // Expedition challenges
+  "challenge.bag": "Backpack: {n}/{max}. Choose healing, detection or a safe path.",
+  "challenge.bagFull": "Backpack full. Use or sell items to make room. Existing items are kept.",
+  "challenge.cannotPay": "Not enough resources for this optional obstacle. It never consumes your last health point.",
+  "challenge.reinforced": "Reinforced bomb: deals {damage} damage. You can go around this rock.",
+  "challenge.raider": "Raider bomb: 1 damage and 10% of your coins lost (up to 12).",
+  "challenge.erosion": "Wear bomb: 1 damage; the next 3 manually mined rocks take 2 extra hits. Upgrades are kept.",
+  "challenge.wear": "Wear: +2 hits on this rock. {n} affected rocks left.",
+  "challenge.sunstone": "Optional solar vein: 2 extra hits for 3 coins. Activate again to mine.",
+  "challenge.frost": "Optional healing ice: 2 extra hits to restore 1 health. Activate again to mine.",
+  "challenge.ember": "Optional hot vein: costs 1 health and 1 extra hit for 5 coins. Activate again to mine.",
+  "challenge.ruins": "Optional ruin seal: costs 5 coins and 1 extra hit to reveal up to 2 bombs. Activate again to mine.",
+  "challenge.wind": "Optional wind pocket: 2 extra hits to reveal up to 1 bomb. Activate again to mine.",
+  "challenge.crystal": "Optional prism: 3 extra hits to reveal up to 2 bombs. Activate again to mine.",
+  "challenge.completed": "Optional obstacle completed. Benefit applied.",
+  "challenge.guide": "From cave 3, dig to find the exit. Yellow marks indicate special bombs; green marks, optional obstacles. The first activation explains the effect. There is always a bomb-free route.",
 };

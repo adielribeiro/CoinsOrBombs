@@ -374,4 +374,21 @@ export default {
   'settings.pointerLess': 'Menos',
   'settings.pointerMore': 'Más',
   'settings.pointerPercent': '{valor}%',
+
+  // Expedition challenges
+  "challenge.bag": "Mochila: {n}/{max}. Elige curación, detección o camino seguro.",
+  "challenge.bagFull": "Mochila llena. Usa o vende objetos para hacer espacio. Conservas los objetos anteriores.",
+  "challenge.cannotPay": "No tienes recursos suficientes para este obstáculo opcional. Nunca consume tu último punto de vida.",
+  "challenge.reinforced": "Bomba reforzada: causa {damage} de daño. Puedes rodear esta roca.",
+  "challenge.raider": "Bomba saqueadora: 1 de daño y pérdida del 10% de monedas (máximo 12).",
+  "challenge.erosion": "Bomba de desgaste: 1 de daño; las próximas 3 rocas excavadas manualmente requieren 2 golpes extra. Conservas tus mejoras.",
+  "challenge.wear": "Desgaste: +2 golpes en esta roca. Quedan {n} rocas afectadas.",
+  "challenge.sunstone": "Veta solar opcional: 2 golpes extra por 3 monedas. Activa otra vez para excavar.",
+  "challenge.frost": "Hielo curativo opcional: 2 golpes extra para recuperar 1 de vida. Activa otra vez para excavar.",
+  "challenge.ember": "Veta caliente opcional: cuesta 1 de vida y 1 golpe extra por 5 monedas. Activa otra vez para excavar.",
+  "challenge.ruins": "Sello opcional: cuesta 5 monedas y 1 golpe extra para revelar hasta 2 bombas. Activa otra vez para excavar.",
+  "challenge.wind": "Bolsa de viento opcional: 2 golpes extra para revelar hasta 1 bomba. Activa otra vez para excavar.",
+  "challenge.crystal": "Prisma opcional: 3 golpes extra para revelar hasta 2 bombas. Activa otra vez para excavar.",
+  "challenge.completed": "Obstáculo opcional completado. Beneficio aplicado.",
+  "challenge.guide": "Desde la cueva 3, excava para encontrar la salida. Marcas amarillas: bombas especiales; verdes: obstáculos opcionales. La primera activación explica el efecto. Siempre hay una ruta sin bombas.",
 };

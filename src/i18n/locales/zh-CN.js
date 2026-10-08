@@ -371,4 +371,21 @@ export default {
   'settings.pointerLess': '降低',
   'settings.pointerMore': '提高',
   'settings.pointerPercent': '{valor}%',
+
+  // Expedition challenges
+  "challenge.bag": "背包：{n}/{max}。选择治疗、探测或安全路径。",
+  "challenge.bagFull": "背包已满。使用或出售物品来腾出空间。原有物品会保留。",
+  "challenge.cannotPay": "资源不足，无法开采此可选障碍。它不会消耗你的最后一点生命。",
+  "challenge.reinforced": "强化炸弹：造成{damage}点伤害。你可以绕过这块岩石。",
+  "challenge.raider": "掠夺炸弹：1点伤害，并损失10%的金币（最多12枚）。",
+  "challenge.erosion": "磨损炸弹：1点伤害；接下来手动开采的3块岩石各需要额外2次敲击。升级保留。",
+  "challenge.wear": "磨损：这块岩石需额外2次敲击。剩余{n}块受影响岩石。",
+  "challenge.sunstone": "可选太阳矿脉：额外2次敲击换取3枚金币。再次操作开始开采。",
+  "challenge.frost": "可选治疗冰块：额外2次敲击恢复1点生命。再次操作开始开采。",
+  "challenge.ember": "可选炽热矿脉：消耗1点生命并额外敲击1次，获得5枚金币。再次操作开始开采。",
+  "challenge.ruins": "可选遗迹封印：消耗5枚金币并额外敲击1次，揭示最多2个炸弹。再次操作开始开采。",
+  "challenge.wind": "可选风穴：额外2次敲击，揭示最多1个炸弹。再次操作开始开采。",
+  "challenge.crystal": "可选棱镜：额外3次敲击，揭示最多2个炸弹。再次操作开始开采。",
+  "challenge.completed": "可选障碍已完成，效果已应用。",
+  "challenge.guide": "从洞窟3开始，需要挖掘寻找出口。黄色标记表示特殊炸弹，绿色表示可选障碍。首次操作会说明效果。始终存在一条没有炸弹的路线。",
 };

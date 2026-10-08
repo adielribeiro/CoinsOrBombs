@@ -373,4 +373,21 @@ export default {
   'settings.pointerLess': 'Weniger',
   'settings.pointerMore': 'Mehr',
   'settings.pointerPercent': '{valor}%',
+
+  // Expedition challenges
+  "challenge.bag": "Rucksack: {n}/{max}. Wähle Heilung, Ortung oder einen sicheren Weg.",
+  "challenge.bagFull": "Rucksack voll. Benutze oder verkaufe Gegenstände. Vorhandene Gegenstände bleiben erhalten.",
+  "challenge.cannotPay": "Nicht genug Ressourcen für dieses optionale Hindernis. Es verbraucht nie deinen letzten Lebenspunkt.",
+  "challenge.reinforced": "Verstärkte Bombe: {damage} Schaden. Du kannst diesen Felsen umgehen.",
+  "challenge.raider": "Plünderbombe: 1 Schaden und Verlust von 10 % der Münzen (höchstens 12).",
+  "challenge.erosion": "Verschleißbombe: 1 Schaden; die nächsten 3 manuell abgebauten Felsen brauchen 2 zusätzliche Schläge. Verbesserungen bleiben erhalten.",
+  "challenge.wear": "Verschleiß: +2 Schläge für diesen Felsen. Noch {n} betroffene Felsen.",
+  "challenge.sunstone": "Optionale Sonnenader: 2 zusätzliche Schläge für 3 Münzen. Zum Abbauen erneut aktivieren.",
+  "challenge.frost": "Optionales Heileis: 2 zusätzliche Schläge für 1 Lebenspunkt. Zum Abbauen erneut aktivieren.",
+  "challenge.ember": "Optionale heiße Ader: kostet 1 Lebenspunkt und 1 zusätzlichen Schlag für 5 Münzen. Zum Abbauen erneut aktivieren.",
+  "challenge.ruins": "Optionales Siegel: kostet 5 Münzen und 1 zusätzlichen Schlag, um bis zu 2 Bomben aufzudecken. Zum Abbauen erneut aktivieren.",
+  "challenge.wind": "Optionale Windtasche: 2 zusätzliche Schläge decken bis zu 1 Bombe auf. Zum Abbauen erneut aktivieren.",
+  "challenge.crystal": "Optionales Prisma: 3 zusätzliche Schläge decken bis zu 2 Bomben auf. Zum Abbauen erneut aktivieren.",
+  "challenge.completed": "Optionales Hindernis abgeschlossen. Vorteil angewendet.",
+  "challenge.guide": "Ab Höhle 3 musst du den Ausgang freigraben. Gelbe Markierungen: Spezialbomben; grüne: optionale Hindernisse. Die erste Aktivierung erklärt den Effekt. Es gibt immer einen bombenfreien Weg.",
 };

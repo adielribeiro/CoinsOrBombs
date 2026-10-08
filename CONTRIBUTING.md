@@ -26,11 +26,12 @@ Requer **Node 20.19+** (ou 22+). O `npm run dev` sobe em `http://localhost:5173`
 ## Testes
 
 Não existe framework: os testes usam o `node:test` nativo e ficam em `test/`.
-Eles cobrem os invariantes que quebram de formas silenciosas — hoje, o mais
-importante é **toda cave gerada tem a saída quebrável a partir da entrada**.
-Esse invariante já falhou: o gerador protegia os quatro lados da saída para
-mantê-la escondida, o que em ~93% dos mapas deixava a saída cercada por rocha
-que não era fronteira, produzindo runs sem solução.
+Eles cobrem os invariantes que quebram de formas silenciosas: saves, controles,
+relíquias, melhorias e geração do mapa. Toda cave deve ter uma **rota escavável sem
+bombas**, com cada rocha acessível após a anterior ser quebrada. Somente as caves
+1 e 2 mantêm o corredor inicialmente aberto. Exigir saída acessível antes de
+escavar, nas demais caves, elimina a exploração em vez de garantir solvabilidade.
+Os obstáculos opcionais nunca ocupam a rota segura.
 
 Ao mexer em `mapGenerator.js`, rode `npm test`.
 

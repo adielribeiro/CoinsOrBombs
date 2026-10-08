@@ -61,11 +61,21 @@ function exitIsBreakable(map) {
   );
 }
 
-test('toda cave gerada tem a saída quebrável a partir da entrada', () => {
+test('toda cave gerada pode ser escavada até a saída sem dano obrigatório', () => {
   for (let cave = 1; cave <= TOTAL_CAVES; cave += 1) {
     for (let attempt = 0; attempt < SAMPLES_PER_CAVE; attempt += 1) {
       const map = generateMap(cave, 1, 0);
 
+      const route = findSafeRoute(map);
+      assert.ok(route, `cave ${cave}: sem rota segura`);
+      for (const step of route.slice(1)) {
+        const tile = map.tiles[step.row][step.col];
+        if (tile.type !== 'rock') continue;
+        assert.ok(isFrontierRock(map, map.entry, tile), `cave ${cave}: rota não escavável`);
+        assert.equal(tile.hiddenContent === 'bomb', false);
+        assert.equal(tile.environment, undefined, 'obstáculo com custo na rota obrigatória');
+        tile.type = 'floor';
+      }
       assert.ok(
         exitIsBreakable(map),
         `cave ${cave} (${getBiomeProgress(cave).label}) gerou saida inalcancavel na tentativa ${attempt}`
@@ -156,13 +166,14 @@ test('a entrada é sempre um tile aberto e único', () => {
   }
 });
 
-test('a rocha da saída é fronteira quebrável, nunca um tile vazio', () => {
+test('a saída está escondida em rocha; o tutorial mantém o corredor aberto', () => {
   for (let cave = 1; cave <= TOTAL_CAVES; cave += 1) {
     const map = generateMap(cave, 1, 0);
     const exitTile = map.tiles[map.exit.row][map.exit.col];
 
     assert.equal(exitTile.type, 'rock', `cave ${cave}: a saida deveria estar escondida em rocha`);
     assert.equal(exitTile.isHiddenExit, true);
+    if (cave > 2) continue;
     assert.ok(
       isFrontierRock(map, map.entry, exitTile),
       `cave ${cave}: a saida nao e fronteira da area aberta`

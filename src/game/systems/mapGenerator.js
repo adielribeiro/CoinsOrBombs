@@ -1,3 +1,4 @@
+import { decorateChallenges } from '../challenges.js';
 import { BIOMES, createRelicContent, getBiomeForCave, getBiomeProgress } from '../progression.js';
 import { getRockVariantCount } from '../rocks.js';
 import { findSafeRoute, getNeighbors4, getNeighbors8 } from './helpers.js';
@@ -593,7 +594,9 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0, reliquiasResta
     localCave
   };
 
-  ensureExitReachable(mapData);
+  // Nas duas caves de aprendizado, mantenha o corredor aberto. Depois basta
+  // uma rota ESCAVÁVEL: isFrontierRock permite avançar a cada pedra quebrada.
+  if (cave <= 2) ensureExitReachable(mapData);
   ensureSafeRoute(mapData);
 
   // A relíquia é posicionada **por último**, depois das duas garantias acima. Isso não é
@@ -606,6 +609,7 @@ export function generateMap(cave, pickaxePower = 1, coinLuck = 0, reliquiasResta
   // pedra que a garantia abrisse. Com "toda cave tem relíquia" vira caso comum, e o
   // resultado é a pessoa numa cave de 3 relíquias que só consegue achar 2.
   posicionaReliquias(mapData, biome.relicId, reliquiasRestantes);
+  decorateChallenges(mapData, cave, findSafeRoute(mapData));
 
   return mapData;
 }

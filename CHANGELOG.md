@@ -7,6 +7,15 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- Progressão de exploração a partir da cave 3, mantendo uma rota escavável sem bombas.
+- Bombas especiais sinalizadas: saqueadora, desgaste temporário e reforçada.
+- Um possível obstáculo opcional por cave, com custo/benefício próprio do bioma.
+- Mochila de oito utilitários, preservando excedentes de saves antigos.
+- Testes das regras e dos métodos reais da cena para custos, dano e preservação de recursos.
+- Detalhes, curva e limitações em `docs/gameplay-balance.md`.
+- Descrições das cartas de moedas e quebra corrigidas para a chance real (10% por nível).
+
+
 - **As relíquias deixaram de ser colecionáveis e viraram moeda de progressão.** Antes
   elas respondiam "qual relíquia a pessoa já achou?" — a tela de Informações mostra
   "x3 Âmbar" — e não "quantas eu tenho para gastar?". Agora existe um saldo, e ele

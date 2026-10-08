@@ -1,3 +1,4 @@
+import { UTILITY_CAPACITY, hasUtilitySpace, utilityCount } from './game/challenges.js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createGame } from './game/createGame.js';
 import { duracaoDaCarta } from './game/cartaFinal.js';
@@ -767,7 +768,7 @@ export default function App() {
   useEffect(() => {
     if (!toast) return undefined;
 
-    const timer = window.setTimeout(() => setToast(null), 2600);
+    const timer = window.setTimeout(() => setToast(null), Math.max(2600, Math.min(9000, toast.text.length * 45)));
     return () => window.clearTimeout(timer);
   }, [toast]);
 
@@ -1715,7 +1716,7 @@ export default function App() {
     const baseState = stateRef.current;
 
     if (!baseState.inLobby) return;
-    if (baseState.coins < utility.cost) return;
+    if (baseState.coins < utility.cost || !hasUtilitySpace(baseState.utilities)) return;
 
     const nextState = normalizeProgressState({
       ...baseState,
@@ -3281,11 +3282,11 @@ export default function App() {
           </div>
         )}
 
-        /* A loja abre na derrota também.
+        {/* A loja abre na derrota também.
 
      Sem esta guarda o modal nunca aparecia depois de morrer, e o botão que o abre só
      existia na vitória — os dois tinham de mudar juntos, e é por isso que a guarda
-     mora aqui e não dentro do botão. */
+     mora aqui e não dentro do botão. */}
 {showLobby && showUtilityShopModal && (
           <div className="utility-shop-modal-overlay" data-tela="utilitaria" onClick={() => setShowUtilityShopModal(false)}>
             <div className="utility-shop-modal" onClick={(event) => event.stopPropagation()}>
@@ -3293,6 +3294,8 @@ export default function App() {
                 <div>
                   <h2>{t('shop.title')}</h2>
                   <p>{t('shop.subtitle')}</p>
+                  <p>{t('challenge.guide')}</p>
+                  <p>{t('challenge.bag', { n: utilityCount(gameState.utilities), max: UTILITY_CAPACITY })}</p>
                 </div>
 
                 <button
@@ -3306,7 +3309,8 @@ export default function App() {
 
               <div className="utility-shop-line">
                 {utilityCatalog.map((utility) => {
-                  const canBuy = gameState.coins >= utility.cost;
+                  const hasSpace = hasUtilitySpace(gameState.utilities);
+                  const canBuy = hasSpace && gameState.coins >= utility.cost;
                   const owned = gameState.utilities?.[utility.id] ?? 0;
 
                   return (
@@ -3333,7 +3337,7 @@ export default function App() {
 
                         {!canBuy && (
                           <small className="shop-buy-note">
-                            {t('shop.missing', { n: utility.cost - gameState.coins })}
+                            {!hasSpace ? t('challenge.bagFull') : t('shop.missing', { n: utility.cost - gameState.coins })}
                           </small>
                         )}
 

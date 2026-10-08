@@ -89,6 +89,8 @@ async function varre(diretorio) {
     if (IGNORAR.has(entrada)) continue;
 
     const caminho = join(diretorio, entrada);
+    // Bundle gerado contém os dicionários traduzidos, não código-fonte autoral.
+    if (relative(raiz, caminho).replace(/\\/g, "/") === "docs/game") continue;
     const info = await stat(caminho);
 
     if (info.isDirectory()) {

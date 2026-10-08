@@ -372,4 +372,21 @@ export default {
   'settings.pointerLess': '遅く',
   'settings.pointerMore': '速く',
   'settings.pointerPercent': '{valor}%',
+
+  // Expedition challenges
+  "challenge.bag": "バッグ：{n}/{max}。回復・探知・安全な道から選ぼう。",
+  "challenge.bagFull": "バッグがいっぱいです。アイテムを使うか売って空きを作ってください。以前のアイテムは保持されます。",
+  "challenge.cannotPay": "この任意の障害物に必要な資源が足りません。最後のライフは消費されません。",
+  "challenge.reinforced": "強化爆弾：{damage}ダメージ。この岩は迂回できます。",
+  "challenge.raider": "略奪爆弾：1ダメージとコインの10%（最大12枚）を失います。",
+  "challenge.erosion": "摩耗爆弾：1ダメージ。次に手動で掘る岩3個には追加で2打が必要です。強化は保持されます。",
+  "challenge.wear": "摩耗：この岩は追加で2打。残り{n}個。",
+  "challenge.sunstone": "任意の太陽鉱脈：追加で2打、コイン3枚。もう一度操作すると採掘します。",
+  "challenge.frost": "任意の回復氷：追加で2打、ライフ1回復。もう一度操作すると採掘します。",
+  "challenge.ember": "任意の高温鉱脈：ライフ1と追加の1打でコイン5枚。もう一度操作すると採掘します。",
+  "challenge.ruins": "任意の遺跡の封印：コイン5枚と追加の1打で爆弾を最大2個発見。もう一度操作すると採掘します。",
+  "challenge.wind": "任意の風だまり：追加で2打、爆弾を最大1個発見。もう一度操作すると採掘します。",
+  "challenge.crystal": "任意のプリズム：追加で3打、爆弾を最大2個発見。もう一度操作すると採掘します。",
+  "challenge.completed": "任意の障害物を完了。効果が適用されました。",
+  "challenge.guide": "洞窟3からは掘って出口を探します。黄色の印は特殊爆弾、緑色は任意の障害物です。最初の操作で効果を説明します。爆弾のない道が必ずあります。",
 };

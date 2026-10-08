@@ -391,4 +391,21 @@ export default {
   'settings.pointerLess': 'Mniej',
   'settings.pointerMore': 'Więcej',
   'settings.pointerPercent': '{valor}%',
+
+  // Expedition challenges
+  "challenge.bag": "Plecak: {n}/{max}. Wybierz leczenie, wykrywanie lub bezpieczną drogę.",
+  "challenge.bagFull": "Plecak pełny. Użyj lub sprzedaj przedmioty. Wcześniejsze przedmioty pozostają.",
+  "challenge.cannotPay": "Za mało zasobów na tę opcjonalną przeszkodę. Nigdy nie zużywa ostatniego punktu życia.",
+  "challenge.reinforced": "Wzmocniona bomba: zadaje {damage} obrażeń. Możesz ominąć tę skałę.",
+  "challenge.raider": "Bomba rabunkowa: 1 obrażenie i utrata 10% monet (maksymalnie 12).",
+  "challenge.erosion": "Bomba zużycia: 1 obrażenie; kolejne 3 ręcznie rozbijane skały wymagają 2 dodatkowych uderzeń. Ulepszenia pozostają.",
+  "challenge.wear": "Zużycie: +2 uderzenia w tę skałę. Pozostałe skały: {n}.",
+  "challenge.sunstone": "Opcjonalna słoneczna żyła: 2 dodatkowe uderzenia za 3 monety. Aktywuj ponownie, aby kopać.",
+  "challenge.frost": "Opcjonalny leczniczy lód: 2 dodatkowe uderzenia przywracają 1 punkt życia. Aktywuj ponownie, aby kopać.",
+  "challenge.ember": "Opcjonalna gorąca żyła: koszt 1 życia i 1 dodatkowego uderzenia za 5 monet. Aktywuj ponownie, aby kopać.",
+  "challenge.ruins": "Opcjonalna pieczęć: koszt 5 monet i 1 dodatkowego uderzenia za ujawnienie do 2 bomb. Aktywuj ponownie, aby kopać.",
+  "challenge.wind": "Opcjonalna kieszeń wiatru: 2 dodatkowe uderzenia ujawniają do 1 bomby. Aktywuj ponownie, aby kopać.",
+  "challenge.crystal": "Opcjonalny pryzmat: 3 dodatkowe uderzenia ujawniają do 2 bomb. Aktywuj ponownie, aby kopać.",
+  "challenge.completed": "Opcjonalna przeszkoda ukończona. Korzyść przyznana.",
+  "challenge.guide": "Od jaskini 3 kop, by znaleźć wyjście. Żółte znaki: specjalne bomby; zielone: opcjonalne przeszkody. Pierwsza aktywacja wyjaśnia efekt. Zawsze istnieje droga bez bomb.",
 };

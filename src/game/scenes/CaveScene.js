@@ -1,3 +1,4 @@
+import { ENVIRONMENTS, applyEnvironmentReward, bombEffect, bombMarker, canExcavateEnvironment, hasUtilitySpace } from '../challenges.js';
 import Phaser from 'phaser';
 import {
   BASE_TILE_HEIGHT,
@@ -785,6 +786,7 @@ export class CaveScene extends Phaser.Scene {
       registroDaCave(registro, this.metaState.cave)
     );
 
+    this.wornRocks = 0;
     this.mapData = generateMap(
       this.metaState.cave,
       this.metaState.pickaxePower,
@@ -1454,6 +1456,11 @@ export class CaveScene extends Phaser.Scene {
       }
     });
 
+    // Marcadores por último: rochas na frente não podem ocultar um aviso de risco.
+    for (const { row, col } of drawOrder) {
+      const tile = this.mapData.tiles[row][col];
+      if (tile.type === 'rock') this.renderChallengeMark(tile, toIso(col, row, originX, originY, tileWidth, tileHeight));
+    }
     this.publishSceneState();
   }
 
@@ -1623,6 +1630,17 @@ export class CaveScene extends Phaser.Scene {
     tile.exitLadderSprite = ladder;
     tile.exitGlowSprite = glow;
     tile.exitMarkerSprite = marker;
+  }
+
+  renderChallengeMark(tile, point) {
+    const marker = tile.environment ? ENVIRONMENTS[tile.environment].marker
+      : bombMarker(tile.bombVariant, this.metaState.cave);
+    if (!marker || this.attractMode) return;
+    tile.challengeMarker = this.add.text(point.x, point.y - this.renderMetrics.tileHeight * 0.8, marker, {
+      fontSize: this.getMarkerFontSize(16), color: tile.environment ? '#aaffda' : '#ffdb85',
+      backgroundColor: '#17202b', fontStyle: 'bold', padding: { x: 3, y: 2 }
+    }).setOrigin(0.5);
+    this.objectLayer.add(tile.challengeMarker);
   }
 
   attachRockHover(rock, tile) {
@@ -1904,6 +1922,29 @@ export class CaveScene extends Phaser.Scene {
   }
 
   damageRock(tile, isBonus = false) {
+    // Bônus automáticos não aceitam custos ou perigos opcionais pelo jogador.
+    if (isBonus && (tile.environment || bombMarker(tile.bombVariant, this.metaState.cave))) return;
+    if (!tile.challengeAcknowledged && (tile.environment || bombMarker(tile.bombVariant, this.metaState.cave))) {
+      tile.challengeAcknowledged = true;
+      const effect = bombEffect(tile.bombVariant, this.metaState.cave, this.metaState.coins);
+      this.notify(tile.environment ? t(`challenge.${tile.environment}`)
+        : t(`challenge.${tile.bombVariant}`, { damage: effect.damage }));
+      return;
+    }
+    if (tile.environment && !canExcavateEnvironment(tile.environment, this.metaState)) {
+      this.notify(t('challenge.cannotPay'));
+      return;
+    }
+    if (ENVIRONMENTS[tile.environment]?.reveal && this.findHiddenBombTiles(1).length === 0) {
+      this.notify(t('msg.noBombsLeft'));
+      return;
+    }
+    if (!isBonus && this.wornRocks > 0 && !tile.wearApplied) {
+      tile.wearApplied = true;
+      tile.hp += 2;
+      this.wornRocks -= 1;
+      this.notify(t('challenge.wear', { n: this.wornRocks }));
+    }
     tile.hp -= 1;
 
     if (tile.hp > 0) {
@@ -2005,6 +2046,8 @@ export class CaveScene extends Phaser.Scene {
     tile.type = revealedHiddenExit ? 'exit' : 'floor';
     tile.walkable = true;
     tile.revealed = true;
+    tile.challengeMarker?.destroy();
+    tile.challengeMarker = null;
     tile.utilityRevealBomb = false;
     tile.hiddenContent = 'empty';
     tile.hp = 0;
@@ -2110,7 +2153,13 @@ export class CaveScene extends Phaser.Scene {
     } else if (revealedContent === 'bomb') {
       this.metaState.bombs += 1;
       this.metaState.bombsRemaining = Math.max(0, (this.metaState.bombsRemaining ?? 0) - 1);
-      this.metaState.hp -= 1;
+      const effect = bombEffect(tile.bombVariant, this.metaState.cave, this.metaState.coins);
+      this.metaState.hp = Math.max(0, this.metaState.hp - effect.damage);
+      this.metaState.coins = Math.max(0, this.metaState.coins - effect.coinsLost);
+      this.wornRocks = Math.max(this.wornRocks ?? 0, effect.wornRocks);
+      if (tile.bombVariant && tile.bombVariant !== 'normal') {
+        this.notify(t(`challenge.${tile.bombVariant}`, { damage: effect.damage }));
+      }
 
       const bomb = this.add.image(rewardPos.x, rewardPos.y - tileHeight * 0.68, 'bomb').setDisplaySize(
         Math.max(26, tileWidth * 0.42),
@@ -2153,6 +2202,17 @@ export class CaveScene extends Phaser.Scene {
       message = t(isBonus ? 'msg.exitBonus' : 'msg.exitHidden');
     } else {
       message = t(isBonus ? 'msg.emptyBonus' : 'msg.empty');
+    }
+
+    if (tile.environment) {
+      this.metaState = applyEnvironmentReward(tile.environment, this.metaState);
+      const revealCount = ENVIRONMENTS[tile.environment].reveal ?? 0;
+      const bombs = revealCount > 0 ? this.findHiddenBombTiles(revealCount) : [];
+      for (const target of bombs) {
+        target.utilityRevealBomb = true;
+        target.rockSprite?.setTexture('bomb');
+      }
+      this.notify(t('challenge.completed'));
     }
 
     const utilityFound = this.tryCollectRandomUtility(rewardPos);
@@ -2201,7 +2261,7 @@ export class CaveScene extends Phaser.Scene {
         .map((neighbor) => this.mapData.tiles[neighbor.row][neighbor.col])
         .filter((candidate) => {
           const key = `${candidate.col},${candidate.row}`;
-          return candidate.type === 'rock' && isFrontierRock(this.mapData, this.mapData.entry, candidate) && !visited.has(key);
+          return candidate.type === 'rock' && !candidate.environment && !bombMarker(candidate.bombVariant, this.metaState.cave) && isFrontierRock(this.mapData, this.mapData.entry, candidate) && !visited.has(key);
         });
 
       Phaser.Utils.Array.Shuffle(neighbors);
@@ -2353,6 +2413,7 @@ export class CaveScene extends Phaser.Scene {
   }
 
   tryCollectRandomUtility(rewardPos = null) {
+    if (!hasUtilitySpace(this.metaState.utilities)) return null;
     const chance = this.metaState.utilityDropChance ?? 0;
 
     if (chance <= 0 || Math.random() >= chance) {
@@ -2535,7 +2596,7 @@ export class CaveScene extends Phaser.Scene {
       for (let col = 0; col < this.mapData.width; col += 1) {
         const tile = this.mapData.tiles[row][col];
 
-        if (tile.type === 'rock' && tile.hiddenContent === 'bomb' && !tile.utilityRevealBomb) {
+        if (tile.type === 'rock' && tile.hiddenContent === 'bomb' && !tile.utilityRevealBomb && !bombMarker(tile.bombVariant, this.metaState.cave)) {
           candidates.push(tile);
         }
       }

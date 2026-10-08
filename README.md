@@ -24,6 +24,23 @@ relíquia, uma bomba ou a saída da caverna.
 
 ![Gameplay](docs/assets/gameplay.jpg)
 
+## Desafios de exploração
+
+A partir da cave 3, a saída exige escavação. Sempre existe uma rota sem bombas;
+as duas primeiras caves mantêm um corredor aberto para aprendizado.
+
+- Marcas amarelas indicam bombas especiais: `!$` saqueia até 12 moedas (10%),
+  `!⛏` exige dois golpes extras nas próximas três rochas manuais e `!2`/`!3`
+  causa dois/três pontos de dano. Saque e desgaste também causam um de dano.
+- Marcas verdes indicam um obstáculo opcional próprio do bioma. O primeiro
+  toque explica custos e benefícios, sem escavar. Você pode seguir outro caminho.
+- A mochila tem oito espaços compartilhados entre utilitários. Saves antigos
+  preservam inventários maiores; use ou venda itens antes de adquirir outros.
+- Relíquias e melhorias adquiridas são preservadas. Efeitos de desgaste acabam
+  após três rochas ou ao trocar de cave. A quebra bônus não aciona desafios opcionais.
+
+Veja a curva, custos e limites em [Balanceamento da exploração](docs/gameplay-balance.md).
+
 ## O que é
 
 Um jogo de **exposição e risco**, na pegada de minesweeper mas em 3D isométrico.

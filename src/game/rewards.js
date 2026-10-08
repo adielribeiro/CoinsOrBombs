@@ -123,7 +123,7 @@ export function buildRewardCatalog(state, t) {
       // `count` é a QUANTIDADE e `chance` é a probabilidade. A plural tem que
       // seguir a quantidade: mandar `chance` no lugar trocaria "+2 moedas" por
       // "+20 moedas" no polonês, porque 20 é uma categoria diferente de 2.
-      description: t('reward.coins.description', { chance: nextCoins * 1, count: nextCoins }),
+      description: t('reward.coins.description', { chance: nextCoins * 10, count: nextCoins }),
       apply: (currentState) => ({
         ...currentState,
         coinBonusLevel: nextCoins,
@@ -141,7 +141,7 @@ export function buildRewardCatalog(state, t) {
       /** Os campos de melhoria que esta carta mexe. Ver `fixarMelhoriaEscolhida`. */
       campos: ['rockBonusLevel', 'rockBonusChance', 'rockBonusAmount'],
       name: t('reward.rocks.name', { tier: tierLabel(nextRocks) }),
-      description: t('reward.rocks.description', { chance: nextRocks * 1, count: nextRocks }),
+      description: t('reward.rocks.description', { chance: nextRocks * 10, count: nextRocks }),
       apply: (currentState) => ({
         ...currentState,
         rockBonusLevel: nextRocks,

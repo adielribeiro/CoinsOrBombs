@@ -139,7 +139,7 @@ test('cada nivel a mais tira um clique da rocha mais profunda', () => {
   // HUD. A pedra mais difícil do jogo é a da cave 60 com a picareta mais fraca; o
   // teste compara essa pedra com a picareta no máximo.
   const hp = (cave, forca) =>
-    generateMap(cave, forca).tiles.flat().find((t) => t.type === 'rock')?.hp;
+    generateMap(cave, forca).tiles.flat().find((t) => t.type === 'rock' && !t.environment)?.hp;
 
   const forte = hp(60, PICARETA_MAXIMA);
   const fraco = hp(60, 1);
@@ -156,7 +156,7 @@ test('nenhum nivel da picareta e inerte na cave mais funda', () => {
   // jogo. Aqui cada degrau da escala tem de valer exatamente um clique lá no fundo,
   // onde é que a picareta é testada de verdade.
   const hpNa = (forca) =>
-    generateMap(60, forca).tiles.flat().find((t) => t.type === 'rock')?.hp;
+    generateMap(60, forca).tiles.flat().find((t) => t.type === 'rock' && !t.environment)?.hp;
 
   for (let forca = 1; forca < PICARETA_MAXIMA; forca += 1) {
     assert.equal(
@@ -172,7 +172,7 @@ test('mesmo na primeira caverna, a picareta maxima ainda vale alguma coisa', () 
   // isso que o teste de "cada nível vale um clique" roda na cave 60. Aqui está a
   // confirmação de que o teto não inverte o jogo: ele nunca piora a pedra.
   const hpNaPrimeira = (forca) =>
-    generateMap(1, forca).tiles.flat().find((t) => t.type === 'rock')?.hp;
+    generateMap(1, forca).tiles.flat().find((t) => t.type === 'rock' && !t.environment)?.hp;
 
   const fraco = hpNaPrimeira(1);
   const forte = hpNaPrimeira(PICARETA_MAXIMA);

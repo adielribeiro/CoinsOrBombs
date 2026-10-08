@@ -373,4 +373,21 @@ export default {
   'settings.pointerLess': 'Meno',
   'settings.pointerMore': 'Più',
   'settings.pointerPercent': '{valor}%',
+
+  // Expedition challenges
+  "challenge.bag": "Zaino: {n}/{max}. Scegli cure, rilevamento o percorso sicuro.",
+  "challenge.bagFull": "Zaino pieno. Usa o vendi oggetti. Gli oggetti precedenti vengono conservati.",
+  "challenge.cannotPay": "Risorse insufficienti per questo ostacolo facoltativo. Non consuma mai il tuo ultimo punto vita.",
+  "challenge.reinforced": "Bomba rinforzata: infligge {damage} danni. Puoi aggirare questa roccia.",
+  "challenge.raider": "Bomba predona: 1 danno e perdita del 10% delle monete (massimo 12).",
+  "challenge.erosion": "Bomba usurante: 1 danno; le prossime 3 rocce scavate manualmente richiedono 2 colpi extra. I miglioramenti restano.",
+  "challenge.wear": "Usura: +2 colpi su questa roccia. Restano {n} rocce interessate.",
+  "challenge.sunstone": "Vena solare facoltativa: 2 colpi extra per 3 monete. Attiva di nuovo per scavare.",
+  "challenge.frost": "Ghiaccio curativo facoltativo: 2 colpi extra per recuperare 1 vita. Attiva di nuovo per scavare.",
+  "challenge.ember": "Vena calda facoltativa: costa 1 vita e 1 colpo extra per 5 monete. Attiva di nuovo per scavare.",
+  "challenge.ruins": "Sigillo facoltativo: costa 5 monete e 1 colpo extra per rivelare fino a 2 bombe. Attiva di nuovo per scavare.",
+  "challenge.wind": "Sacca di vento facoltativa: 2 colpi extra per rivelare fino a 1 bomba. Attiva di nuovo per scavare.",
+  "challenge.crystal": "Prisma facoltativo: 3 colpi extra per rivelare fino a 2 bombe. Attiva di nuovo per scavare.",
+  "challenge.completed": "Ostacolo facoltativo completato. Beneficio applicato.",
+  "challenge.guide": "Dalla grotta 3, scava per trovare l’uscita. Segni gialli: bombe speciali; verdi: ostacoli facoltativi. La prima attivazione spiega l’effetto. Esiste sempre un percorso senza bombe.",
 };

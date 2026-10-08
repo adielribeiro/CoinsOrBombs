@@ -374,4 +374,21 @@ export default {
   'settings.pointerLess': 'Moins',
   'settings.pointerMore': 'Plus',
   'settings.pointerPercent': '{valor}%',
+
+  // Expedition challenges
+  "challenge.bag": "Sac : {n}/{max}. Choisissez soins, détection ou chemin sûr.",
+  "challenge.bagFull": "Sac plein. Utilisez ou vendez des objets. Les anciens objets sont conservés.",
+  "challenge.cannotPay": "Ressources insuffisantes pour cet obstacle facultatif. Il ne consomme jamais votre dernier point de vie.",
+  "challenge.reinforced": "Bombe renforcée : {damage} dégâts. Vous pouvez contourner ce rocher.",
+  "challenge.raider": "Bombe pillarde : 1 dégât et perte de 10 % des pièces (12 maximum).",
+  "challenge.erosion": "Bombe d’usure : 1 dégât ; les 3 prochains rochers creusés manuellement demandent 2 coups de plus. Les améliorations sont conservées.",
+  "challenge.wear": "Usure : +2 coups sur ce rocher. Encore {n} rochers affectés.",
+  "challenge.sunstone": "Filon solaire facultatif : 2 coups de plus pour 3 pièces. Activez à nouveau pour creuser.",
+  "challenge.frost": "Glace curative facultative : 2 coups de plus pour récupérer 1 vie. Activez à nouveau pour creuser.",
+  "challenge.ember": "Filon brûlant facultatif : 1 vie et 1 coup de plus pour 5 pièces. Activez à nouveau pour creuser.",
+  "challenge.ruins": "Sceau facultatif : 5 pièces et 1 coup de plus pour révéler jusqu’à 2 bombes. Activez à nouveau pour creuser.",
+  "challenge.wind": "Poche de vent facultative : 2 coups de plus pour révéler jusqu’à 1 bombe. Activez à nouveau pour creuser.",
+  "challenge.crystal": "Prisme facultatif : 3 coups de plus pour révéler jusqu’à 2 bombes. Activez à nouveau pour creuser.",
+  "challenge.completed": "Obstacle facultatif terminé. Avantage appliqué.",
+  "challenge.guide": "Dès la grotte 3, creusez pour trouver la sortie. Marques jaunes : bombes spéciales ; vertes : obstacles facultatifs. La première activation explique l’effet. Un chemin sans bombes existe toujours.",
 };
