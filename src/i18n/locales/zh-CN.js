@@ -236,7 +236,7 @@ export default {
   'reward.utility.name': '道具 {tier}',
   'reward.utility.description': '{chance}% 的概率在敲碎岩石时获得 1 件随机道具。',
   'reward.bomb.name': '炸弹 {tier}',
-  'reward.bomb.description': '{chance}% 的概率在敲碎岩石时揭示 1 枚随机炸弹。',
+  'reward.bomb.description': '{chance}% 的概率在击碎岩石时揭示一枚随机炸弹 —— 每次揭示需要 {cost} 枚金币。',
 
   // --- 内容：Biome --------------------------------------------------------------------------
   'biome.sunstone.name': '阳石矿坑',
@@ -302,7 +302,7 @@ export default {
   'msg.empty': '只有石头和灰尘……继续挖吧。',
   'msg.exitBonus': '额外敲碎！你找到了隐藏出口。点一下洞口，决定要不要出去。',
   'msg.exitHidden': '你找到了这个 Cave 的隐藏出口。点一下洞口，决定要不要出去。',
-  'msg.bombRevealed': '地图上揭示了一枚隐藏的炸弹。',
+  'msg.bombRevealed': '地图上揭示了一枚隐藏的炸弹。（−{cost} 枚金币）',
 
   // --- 道具消息 ---------------------------------------------------------------------------
   'msg.utilityReward': '+1 道具',

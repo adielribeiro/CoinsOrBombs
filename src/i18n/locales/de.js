@@ -236,7 +236,7 @@ export default {
     '{chance}% Chance, beim Brechen eines Felsens ein zufälliges Hilfsmittel zu finden.',
   'reward.bomb.name': 'Bomben {tier}',
   'reward.bomb.description':
-    '{chance}% Chance, beim Brechen eines Felsens eine zufällige Bombe aufzudecken.',
+    '{chance}% Chance, beim Brechen eines Felsens eine zufällige Bombe aufzudecken — jede Aufdeckung kostet {cost} Münzen.',
 
   // --- Inhalt: Biome --------------------------------------------------------
   'biome.sunstone.name': 'Sonnstein-Mine',
@@ -304,7 +304,7 @@ export default {
   'msg.empty': 'Nur Stein und Staub... grab weiter.',
   'msg.exitBonus': 'Bonusbruch! Du hast den versteckten Ausgang gefunden. Klicke auf das Loch, um zu entscheiden, ob du hinausgehst.',
   'msg.exitHidden': 'Du hast den versteckten Ausgang dieser Höhle gefunden. Klicke auf das Loch, um zu entscheiden, ob du hinausgehst.',
-  'msg.bombRevealed': 'Eine versteckte Bombe wurde auf der Karte aufgedeckt.',
+  'msg.bombRevealed': 'Eine versteckte Bombe wurde auf der Karte aufgedeckt. (−{cost} Münzen)',
 
   // --- Meldungen zu Hilfsmitteln ----------------------------------------------------
   'msg.utilityReward': '+1 Hilfsmittel',

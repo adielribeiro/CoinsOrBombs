@@ -237,7 +237,7 @@ export default {
     '{chance}% de chance de ramasser un utilitaire aléatoire en brisant un rocher.',
   'reward.bomb.name': 'Bombes {tier}',
   'reward.bomb.description':
-    '{chance}% de chance de révéler une bombe aléatoire en brisant un rocher.',
+    '{chance}% de chance de révéler une bombe aléatoire en brisant un rocher : chaque révélation coûte {cost} pièces.',
 
   // --- contenu : biomes ------------------------------------------------------
   'biome.sunstone.name': 'Mine de Pierre de Soleil',
@@ -305,7 +305,7 @@ export default {
   'msg.empty': 'Rien que de la pierre et de la poussière... continuez à creuser.',
   'msg.exitBonus': 'Casse bonus ! Vous avez trouvé la sortie cachée. Cliquez sur le trou pour décider de sortir.',
   'msg.exitHidden': 'Vous avez trouvé la sortie cachée de cette grotte. Cliquez sur le trou pour décider de sortir.',
-  'msg.bombRevealed': 'Une bombe cachée a été révélée sur la carte.',
+  'msg.bombRevealed': 'Une bombe cachée a été révélée sur la carte. (−{cost} pièces)',
 
   // --- messages d’utilitaire ------------------------------------------------------
   'msg.utilityReward': '+1 utilitaire',

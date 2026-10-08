@@ -236,7 +236,7 @@ export default {
   'reward.utility.name': 'アイテム {tier}',
   'reward.utility.description': '岩を叩いたときランダムなアイテムが手に入る確率 {chance}%。',
   'reward.bomb.name': '爆弾 {tier}',
-  'reward.bomb.description': '岩を叩いたときランダムな爆弾が1つ見つかる確率 {chance}%。',
+  'reward.bomb.description': '{chance}% の確率で、岩を壊したときにランダムな爆弾が1つ公開されます。公開のたびに{cost}枚のコインが必要です。',
 
   // --- 内容：Biome ------------------------------------------------------------------------------
   'biome.sunstone.name': 'サンストーン鉱山',
@@ -303,7 +303,7 @@ export default {
   'msg.empty': '石と埃だけだ……掘り進めろ。',
   'msg.exitBonus': 'ボーナス打ち！隠れた出口を見つけた。穴をクリックして出るか決めよう。',
   'msg.exitHidden': 'この Cave の隠れた出口を見つけた。穴をクリックして出るか決めよう。',
-  'msg.bombRevealed': '地図で隠された爆弾が1つ見つかった。',
+  'msg.bombRevealed': '隠されていた爆弾が地図で公開されました。（−{cost}枚のコイン）',
 
   // --- アイテムのメッセージ ------------------------------------------------------------------------------
   'msg.utilityReward': 'アイテム+1',

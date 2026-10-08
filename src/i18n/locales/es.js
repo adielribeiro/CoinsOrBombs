@@ -236,7 +236,7 @@ export default {
     '{chance}% de probabilidad de recoger una utilidad aleatoria al romper una roca.',
   'reward.bomb.name': 'Bombas {tier}',
   'reward.bomb.description':
-    '{chance}% de probabilidad de revelar una bomba aleatoria al romper una roca.',
+    '{chance}% de probabilidad de revelar una bomba aleatoria al romper una roca: cada revelacion cuesta {cost} monedas.',
 
   // --- contenido: biomas --------------------------------------------------
   'biome.sunstone.name': 'Mina Solar',
@@ -305,7 +305,7 @@ export default {
   'msg.exitBonus': '¡Rotura extra! Has encontrado la salida oculta. Haz clic en el agujero para decidir si sales.',
   'msg.exitHidden':
     'Has encontrado la salida oculta de esta cueva. Haz clic en el agujero para decidir si sales.',
-  'msg.bombRevealed': 'Se ha revelado una bomba oculta en el mapa.',
+  'msg.bombRevealed': 'Se ha revelado una bomba oculta en el mapa. (−{cost} monedas)',
 
   // --- mensajes de utilidad ------------------------------------------------
   'msg.utilityReward': '+1 utilidad',

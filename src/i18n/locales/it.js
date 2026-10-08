@@ -236,7 +236,7 @@ export default {
     '{chance}% di probabilità di raccogliere un’utilità casuale rompiendo una roccia.',
   'reward.bomb.name': 'Bombe {tier}',
   'reward.bomb.description':
-    '{chance}% di probabilità di rivelare una bomba casuale rompiendo una roccia.',
+    '{chance}% di probabilità di rivelare una bomba casuale rompiendo una roccia: ogni rivelazione costa {cost} monete.',
 
   // --- contenuto: biomi --------------------------------------------------------------------
   'biome.sunstone.name': 'Miniera di Pietra Sole',
@@ -304,7 +304,7 @@ export default {
   'msg.empty': 'Solo pietra e polvere... continua a scavare.',
   'msg.exitBonus': 'Rottura bonus! Hai trovato l’uscita nascosta. Clicca sul buco per decidere se uscire.',
   'msg.exitHidden': 'Hai trovato l’uscita nascosta di questa grotta. Clicca sul buco per decidere se uscire.',
-  'msg.bombRevealed': 'Una bomba nascosta è stata rivelata sulla mappa.',
+  'msg.bombRevealed': 'Una bomba nascosta è stata rivelata sulla mappa. (−{cost} monete)',
 
   // --- messaggi delle utilità ------------------------------------------------------------------------
   'msg.utilityReward': '+1 utilità',

@@ -253,7 +253,7 @@ export default {
     '{chance}% szans na zdobycie losowego przedmiotu przy rozbiciu skały.',
   'reward.bomb.name': 'Bombe {tier}',
   'reward.bomb.description':
-    '{chance}% szans na odsłonięcie losowej bomby przy rozbiciu skały.',
+    '{chance}% szans na odsloniecie losowej bomby przy rozbiciu skaly — kazde odsloniecie kosztuje {cost} monet.',
 
   // --- treść: biome -----------------------------------------------------------
   'biome.sunstone.name': 'Kopalnia Kamienia Słonecznego',
@@ -322,7 +322,7 @@ export default {
   'msg.empty': 'Tylko kamień i kurz… kopaj dalej.',
   'msg.exitBonus': 'Rozbicie bonusowe! Znalazłeś ukryte wyjście. Kliknij dziurę, aby zdecydować, czy wyjść.',
   'msg.exitHidden': 'Znalazłeś ukryte wyjście z tej jaskini. Kliknij dziurę, aby zdecydować, czy wyjść.',
-  'msg.bombRevealed': 'Jedna ukryta bomba została odsłonięta na mapie.',
+  'msg.bombRevealed': 'Jedna ukryta bomba zostala odslonieta na mapie. (−{cost} monet)',
 
   // --- komunikaty przedmiotów -------------------------------------------------------
   'msg.utilityReward': '+1 przedmiot',

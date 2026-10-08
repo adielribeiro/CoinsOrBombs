@@ -80,6 +80,51 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **A melhoria de revelar bomba não era uma melhoria: era a remoção do risco do jogo.**
+  `bombRevealChance = nivelDaCarta * 0.1`, e a carta vai até 10 — o nível 10 é **100%**. A
+  revelação dispara a cada pedra quebrada, então numa caverna de 70 pedras com 22 bombas o
+  jogador via as 22 antes de encostar em qualquer uma.
+
+  **Baixar o teto da carta não resolvia, e é por isso que o limite teve de ser outro.** A
+  30% por pedra ainda saem umas 21 revelações de 22 bombas. O que faltava era teto por
+  caverna. E o commit anterior piorou a coisa ao acrescentar os tipos de bomba: com toda
+  bomba revelada, saqueadora, desgaste e reforçada nunca acontecem — o risco novo nasce
+  marcado.
+
+  **Agora cada revelação custa 5 moedas.** O limite sai de um campo que **já existe**, a
+  renda: uma caverna rende uns 7 moedas no começo e uns 25 no fim, então a pessoa gasta
+  entre 1 e 5 revelações por caverna, e escolhe entre elas e as poções. Três consequências,
+  todas desejadas:
+
+  1. **O risco tem teto** sem campo novo, sem migração de save e sem contador por
+     caverna.
+  2. **A moeda ganha destino.** Era o defeito mais grave da economia — 914 moedas por run
+     e nada para onde gastar. Agora revelação e poção disputam a mesma moeda.
+  3. **A decisão é legível:** “vejo mais bombas, ou compro poção”.
+
+  A cobrança só acontece quando a bomba é **encontrada**, nunca antes, e nada é debitado
+  quando o jogador não pode pagar — o bônus simplesmente não acontece, e em silêncio, que
+  é o que a falta de moeda merece. Debitar antes de saber se há bomba faria a moeda sumir
+  por nada.
+
+  A carta e o recibo mudaram nos **10 idiomas**: uma promessa que não diz o preço é uma
+  emboscada, e sem o custo no aviso a moeda debitada aparece do nada. Nenhum par de chaves
+  novo — a mesma `msg.bombRevealed`, com uma substituição a mais.
+
+  **O desconto é uma função pura, e não uma subtração na cena, por um motivo concreto:**
+  subtração em `CaveScene` não é testável, porque a cena precisa de Phaser. A conferência
+  por mutação mostrou o teste passando com a cobrança apagada — ou seja, ele não cobria
+  nada. Movido para `challenges.js`, apagá-la quebra o teste, e `test/custo-revelacao.test.mjs`
+  fixa a propriedade: **a moeda de uma caverna nunca compra revelação para todas as bombas
+  dela**, verificada nas 60 caves comparando a renda real com a contagem real de bombas.
+
+  Três mutações foram reintroduzidas para conferir que o teste as pega: o preço zerado, o
+  desconto removido e a verificação de "a pessoa tem moeda" ignorada. As três reprovaram.
+
+- **As cartas de chance mostravam 1% quando o bônus era 10%.** `chance: nextBomb * 1`
+  imprimia “1%” na carta cujo bônus era 10%. O mesmo erro estava nas cartas de moeda e de
+  rocha, e nenhuma das três tinha teste. Há um agora.
+
 - **A picareta não valia nada em quase metade do jogo, e a campanha ficava mais leve no meio
   do que no começo.** Medido antes da mudança: com a picareta no teto de uma run, a pedra
   saía com **1 de HP nas caves 1 a 28**; com a melhoria de relíquia no máximo, nas caves 1 a

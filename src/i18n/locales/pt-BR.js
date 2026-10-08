@@ -263,7 +263,7 @@ export default {
     '{chance}% de chance de coletar 1 utilitário aleatório ao quebrar uma rocha.',
   'reward.bomb.name': 'Bombas {tier}',
   'reward.bomb.description':
-    '{chance}% de chance de revelar 1 bomba aleatória ao quebrar uma rocha.',
+    '{chance}% de chance de revelar 1 bomba aleatória ao quebrar uma rocha — cada revelação custa {cost} moedas.',
 
   // --- conteúdo: biomas ---------------------------------------------------
   'biome.sunstone.name': 'Mina Solar',
@@ -335,7 +335,7 @@ export default {
     'Quebra bônus! Você encontrou a saída escondida. Clique no buraco para decidir se quer sair.',
   'msg.exitHidden':
     'Você encontrou a saída escondida desta cave. Clique no buraco para decidir se quer sair.',
-  'msg.bombRevealed': 'Uma bomba escondida foi revelada no mapa.',
+  'msg.bombRevealed': 'Uma bomba escondida foi revelada no mapa. (−{cost} moedas)',
 
   // --- mensagens de utilitário --------------------------------------------
   'msg.utilityReward': '+1 utilitário',

@@ -1,4 +1,13 @@
-import { ENVIRONMENTS, applyEnvironmentReward, bombEffect, bombMarker, canExcavateEnvironment, hasUtilitySpace } from '../challenges.js';
+import {
+  ENVIRONMENTS,
+  applyEnvironmentReward,
+  bombEffect,
+  bombMarker,
+  canExcavateEnvironment,
+  deveTentarRevelar,
+  hasUtilitySpace,
+  saldoDepoisDaRevelacao
+} from '../challenges.js';
 import Phaser from 'phaser';
 import {
   BASE_TILE_HEIGHT,
@@ -2446,9 +2455,17 @@ export class CaveScene extends Phaser.Scene {
   }
 
   tryRevealRandomBombBonus() {
-    const chance = this.metaState.bombRevealChance ?? 0;
-
-    if (chance <= 0 || Math.random() >= chance) {
+    // A melhoria de carta é um **orçamento pago**, não um sorteio grátis.
+    //
+    // Com a chance por pedra, a carta de nível 10 é 100% e a revelação dispara em toda
+    // pedra: em 70 pedras com 22 bombas o jogador via as 22 antes de encostar em alguma.
+    // Baixar o teto não resolvia — a 30% ainda saíam umas 21 de 22. O que faltava era
+    // teto por caverna, e ele sai da renda: cada revelação custa moedas.
+    //
+    // Sem pagar, o bônus não acontece — e em silêncio, que é o que a falta de moeda
+    // merece. E o sorteio vem antes do bolso: quem não tem moeda não gasta o sorteio,
+    // o que também impede que a taxa alta vire um bônus invisível.
+    if (!deveTentarRevelar({ chance: this.metaState.bombRevealChance, coins: this.metaState.coins })) {
       return false;
     }
 
@@ -2460,6 +2477,8 @@ export class CaveScene extends Phaser.Scene {
     if (!hiddenBomb) {
       return false;
     }
+
+    this.metaState.coins = saldoDepoisDaRevelacao(this.metaState.coins);
 
     hiddenBomb.utilityRevealBomb = true;
 

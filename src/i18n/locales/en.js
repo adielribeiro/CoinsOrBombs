@@ -232,7 +232,7 @@ export default {
   'reward.utility.name': 'Utility {tier}',
   'reward.utility.description': '{chance}% chance to collect a random utility when breaking a rock.',
   'reward.bomb.name': 'Bombs {tier}',
-  'reward.bomb.description': '{chance}% chance to reveal a random bomb when breaking a rock.',
+  'reward.bomb.description': '{chance}% chance to reveal a random bomb when breaking a rock — each reveal costs {cost} coins.',
 
   // --- content: biomes ----------------------------------------------------
   'biome.sunstone.name': 'Sunstone Mine',
@@ -300,7 +300,7 @@ export default {
   'msg.empty': 'Just stone and dust... keep digging.',
   'msg.exitBonus': 'Bonus break! You found a hidden exit. Click the hole to decide whether to leave.',
   'msg.exitHidden': 'You found this cave’s hidden exit. Click the hole to decide whether to leave.',
-  'msg.bombRevealed': 'A hidden bomb was revealed on the map.',
+  'msg.bombRevealed': 'A hidden bomb was revealed on the map. (−{cost} coins)',
 
   // --- utility messages ---------------------------------------------------
   'msg.utilityReward': '+1 utility',

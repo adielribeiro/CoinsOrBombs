@@ -1,5 +1,55 @@
 /** Regras de expedição puras. Metadados de tile não fazem parte do save. */
 export const UTILITY_CAPACITY = 8;
+
+/**
+ * Quanto custa a melhoria de carta revelar uma bomba.
+ *
+ * É o que limita a revelação, e o limite sai da **renda**: uma caverna rende uns 7
+ * moedas no começo e uns 25 no fim, então a pessoa gasta entre 1 e 5 revelações por
+ * caverna — e escolhe entre elas e as poções.
+ *
+ * Nenhum campo novo e nenhuma migração de save: o teto nasce de `coins`, que já existe.
+ * E o problema que limitava a melhoria nunca foi a probabilidade, foi ela não ter teto
+ * por caverna — a 30% por pedra ainda saíam umas 21 revelações de 22 bombas.
+ */
+export const CUSTO_PARA_REVELAR = 5;
+
+/** A melhoria de carta tem de pagar a revelação que ela prometeu? */
+export function podeRevelarPorPreco(coins) {
+  return (coins ?? 0) >= CUSTO_PARA_REVELAR;
+}
+
+/**
+ * A taxa passou e há moeda para pagar?
+ *
+ * Separado do `podeRevelarPorPreco` porque quem chama precisa do sorteio e da
+ * disponibilidade ao mesmo tempo, e as duas são decisões diferentes: uma é do tempo,
+ * a outra é do bolso.
+ *
+ * @param {{chance?: number, coins?: number}} estado
+ * @param {() => number} random
+ */
+export function deveTentarRevelar({ chance, coins } = {}, random = Math.random) {
+  if ((chance ?? 0) <= 0) return false;
+  if (random() >= chance) return false;
+
+  return podeRevelarPorPreco(coins);
+}
+
+/**
+ * O saldo depois de pagar uma revelação.
+ *
+ * O desconto é uma função e não uma subtração na cena por um motivo concreto: uma
+ * subtração em `CaveScene` não é testável, porque a cena precisa de Phaser. A conferência
+ * por mutação mostrou que o teste passava igual com a cobrança apagada — ou seja, ele
+ * não cobria nada. Aqui, apagar a função quebra o teste.
+ *
+ * Nunca fica negativo: a guarda de quem chama já exige o saldo, e um `Math.max` aqui
+ * evita que um `coins` corrompido num save antigo vire uma dívida.
+ */
+export function saldoDepoisDaRevelacao(coins) {
+  return Math.max(0, (coins ?? 0) - CUSTO_PARA_REVELAR);
+}
 const UTILITY_IDS = ['lifePotion', 'revealBomb', 'safePath'];
 export function utilityCount(utilities = {}) {
   return UTILITY_IDS.reduce((total, id) => total + Math.max(0, utilities[id] || 0), 0);

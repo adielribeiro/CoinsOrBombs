@@ -16,6 +16,7 @@
  */
 
 import { MELHORIAS_DE_PICARETA, PICARETA_MAXIMA } from './progression.js';
+import { CUSTO_PARA_REVELAR } from './challenges.js';
 
 function tierLabel(value) {
   return String(value).padStart(2, '0');
@@ -180,7 +181,7 @@ export function buildRewardCatalog(state, t) {
       /** Os campos de melhoria que esta carta mexe. Ver `fixarMelhoriaEscolhida`. */
       campos: ['bombRevealLevel', 'bombRevealChance'],
       name: t('reward.bomb.name', { tier: tierLabel(nextBomb) }),
-      description: t('reward.bomb.description', { chance: nextBomb * 1 }),
+      description: t('reward.bomb.description', { chance: nextBomb * 10, cost: CUSTO_PARA_REVELAR }),
       apply: (currentState) => ({
         ...currentState,
         bombRevealLevel: nextBomb,
