@@ -158,6 +158,10 @@ export default {
   'shop.maxLevel': 'Niveau maximal',
   'shop.level': 'Niveau : {atual}/{max}',
   'shop.upgrade.health.name': 'Améliorer la Vie',
+
+  'shop.upgrade.capacidade.benefit': '+1 place dans le sac par niveau',
+
+  'shop.upgrade.capacidade.name': 'Agrandir le sac',
   'shop.upgrade.health.benefit': '+1 de vie maximale par niveau',
   'shop.upgrade.pickaxe.name': 'Améliorer la Pioche',
   'shop.upgrade.pickaxe.benefit': '+1 de niveau de pioche par niveau',

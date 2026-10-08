@@ -155,6 +155,10 @@ export default {
   'shop.maxLevel': 'Max level',
   'shop.level': 'Level: {atual}/{max}',
   'shop.upgrade.health.name': 'Upgrade Health',
+
+  'shop.upgrade.capacidade.benefit': '+1 pouch slot per level',
+
+  'shop.upgrade.capacidade.name': 'Upgrade Pouch',
   'shop.upgrade.health.benefit': '+1 max health per level',
   'shop.upgrade.pickaxe.name': 'Upgrade Pickaxe',
   'shop.upgrade.pickaxe.benefit': '+1 pickaxe level per level',

@@ -157,6 +157,10 @@ export default {
   'shop.maxLevel': 'Nivel maximo',
   'shop.level': 'Nivel: {atual}/{max}',
   'shop.upgrade.health.name': 'Mejorar Vida',
+
+  'shop.upgrade.capacidade.benefit': '+1 de espacio en la mochila por nivel',
+
+  'shop.upgrade.capacidade.name': 'Mejorar Mochila',
   'shop.upgrade.health.benefit': '+1 de vida máxima por nivel',
   'shop.upgrade.pickaxe.name': 'Mejorar Pico',
   'shop.upgrade.pickaxe.benefit': '+1 de nivel de pico por nivel',

@@ -32,9 +32,6 @@
  * (`vidaFinal = base + nível`), o bônus não pode ser aplicado duas vezes.
  */
 
-/** Os campos que são níveis comprados. Derivados da configuração, e não escritos à mão. */
-export const UPGRADE_IDS = ['health', 'pickaxe', 'lifePotion', 'revealBomb', 'safePath'];
-
 /**
  * A configuração das cinco melhorias.
  *
@@ -93,6 +90,18 @@ export const UPGRADES = {
     maxLevel: 3,
     benefit: 'shop.upgrade.revealBomb.benefit'
   },
+  capacidade: {
+    id: 'capacidade',
+    field: 'melhoriaCapacidade',
+    /**
+     * 🧳 e nao 🎒: o 🎒 ja e o cartao "Utilitario" do lobby, e o mesmo emoji em duas
+     * melhorias diferentes e confusao na hora de escolher.
+     */
+    icon: '🧳',
+    costs: [50, 60, 80],
+    maxLevel: 3,
+    benefit: 'shop.upgrade.capacidade.benefit'
+  },
   safePath: {
     id: 'safePath',
     field: 'melhoriaSafePath',
@@ -106,6 +115,20 @@ export const UPGRADES = {
     ]
   }
 };
+
+/**
+ * Os campos que são níveis comprados.
+ *
+ * Derivado da configuração, e não escrito à mão: a versão anterior era uma lista digitada ao
+ * lado do objeto que ela descrevia, e o comentário dela já dizia que era derivada. Não era.
+ * O preço é concreto — uma melhoria nova que ninguém lembrasse de pôr na lista aparecia na
+ * tela, cobrava a pessoa, e não entrava no save permanente, porque `PERMANENTE` em
+ * `saves.js` é derivado desta lista.
+ *
+ * Fica **depois** de `UPGRADES` porque `Object.keys` lê o objeto na hora, e a ordem das
+ * declarações resolve o que era o motivo de a lista ser escrita à mão.
+ */
+export const UPGRADE_IDS = Object.keys(UPGRADES);
 
 /** Os três níveis, e só três. Repetido aqui para a tela não repetir a constante. */
 export const NIVEL_MAXIMO = 3;

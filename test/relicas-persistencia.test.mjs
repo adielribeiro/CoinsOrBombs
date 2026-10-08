@@ -59,6 +59,7 @@ const PERMANENTES_ESPERADOS = [
   'melhoriaLifePotion',
   'melhoriaRevealBomb',
   'melhoriaSafePath',
+  'melhoriaCapacidade',
   // O registro de relíquias por cave também é permanente, e por um motivo que não é
   // óbvio: ele é o que impede a mesma cave render relíquias de novo quando a pessoa morre
   // e recomeça o bioma. Perder esse registro na morte é o mesmo que permitir o farm.
@@ -95,14 +96,18 @@ function recomecoAposMorte(baseState) {
 /**
  * Um estado com saldo e melhorias compradas, montado de verdade pelas regras.
  *
- * O saldo de partida e 200. As cinco melhorias ate o fim custam 19 + 27 + 45 * 3 = 181,
- * e sobrar 19 importa: um estado com saldo exatamente no fim nunca exercita a recusa,
+ * O saldo de partida e 400. As seis melhorias ate o fim custam 19 + 27 + 45 * 3 + 190 = 371,
+ * e sobrar 29 importa: um estado com saldo exatamente no fim nunca exercita a recusa,
  * e o teste que mede "comprar sem saldo" passaria em branco.
+ *
+ * Sao 400 e nao 371 por esse motivo. Com 200 — que era o valor quando eram cinco — a
+ * sexta melhoria nunca era comprada, e os testes de morte e de troca de bioma acusavam o
+ * campo novo de "voltou do maximo para 0" quando o problema era o saldo do instrumento.
  */
 function estadoComMelhoriasCompradas() {
-  let estado = { ...estadoInicial(1), relics: 200, ...niveisPorCampoDe({}) };
+  let estado = { ...estadoInicial(1), relics: 400, ...niveisPorCampoDe({}) };
 
-  for (const id of ['health', 'pickaxe', 'lifePotion', 'revealBomb', 'safePath']) {
+  for (const id of UPGRADE_IDS) {
     for (let n = 0; n < 3; n += 1) {
       const compra = comprarMelhoria(estado, id);
 
@@ -147,9 +152,9 @@ test('as listas de permanentes cobrem o saldo, as cinco melhorias e o registro',
 test('o saldo e os niveis sobrevem a uma morte', () => {
   const antes = estadoComMelhoriasCompradas();
 
-  // 200 - 181 = 19. O numero vem da conta, e nao de um literal repetido aqui: um
-  // literal que o configuracao mudasse junto passaria o teste sem mudar de comportamento.
-  assert.equal(saldoDeReliquias(antes), 19, 'o saldo que sobrou das cinco melhorias');
+  // 400 - 371 = 29. O numero vem da conta, e nao de um literal repetido aqui: um
+  // literal que a configuracao mudasse junto passaria o teste sem mudar de comportamento.
+  assert.equal(saldoDeReliquias(antes), 29, 'o saldo que sobrou das seis melhorias');
   assert.equal(nivelDe(antes, 'health'), 3, 'a vida nao chegou no maximo');
   assert.equal(nivelDe(antes, 'safePath'), 3, 'o caminho seguro nao chegou no maximo');
 

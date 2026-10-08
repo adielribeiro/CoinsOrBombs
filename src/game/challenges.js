@@ -1,5 +1,32 @@
 /** Regras de expedição puras. Metadados de tile não fazem parte do save. */
-export const UTILITY_CAPACITY = 8;
+/**
+ * Quantos utilitarios a mochila segura antes de qualquer melhoria.
+ *
+ * Eram 8, e com 8 a bolsa virava armazem: dava para levar 3 pocoes de vida, 3 de revelar
+ * e 2 de caminho seguro, e a compra no lobby nunca era uma decisao. Com 3, a lista que a
+ * pessoa quer raramente cabe inteira, e **qual** utilitario fica de fora e a decisao.
+ *
+ * A capacidade e **somada** ao nivel da melhoria, e nunca guardada: um save antigo sem o
+ * campo abre com 3, e guardar a capacidade final faria o bonus ser aplicado duas vezes ao
+ * carregar.
+ */
+export const CAPACIDADE_BASE_DE_UTILITARIOS = 3;
+
+/**
+ * A capacidade da bolsa com o nivel da melhoria.
+ *
+ * Recebe o **nivel**, e nao o estado inteiro, de proposito: quem pergunta quanto cabe nao
+ * precisa saber que existe uma melhoria permanente, e assim esta funcao nao importa nada
+ * e nao cria ciclo com `melhorias.js`.
+ *
+ * @param {number} nivelDaMelhoria o nivel comprado, de 0 a 3
+ * @returns {number} quantos utilitarios cabem
+ */
+export function capacidadeDeUtilitarios(nivelDaMelhoria) {
+  const nivel = Number.isFinite(nivelDaMelhoria) ? Math.max(0, Math.trunc(nivelDaMelhoria)) : 0;
+
+  return CAPACIDADE_BASE_DE_UTILITARIOS + nivel;
+}
 
 /**
  * Quanto custa a melhoria de carta revelar uma bomba.
@@ -54,8 +81,18 @@ const UTILITY_IDS = ['lifePotion', 'revealBomb', 'safePath'];
 export function utilityCount(utilities = {}) {
   return UTILITY_IDS.reduce((total, id) => total + Math.max(0, utilities[id] || 0), 0);
 }
-export function hasUtilitySpace(utilities) {
-  return utilityCount(utilities) < UTILITY_CAPACITY;
+/**
+ * Ainda cabe mais alguma coisa na bolsa?
+ *
+ * A capacidade e argumento e nao constante porque ela muda com a melhoria comprada, e uma
+ * constante aqui seria a loja discordando da regra — que foi exatamente o bug que a
+ * funcao pura acima resolve.
+ *
+ * @param {object} utilities o inventario
+ * @param {number} [capacidade] quantos utilitarios cabem
+ */
+export function hasUtilitySpace(utilities, capacidade = CAPACIDADE_BASE_DE_UTILITARIOS) {
+  return utilityCount(utilities) < capacidade;
 }
 
 export function specialBombChance(cave) {

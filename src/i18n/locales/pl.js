@@ -172,6 +172,10 @@ export default {
   'shop.maxLevel': 'Najwyższy poziom',
   'shop.level': 'Poziom: {atual}/{max}',
   'shop.upgrade.health.name': 'Ulepsz Życie',
+
+  'shop.upgrade.capacidade.benefit': '+1 miejsce w plecaku na poziom',
+
+  'shop.upgrade.capacidade.name': 'Powiększ plecak',
   'shop.upgrade.health.benefit': '+1 maksymalnego zycia za poziom',
   'shop.upgrade.pickaxe.name': 'Ulepsz Kilof',
   'shop.upgrade.pickaxe.benefit': '+1 poziom kilofa za poziom',

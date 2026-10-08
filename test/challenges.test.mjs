@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyEnvironmentReward, bombEffect, canExcavateEnvironment, chooseBombVariant, ENVIRONMENTS,
-  hasUtilitySpace, specialBombChance, utilityCount, UTILITY_CAPACITY } from '../src/game/challenges.js';
+  capacidadeDeUtilitarios,
+  hasUtilitySpace,
+  specialBombChance,
+  utilityCount } from '../src/game/challenges.js';
 import { isRelicContent } from '../src/game/progression.js';
 import { generateMap } from '../src/game/systems/mapGenerator.js';
 import { findSafeRoute, isFrontierRock } from '../src/game/systems/helpers.js';
@@ -32,7 +35,15 @@ test('saque tem teto e desgaste não remove melhorias nem inventário', () => {
 
 test('mochila compartilha espaço e respeita o inventário de saves antigos', () => {
   assert.equal(hasUtilitySpace(), true);
-  assert.equal(utilityCount({ lifePotion: 3, revealBomb: 2, safePath: 3 }), UTILITY_CAPACITY);
+  // A capacidade base é 3, e a melhoria comprada soma. A asserção antiga comparava com a
+  // capacidade inteira, que era 8 — e passava por acidente, porque 3 + 2 + 3 dá 8.
+  assert.equal(capacidadeDeUtilitarios(0), 3, 'a mochila começa com 3');
+  assert.equal(capacidadeDeUtilitarios(3), 6, 'no máximo são 6');
+  assert.equal(
+    hasUtilitySpace({ lifePotion: 1, revealBomb: 1, safePath: 1 }),
+    false,
+    '3 de 3 não cabe mais'
+  );
   assert.equal(hasUtilitySpace({ lifePotion: 3, revealBomb: 2, safePath: 3 }), false);
   const old = { lifePotion: 30, revealBomb: 7, safePath: 12 };
   assert.equal(hasUtilitySpace(old), false);

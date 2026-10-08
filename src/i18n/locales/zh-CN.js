@@ -161,6 +161,10 @@ export default {
   'shop.maxLevel': '已满级',
   'shop.level': '等级：{atual}/{max}',
   'shop.upgrade.health.name': '强化生命',
+
+  'shop.upgrade.capacidade.benefit': '每级使背包增加 +1 格',
+
+  'shop.upgrade.capacidade.name': '扩充背包',
   'shop.upgrade.health.benefit': '每级最大生命 +1',
   'shop.upgrade.pickaxe.name': '强化镐',
   'shop.upgrade.pickaxe.benefit': '每级镐等级 +1',

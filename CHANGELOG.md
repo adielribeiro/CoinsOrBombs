@@ -80,6 +80,32 @@ Este projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **A mochila começa com 3 e a melhoria de relíquia compra mais espaço.** Eram 8, e com 8 a
+  bolsa era um armazém: dava para levar 3 poções de vida, 3 de revelar e 2 de caminho
+  seguro, e a compra no lobby nunca era uma decisão. Com 3, a lista que a pessoa quer raramente
+  cabe inteira, e **qual** utilitário fica de fora passa a ser a decisão do lobby. Qualquer
+  mistura vale: 3 de um tipo, 2 e 1, ou 1 e 1 e 1.
+
+  A nova melhoria **Mochila** custa **50, depois 60 e depois 80** relíquias. São 190 contra
+  181 de todas as outras cinco somadas — o arco longo do jogo inteiro num lugar só. Uma run
+  rende cerca de 96, então leva duas campanhas para maxar, e o espaço é o único atributo que
+  **não se recupera ao usar**: vida e picareta voltam depois da morte, a bolsa esvazia.
+
+  A capacidade é **somada ao nível**, nunca guardada: um save antigo sem o campo abre com 3,
+  e guardar a capacidade final faria o bônus ser aplicado duas vezes ao carregar. `PERMANENTE`
+  em `saves.js` é derivado de `UPGRADE_IDS`, então o campo novo entra no save permanente sem
+  nenhuma linha nova — e os testes de morte e de troca de bioma já o verificam, porque
+  percorrem `UPGRADE_IDS`.
+
+  **Dois consertos de fundo apareceram no caminho.** `UPGRADE_IDS` era uma lista digitada à mão
+  ao lado do objeto que ela descrevia, e o comentário dela já dizia que era derivada: não era.
+  O preço é concreto — uma melhoria nova que ninguém lembrasse de pôr na lista aparecia na tela,
+  cobrava a pessoa, e não entrava no save permanente. Agora deriva de `Object.keys(UPGRADES)`,
+  **depois** do objeto, porque `Object.keys` lê o objeto na hora: mantê-la antes é erro de TDZ,
+  que derruba a suíte inteira sem mensagem útil. E `UTILITY_CAPACITY` era uma constante lida
+  pela loja e pela tela ao mesmo tempo — exatamente o caminho em que um custo escrito na tela e
+  outro escrito na regra divergem. Agora a capacidade é uma função que recebe o nível.
+
 - **A melhoria de revelar bomba não era uma melhoria: era a remoção do risco do jogo.**
   `bombRevealChance = nivelDaCarta * 0.1`, e a carta vai até 10 — o nível 10 é **100%**. A
   revelação dispara a cada pedra quebrada, então numa caverna de 70 pedras com 22 bombas o

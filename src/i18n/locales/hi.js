@@ -167,6 +167,10 @@ export default {
   'shop.maxLevel': 'अधिकतम स्तर',
   'shop.level': 'स्तर: {atual}/{max}',
   'shop.upgrade.health.name': 'जीवन सुधारें',
+
+  'shop.upgrade.capacidade.benefit': 'हर स्तर पर बैग में +1 जगह',
+
+  'shop.upgrade.capacidade.name': 'बैग बढ़ाएँ',
   'shop.upgrade.health.benefit': 'प्रति स्तर +1 अधिकतम जीवन',
   'shop.upgrade.pickaxe.name': 'कुल्हाड़ी सुधारें',
   'shop.upgrade.pickaxe.benefit': 'प्रति स्तर +1 कुल्हाड़ी स्तर',

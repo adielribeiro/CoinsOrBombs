@@ -161,6 +161,10 @@ export default {
   'shop.maxLevel': '最大レベル',
   'shop.level': 'レベル: {atual}/{max}',
   'shop.upgrade.health.name': '生命アップ',
+
+  'shop.upgrade.capacidade.benefit': 'レベルごとに袋の枠が+1増える',
+
+  'shop.upgrade.capacidade.name': '袋を拡張',
   'shop.upgrade.health.benefit': 'レベルごとに最大生命 +1',
   'shop.upgrade.pickaxe.name': 'つるはしアップ',
   'shop.upgrade.pickaxe.benefit': 'レベルごとにつるはしのレベル +1',

@@ -157,6 +157,10 @@ export default {
   'shop.maxLevel': 'Livello massimo',
   'shop.level': 'Livello: {atual}/{max}',
   'shop.upgrade.health.name': 'Migliora Vita',
+
+  'shop.upgrade.capacidade.benefit': '+1 spazio nello zaino per livello',
+
+  'shop.upgrade.capacidade.name': 'Espandi lo zaino',
   'shop.upgrade.health.benefit': '+1 di vita massima per livello',
   'shop.upgrade.pickaxe.name': 'Migliora Piccone',
   'shop.upgrade.pickaxe.benefit': '+1 di livello piccone per livello',

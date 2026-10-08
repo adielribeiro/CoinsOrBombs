@@ -1,4 +1,4 @@
-import { UTILITY_CAPACITY, hasUtilitySpace, utilityCount } from './game/challenges.js';
+import { capacidadeDeUtilitarios, hasUtilitySpace, utilityCount } from './game/challenges.js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createGame } from './game/createGame.js';
 import { duracaoDaCarta } from './game/cartaFinal.js';
@@ -1716,7 +1716,14 @@ export default function App() {
     const baseState = stateRef.current;
 
     if (!baseState.inLobby) return;
-    if (baseState.coins < utility.cost || !hasUtilitySpace(baseState.utilities)) return;
+    // A capacidade vem da melhoria comprada, e não de uma constante: com 8 fixos a bolsa
+    // virava armazém e a compra no lobby nunca era uma decisão.
+    if (
+      baseState.coins < utility.cost ||
+      !hasUtilitySpace(baseState.utilities, capacidadeDeUtilitarios(nivelDe(baseState, 'capacidade')))
+    ) {
+      return;
+    }
 
     const nextState = normalizeProgressState({
       ...baseState,
@@ -3295,7 +3302,12 @@ export default function App() {
                   <h2>{t('shop.title')}</h2>
                   <p>{t('shop.subtitle')}</p>
                   <p>{t('challenge.guide')}</p>
-                  <p>{t('challenge.bag', { n: utilityCount(gameState.utilities), max: UTILITY_CAPACITY })}</p>
+                  <p>
+            {t('challenge.bag', {
+              n: utilityCount(gameState.utilities),
+              max: capacidadeDeUtilitarios(nivelDe(gameState, 'capacidade'))
+            })}
+          </p>
                 </div>
 
                 <button
@@ -3309,7 +3321,10 @@ export default function App() {
 
               <div className="utility-shop-line">
                 {utilityCatalog.map((utility) => {
-                  const hasSpace = hasUtilitySpace(gameState.utilities);
+                  const hasSpace = hasUtilitySpace(
+      gameState.utilities,
+      capacidadeDeUtilitarios(nivelDe(gameState, 'capacidade'))
+    );
                   const canBuy = hasSpace && gameState.coins >= utility.cost;
                   const owned = gameState.utilities?.[utility.id] ?? 0;
 

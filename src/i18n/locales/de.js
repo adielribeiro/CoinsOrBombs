@@ -157,6 +157,10 @@ export default {
   'shop.maxLevel': 'Höchstes Level',
   'shop.level': 'Level: {atual}/{max}',
   'shop.upgrade.health.name': 'Leben verbessern',
+
+  'shop.upgrade.capacidade.benefit': '+1 Platz in der Tasche pro Stufe',
+
+  'shop.upgrade.capacidade.name': 'Tasche erweitern',
   'shop.upgrade.health.benefit': '+1 maximale Leben pro Stufe',
   'shop.upgrade.pickaxe.name': 'Spitzhacke verbessern',
   'shop.upgrade.pickaxe.benefit': '+1 Spitzhacken-Stufe pro Stufe',

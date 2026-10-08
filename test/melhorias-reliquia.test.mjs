@@ -41,7 +41,10 @@ const CUSTOS_PEDIDOS = {
   pickaxe: [4, 8, 15],
   lifePotion: [10, 15, 20],
   revealBomb: [10, 15, 20],
-  safePath: [10, 15, 20]
+  safePath: [10, 15, 20],
+  // A mochila: 190 relíquias contra 181 de todas as outras somadas. E o espaço é o
+  // único atributo que não se recupera ao usar — vida e picareta voltam.
+  capacidade: [50, 60, 80]
 };
 
 // --- a configuração --------------------------------------------------------
@@ -189,7 +192,8 @@ test('toda melhoria tem icone, e nenhum se repete', () => {
     pickaxe: '⛏️',
     lifePotion: '❤️',
     revealBomb: '💣',
-    safePath: '🧭'
+    safePath: '🧭',
+    capacidade: '🧳'
   };
 
   const vistos = new Map();
