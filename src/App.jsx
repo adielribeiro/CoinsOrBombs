@@ -2285,10 +2285,43 @@ export default function App() {
       // A semeadura é dos menus. Na caverna quem nasce em cima do alvo é o cursor
       // de tile, e semear a seta por cima dele a deixaria fora da pedra que está
       // mirada.
-      if (nomeDaTela !== telaDoPonteiroAnterior) {
-        telaDoPonteiroAnterior = nomeDaTela;
+      //
+      // A chave é a **superfície** que a pessoa está vendo, e não só o nome da tela.
+      // No menu principal o nome é `null` — o menu não é uma tela da pilha, é a fase
+      // de entrada — e comparar `null` com o `null` inicial dava sempre falso: a
+      // semeadura nunca rodava na porta de entrada do jogo, e o primeiro direcional
+      // levava o foco para o segundo item em vez do primeiro.
+      //
+      // Menu e tela são o mesmo par para efeitos de semeadura, e é por isso que a
+      // chave é uma string: `'menu'` e `'pausa'` são superfícies diferentes, e
+      // trocar entre elas tem que semear.
+      const superficie = nomeDaTela ?? (atual.menuVisivel ? 'menu' : null);
 
-        if (nomeDaTela || atual.menuVisivel) ponteiroSobre(document.activeElement);
+      if (superficie !== telaDoPonteiroAnterior) {
+        telaDoPonteiroAnterior = superficie;
+
+        if (superficie) {
+          /**
+           * O foco nasce em um item **escolhido**, e não em um item que o ponteiro
+           * passou por cima.
+           *
+           * Sem nenhum alvo em foco, `ordenarPorDirecao` devolve a lista inteira na
+           * ordem do DOM e o primeiro direcional leva o foco para o primeiro item —
+           * que no menu principal é a última linha, e não a primeira. E, como o
+           * ponteiro também nasce semeado em `document.activeElement`, que no começo
+           * de uma tela é o `body`, a seta ficava no meio da tela e o `A` do quadro
+           * seguinte fechava o alvo que estivesse embaixo dela.
+           *
+           * Só semeia quando não há alvo em foco: reabrir uma tela não pode devolver
+           * o foco ao começo, e quem abriu uma lista, andou até o quinto item e
+           * abriu um submenu volta e a lista continua no quinto.
+           */
+          const haAlvo = nav.alvos().some((alvo) => alvo.elemento === document.activeElement);
+
+          if (!haAlvo) nav.focarPrimeiro();
+
+          ponteiroSobre(document.activeElement);
+        }
       }
 
       // O ponteiro anda em **todo** o jogo, e não em parte dele. Antes ele andava nos
@@ -2317,7 +2350,26 @@ export default function App() {
       const sob = ponteiro.visivel ? alvoSobOPonteiro() : null;
       const domTemOComando = Boolean(sob?.elemento);
 
-      if (domTemOComando && sob.elemento !== document.activeElement) sob.elemento.focus();
+      /**
+       * Quem decide o foco neste quadro.
+       *
+       * Só um pode. São dois donos do mesmo alvo — o ponteiro, que leva o foco junto
+       * para que a seta tenha ação em todos os botões, e o direcional, que anda item
+       * a item — e quando os dois decidem no mesmo quadro eles se anulam: o ponteiro
+       * põe o foco no alvo, o direcional move, e o quadro seguinte o ponteiro devolve.
+       *
+       * O sintoma era o direcional **pulando um item em cada três** no menu principal,
+       * com a navegação seeming funcionar e indo sempre para o alvo errado.
+       *
+       * Quem está sendo usado decide. Com o direcional solto, o ponteiro manda — que
+       * é o que se quer, porque aí a pessoa está apontando e o `A` aciona o que está
+       * embaixo da seta.
+       */
+      const direcionalNoQuadro = Boolean(estado.direcoes.dominante);
+
+      if (domTemOComando && !direcionalNoQuadro && sob.elemento !== document.activeElement) {
+        sob.elemento.focus();
+      }
 
       const naCavena = !nomeDaTela && !atual.menuVisivel && !atual.cenaFinal && !atual.lore;
 
@@ -2391,9 +2443,24 @@ export default function App() {
           // e apertar de novo logo em seguida perderia o primeiro passo.
           const mexeuNaBarra = ajustarBarraEmFoco(estado.direcoes.dominante, agora);
 
-          if (estado.direcoes.dominante && !mexeuNaBarra) {
-            nav.moverComRepeticao(estado.direcoes.dominante);
-          }
+          //
+          // A chamada é **sempre**, inclusive sem direção, e isso não é descuido:
+          // `moverComRepeticao` tem um ramo que zera a repetição quando recebe
+          // `null`, e esse ramo era código morto — a chamada estava dentro de um
+          // `if (direcao)`, então nunca chegava `null`.
+          //
+          // O efeito era o mais difícil de ver deste tipo: `desde` e `repetiuEm`
+          // sobreviviam de um aperto para o outro. O primeiro aperto partia de `null` e
+          // esperava 380 ms antes de repetir, então funcionava. Depois do primeiro aperto
+          // longo, todo aperto seguinte já encontrava a espera cumprida e repetia no
+          // primeiro quadro — e daí em diante a cada 110 ms. Na medição, um aperto de
+          // 200 ms levava o foco **dois** itens, pulando o do meio: navegação que
+          // parece funcionar e vai sempre para o alvo errado.
+          //
+          // A barra em foco tem a mesma regra, e é por isso que o comentário de
+          // `ajustarBarraEmFoco` existe: soltar zera a repetição, senão o aperto
+          // seguinte perde o primeiro passo.
+          if (!mexeuNaBarra) nav.moverComRepeticao(estado.direcoes.dominante);
         } else if (estado.bordas.confirmar) {
           nav.ativar();
         }
